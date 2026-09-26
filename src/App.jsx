@@ -14,6 +14,8 @@ import {
   PlayCircle, PenLine, Video, ArrowUp, ArrowDown, Link2, Send, Paperclip, ExternalLink, EyeOff
 } from "lucide-react";
 import HeroArcadas from "./HeroArcadas.jsx";
+import { HeroCinema, Capsula, CampoCapsula, PilulaCTA, CartaoNumero, CartaoRecado, FolhaVidro, GavetaMobile, BotaoMenu, Logo, Marca, GRADIENTE, PIXEL } from "./Cinema.jsx";
+import arteFundoUrl from "./assets/arcadas.webp";
 
 /* ============================================================================
    PLATAFORMA PRÉ-VESTIBULAR — PROTÓTIPO VISUAL COMPLETO (MOCK)
@@ -34,43 +36,42 @@ import HeroArcadas from "./HeroArcadas.jsx";
 const ThemeContext = createContext();
 const useTheme = () => useContext(ThemeContext);
 
-const ACCENT = "#2A45A8"; // caneta azul: as marcas do aluno (feito, selecionado, progresso)
+const ACCENT = "#F2F2F2"; // marcas do aluno (feito, selecionado, progresso): branco sobre o vidro escuro
 
-const ACCENT_SOFT = "#4A63C4";
+const ACCENT_SOFT = "#FFFFFF";
 
-const DANGER = "#C1342A"; // caneta vermelha: correção (erro, atraso, devolutiva)
+const DANGER = "#FF6B5E";
 
-const GREEN = "#2E7D4F"; // acerto
+const GREEN = "#5BD69A";
 
-// Tipografia da identidade "Arcadas & Gabarito"
+// Tipografia: Geist em tudo; Silkscreen só nos números de destaque
 
 function ThemeProvider({ children }) {
-  // segue o tema do sistema na primeira abertura; o botão alterna depois
-  const [dark, setDark] = useState(() => {
-    try { return window.matchMedia("(prefers-color-scheme: dark)").matches; } catch (e) { return false; }
-  });
+  // o visual é escuro por padrão; o botão de tema troca para a versão clara
+  const [dark, setDark] = useState(true);
   const value = useMemo(() => ({ dark, toggle: () => setDark((d) => !d) }), [dark]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
-// Paleta derivada do tema. Valores em hex de 6 dígitos (o código concatena alfa: p.accent + "1f").
+// Tokens. Superfícies usam hex de 8 dígitos (translúcidas). As cores que recebem
+// alfa concatenado no código (accent, danger, green…) continuam com 6 dígitos.
 
 function usePalette() {
   const { dark } = useTheme();
   return dark
     ? {
-        bg: "#0F1417", surface: "#161D21", surface2: "#1C252A", border: "#263036", borderStrong: "#3A464D",
-        text: "#E6E6E0", textSoft: "#AEB3B5", textFaint: "#8A9195",
-        accent: "#8EA2F2", accentSoft: "#B4C1F6", danger: "#F07F73", green: "#62BE8B", brass: "#D2A95E", rev: "#B39DDB",
-        ink: "#E6E6E0", inkFg: "#0F1417",
-        chartGrid: "#232C31", inputBg: "#12181B", overlay: "rgba(5,8,10,.66)",
+        bg: "#0A0B0D", surface: "#FFFFFF0F", surface2: "#FFFFFF1A", border: "#FFFFFF14", borderStrong: "#FFFFFF33",
+        text: "#FFFFFF", textSoft: "#FFFFFFB3", textFaint: "#FFFFFF8C",
+        accent: "#F2F2F2", accentSoft: "#FFFFFF", danger: "#FF6B5E", green: "#5BD69A", brass: "#E8C07A", rev: "#8FB3FF",
+        ink: "#1A1A1A", inkFg: "#FFFFFF",
+        chartGrid: "#FFFFFF14", inputBg: "#FFFFFF0F", overlay: "rgba(0,0,0,.8)", modal: "rgba(14,15,17,.9)",
       }
     : {
-        bg: "#F4F4F1", surface: "#FBFBF9", surface2: "#EDEDE8", border: "#DADBD5", borderStrong: "#B7B9B1",
-        text: "#1C2024", textSoft: "#4F565C", textFaint: "#6A7177",
-        accent: "#2A45A8", accentSoft: "#4A63C4", danger: "#C1342A", green: "#2E7D4F", brass: "#9C7430", rev: "#6A4C93",
-        ink: "#1C2024", inkFg: "#F4F4F1",
-        chartGrid: "#E3E4DE", inputBg: "#FFFFFF", overlay: "rgba(20,24,28,.42)",
+        bg: "#E9E9EC", surface: "#FFFFFF99", surface2: "#FFFFFFCC", border: "#0101011A", borderStrong: "#01010133",
+        text: "#010101", textSoft: "#010101B3", textFaint: "#0101018C",
+        accent: "#010101", accentSoft: "#2B2B2B", danger: "#C8372D", green: "#1F7A4A", brass: "#8A6A2A", rev: "#2F5DB8",
+        ink: "#1A1A1A", inkFg: "#FFFFFF",
+        chartGrid: "#0101011A", inputBg: "#FFFFFFB3", overlay: "rgba(0,0,0,.5)", modal: "rgba(255,255,255,.92)",
       };
 }
 
@@ -89,7 +90,7 @@ const MOCK_USERS = [
 // Estrutura universal de matérias — 🔥 FIREBASE: /studyPlan (global)
 const AREAS = [
   {
-    id: "humanas", nome: "Humanas", cor: "#B0601E",
+    id: "humanas", nome: "Humanas", cor: "#C9793A",
     materias: [
       { id: "historia", nome: "História", topicos: [
         { id: "h1", nome: "Brasil Colônia", carga: 360, subs: ["Pré-colonial", "Capitanias hereditárias", "Ciclo da cana-de-açúcar", "Insurreição Pernambucana", "Ciclo do ouro", "Inconfidências"] },
@@ -107,7 +108,7 @@ const AREAS = [
     ],
   },
   {
-    id: "linguagens", nome: "Linguagens", cor: "#1F6FA0",
+    id: "linguagens", nome: "Linguagens", cor: "#4B8FC4",
     materias: [
       { id: "portugues", nome: "Português", topicos: [
         { id: "p1", nome: "Sintaxe", carga: 300, subs: ["Período composto", "Regência", "Concordância"] },
@@ -124,7 +125,7 @@ const AREAS = [
     ],
   },
   {
-    id: "matematica", nome: "Matemática", cor: "#A8356B",
+    id: "matematica", nome: "Matemática", cor: "#CC5A8A",
     materias: [
       { id: "algebra", nome: "Álgebra", topicos: [
         { id: "a1", nome: "Funções", carga: 420, subs: ["Função afim", "Função quadrática", "Exponencial", "Logaritmo"] },
@@ -141,7 +142,7 @@ const AREAS = [
     ],
   },
   {
-    id: "naturais", nome: "Naturais", cor: "#3E8A3A",
+    id: "naturais", nome: "Naturais", cor: "#5AA555",
     materias: [
       { id: "fisica", nome: "Física", topicos: [
         { id: "fi1", nome: "Mecânica", carga: 420, subs: ["Cinemática", "Dinâmica", "Energia"] },
@@ -173,13 +174,13 @@ const topicosDaMateria = (materiaId) => {
 // Vestibulares disponíveis — 🔥 FIREBASE: poderia virar coleção /vestibulares
 // Cada um tem uma cor de acento para a etiqueta visual minimalista.
 const VESTIBULARES = [
-  { id: "fuvest", nome: "FUVEST", cor: "#8C2F39" },
-  { id: "unicamp", nome: "UNICAMP", cor: "#1F6FA0" },
-  { id: "unesp", nome: "UNESP", cor: "#8A6A12" },
-  { id: "enem_med", nome: "ENEM MED", cor: "#A8356B" },
-  { id: "bahiana", nome: "BAHIANA", cor: "#2E7D74" },
-  { id: "fgv_insper", nome: "FGV/INSPER", cor: "#4B4E8C" },
-  { id: "enem", nome: "ENEM", cor: "#B0601E" },
+  { id: "fuvest", nome: "FUVEST", cor: "#D0555F" },
+  { id: "unicamp", nome: "UNICAMP", cor: "#4B8FC4" },
+  { id: "unesp", nome: "UNESP", cor: "#C9A13A" },
+  { id: "enem_med", nome: "ENEM MED", cor: "#CC5A8A" },
+  { id: "bahiana", nome: "BAHIANA", cor: "#3FA99B" },
+  { id: "fgv_insper", nome: "FGV/INSPER", cor: "#8A8FD6" },
+  { id: "enem", nome: "ENEM", cor: "#C9793A" },
 ];
 const vestInfo = (id) => VESTIBULARES.find((v) => v.id === id) || VESTIBULARES[0];
 
@@ -187,13 +188,13 @@ const vestInfo = (id) => VESTIBULARES.find((v) => v.id === id) || VESTIBULARES[0
 // Diferente da lista de vestibular-alvo: aqui o aluno indica de qual prova é o
 // simulado que está enviando.
 const MODELOS_PROVA = [
-  { id: "enem", nome: "ENEM", cor: "#B0601E" },
-  { id: "fuvest", nome: "FUVEST", cor: "#8C2F39" },
-  { id: "unicamp", nome: "UNICAMP", cor: "#1F6FA0" },
-  { id: "unesp", nome: "UNESP", cor: "#8A6A12" },
-  { id: "bahiana", nome: "BAHIANA", cor: "#2E7D74" },
-  { id: "insper", nome: "INSPER", cor: "#4B4E8C" },
-  { id: "fgv", nome: "FGV", cor: "#5E4B8C" },
+  { id: "enem", nome: "ENEM", cor: "#C9793A" },
+  { id: "fuvest", nome: "FUVEST", cor: "#D0555F" },
+  { id: "unicamp", nome: "UNICAMP", cor: "#4B8FC4" },
+  { id: "unesp", nome: "UNESP", cor: "#C9A13A" },
+  { id: "bahiana", nome: "BAHIANA", cor: "#3FA99B" },
+  { id: "insper", nome: "INSPER", cor: "#8A8FD6" },
+  { id: "fgv", nome: "FGV", cor: "#9A84C9" },
 ];
 const modeloInfo = (id) => MODELOS_PROVA.find((v) => v.id === id) || VESTIBULARES.find((v) => v.id === id) || MODELOS_PROVA[0];
 
@@ -218,7 +219,7 @@ const modeloInfo = (id) => MODELOS_PROVA.find((v) => v.id === id) || VESTIBULARE
 const CICLO_TEMPLATES = {
   enem: {
     nome: "ENEM",
-    cor: "#B0601E",
+    cor: "#C9793A",
     desc: "Distribuição equilibrada entre as 4 áreas + Redação.",
     alocacoes: [
       { materiaId: "matematica",  materiaNome: "Matemática",  minutosSemanais: 300, maxSessao: 90 },
@@ -234,7 +235,7 @@ const CICLO_TEMPLATES = {
   },
   enem_med: {
     nome: "ENEM Medicina",
-    cor: "#A8356B",
+    cor: "#CC5A8A",
     desc: "Foco em Ciências da Natureza. Biologia e Química com peso alto.",
     alocacoes: [
       { materiaId: "biologia",    materiaNome: "Biologia",    minutosSemanais: 480, maxSessao: 90 },
@@ -247,7 +248,7 @@ const CICLO_TEMPLATES = {
   },
   fuvest: {
     nome: "FUVEST",
-    cor: "#8C2F39",
+    cor: "#D0555F",
     desc: "Vestibular abrangente. Matemática e Ciências com peso alto.",
     alocacoes: [
       { materiaId: "matematica",  materiaNome: "Matemática",  minutosSemanais: 360, maxSessao: 90 },
@@ -263,7 +264,7 @@ const CICLO_TEMPLATES = {
   },
   unicamp: {
     nome: "UNICAMP",
-    cor: "#1F6FA0",
+    cor: "#4B8FC4",
     desc: "Forte ênfase em Redação e Linguagens. Interdisciplinar.",
     alocacoes: [
       { materiaId: "redacao",     materiaNome: "Redação",     minutosSemanais: 360, maxSessao: 90 },
@@ -279,7 +280,7 @@ const CICLO_TEMPLATES = {
   },
   unesp: {
     nome: "UNESP",
-    cor: "#8A6A12",
+    cor: "#C9A13A",
     desc: "Equilibrado. Peso ligeiramente maior em Exatas e Humanas.",
     alocacoes: [
       { materiaId: "matematica",  materiaNome: "Matemática",  minutosSemanais: 300, maxSessao: 90 },
@@ -294,7 +295,7 @@ const CICLO_TEMPLATES = {
   },
   bahiana: {
     nome: "BAHIANA",
-    cor: "#2E7D74",
+    cor: "#3FA99B",
     desc: "Saúde: Biologia e Química com muito peso. Foco biomédico.",
     alocacoes: [
       { materiaId: "biologia",    materiaNome: "Biologia",    minutosSemanais: 480, maxSessao: 90 },
@@ -306,7 +307,7 @@ const CICLO_TEMPLATES = {
   },
   fgv_insper: {
     nome: "FGV/INSPER",
-    cor: "#4B4E8C",
+    cor: "#8A8FD6",
     desc: "Exatas e Inglês com peso alto. Foco em raciocínio lógico.",
     alocacoes: [
       { materiaId: "matematica",  materiaNome: "Matemática",  minutosSemanais: 480, maxSessao: 90 },
@@ -641,29 +642,29 @@ function recalcularPlanoInteligente(cicloConfig, disp, semanaAtual, atrasadas, r
 function Btn({ children, onClick, variant = "primary", size = "md", icon: Icon, style, disabled, title }) {
   const p = usePalette();
   const sizes = {
-    sm: { padding: "6px 11px", fontSize: 13, gap: 6, icon: 14 },
-    md: { padding: "9px 15px", fontSize: 14, gap: 8, icon: 15 },
-    lg: { padding: "12px 20px", fontSize: 15, gap: 9, icon: 16 },
+    sm: { padding: "6px 13px", fontSize: 13, gap: 6, icon: 14 },
+    md: { padding: "9px 18px", fontSize: 14, gap: 8, icon: 15 },
+    lg: { padding: "12px 24px", fontSize: 15, gap: 9, icon: 16 },
   }[size];
   const variants = {
-    primary: { background: p.ink, color: p.inkFg, border: "1px solid " + p.ink },
-    soft: { background: "transparent", color: p.text, border: "1px solid " + p.borderStrong },
-    ghost: { background: "transparent", color: p.textSoft, border: "1px solid transparent" },
-    danger: { background: "transparent", color: p.danger, border: "1px solid " + p.danger + "66" },
-    outline: { background: "transparent", color: p.accent, border: "1px solid " + p.accent + "88" },
+    primary: { ...GRADIENTE, color: "#FFFFFF", border: "none", boxShadow: "inset 0 1px 0 rgba(255,255,255,.12), 0 0 0 1px rgba(255,255,255,.08)" },
+    soft: { background: p.surface2, color: p.text, border: "none", backdropFilter: "blur(12px)" },
+    ghost: { background: "transparent", color: p.textSoft, border: "none" },
+    danger: { background: p.danger + "1f", color: p.danger, border: "none" },
+    outline: { background: "transparent", color: p.text, border: "1px solid " + p.borderStrong },
   }[variant];
   return (
     <button
-      type="button" onClick={onClick} disabled={disabled} title={title} className="btn-ui"
+      type="button" onClick={onClick} disabled={disabled} title={title}
       style={{
         display: "inline-flex", alignItems: "center", justifyContent: "center",
-        gap: sizes.gap, padding: sizes.padding, fontSize: sizes.fontSize, fontWeight: 600, fontFamily: SANS,
-        borderRadius: 4, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.45 : 1,
-        transition: "transform .15s ease, background-color .15s, border-color .15s, color .15s", whiteSpace: "nowrap",
+        gap: sizes.gap, padding: sizes.padding, fontSize: sizes.fontSize, fontWeight: 500, fontFamily: SANS,
+        borderRadius: 999, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.45 : 1,
+        transition: "opacity .15s ease, background-color .15s", whiteSpace: "nowrap",
         ...variants, ...style,
       }}
-      onMouseEnter={(e) => { if (!disabled) e.currentTarget.style.transform = "translateY(-1px)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; }}
+      onMouseEnter={(e) => { if (!disabled) e.currentTarget.style.opacity = "0.9"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.opacity = disabled ? "0.45" : "1"; }}
     >
       {Icon && <Icon size={sizes.icon} />}
       {children}
@@ -671,17 +672,17 @@ function Btn({ children, onClick, variant = "primary", size = "md", icon: Icon, 
   );
 }
 
-function Card({ children, style, pad = 20, onClick, hover }) {
+function Card({ children, style, pad = 22, onClick, hover }) {
   const p = usePalette();
   return (
     <div
       onClick={onClick}
       style={{
-        background: p.surface, border: "1px solid " + p.border, borderRadius: 6,
-        padding: pad, transition: "border-color .2s ease, transform .2s ease", cursor: onClick ? "pointer" : "default", ...style,
+        background: p.surface, border: "1px solid " + p.border, borderRadius: 16,
+        padding: pad, transition: "background-color .2s ease, transform .25s cubic-bezier(.16,1,.3,1)", cursor: onClick ? "pointer" : "default", ...style,
       }}
-      onMouseEnter={(e) => { if (hover || onClick) e.currentTarget.style.borderColor = p.borderStrong; }}
-      onMouseLeave={(e) => { if (hover || onClick) e.currentTarget.style.borderColor = (style && style.borderColor) || p.border; }}
+      onMouseEnter={(e) => { if (hover || onClick) { e.currentTarget.style.background = p.surface2; e.currentTarget.style.transform = "translateY(-2px)"; } }}
+      onMouseLeave={(e) => { if (hover || onClick) { e.currentTarget.style.background = (style && style.background) || p.surface; e.currentTarget.style.transform = "none"; } }}
     >
       {children}
     </div>
@@ -692,7 +693,7 @@ function Field({ label, children }) {
   const p = usePalette();
   return (
     <label style={{ display: "block", marginBottom: 16 }}>
-      {label && <span style={{ display: "block", fontFamily: MONO, fontSize: 10.5, fontWeight: 500, color: p.textFaint, marginBottom: 7, letterSpacing: ".1em", textTransform: "uppercase" }}>{label}</span>}
+      {label && <span style={{ display: "block", fontSize: 13, fontWeight: 500, color: p.textSoft, marginBottom: 7 }}>{label}</span>}
       {children}
     </label>
   );
@@ -703,12 +704,8 @@ function Input(props) {
   return (
     <input
       {...props}
-      style={{
-        width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 4,
-        background: p.inputBg, border: "1px solid " + p.border, color: p.text, fontFamily: SANS,
-        fontSize: 14.5, outline: "none", transition: "border-color .15s, box-shadow .15s", ...props.style,
-      }}
-      onFocus={(e) => { e.target.style.borderColor = p.accent; e.target.style.boxShadow = "0 0 0 3px " + p.accent + "22"; }}
+      style={{ ...estiloCampo(p), ...props.style }}
+      onFocus={(e) => { e.target.style.borderColor = p.borderStrong; e.target.style.boxShadow = "0 0 0 3px " + p.accent + "1a"; }}
       onBlur={(e) => { e.target.style.borderColor = p.border; e.target.style.boxShadow = "none"; }}
     />
   );
@@ -717,14 +714,7 @@ function Input(props) {
 function Select({ children, ...props }) {
   const p = usePalette();
   return (
-    <select
-      {...props}
-      style={{
-        width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 4,
-        background: p.inputBg, border: "1px solid " + p.border, color: p.text, fontFamily: SANS,
-        fontSize: 14.5, outline: "none", cursor: "pointer", ...props.style,
-      }}
-    >
+    <select {...props} style={{ ...estiloCampo(p), cursor: "pointer", ...props.style }}>
       {children}
     </select>
   );
@@ -735,28 +725,27 @@ function Textarea(props) {
   return (
     <textarea
       {...props}
-      style={{
-        width: "100%", boxSizing: "border-box", padding: "11px 12px", borderRadius: 4,
-        background: p.inputBg, border: "1px solid " + p.border, color: p.text,
-        fontSize: 14.5, outline: "none", resize: "vertical", fontFamily: SANS, lineHeight: 1.6, ...props.style,
-      }}
-      onFocus={(e) => { e.target.style.borderColor = p.accent; e.target.style.boxShadow = "0 0 0 3px " + p.accent + "22"; }}
+      style={{ ...estiloCampo(p), borderRadius: 16, resize: "vertical", lineHeight: 1.6, ...props.style }}
+      onFocus={(e) => { e.target.style.borderColor = p.borderStrong; e.target.style.boxShadow = "0 0 0 3px " + p.accent + "1a"; }}
       onBlur={(e) => { e.target.style.borderColor = p.border; e.target.style.boxShadow = "none"; }}
     />
   );
 }
 
-// Etiqueta em mono, caixa-alta. "soft" = contorno; sem soft = tinta cheia.
+// Etiqueta em pílula. A cor vira um ponto (legível sobre o vidro em qualquer tema).
 
 function Badge({ children, color, soft }) {
   const p = usePalette();
   const c = color || p.accent;
   return (
     <span style={{
-      display: "inline-flex", alignItems: "center", gap: 5, padding: "2px 7px", borderRadius: 3,
-      fontFamily: MONO, fontSize: 10.5, fontWeight: 500, letterSpacing: ".06em", textTransform: "uppercase", lineHeight: 1.6,
-      background: soft ? c + "12" : c, color: soft ? c : p.bg, border: "1px solid " + (soft ? c + "44" : c),
-    }}>{children}</span>
+      display: "inline-flex", alignItems: "center", gap: 6, padding: "2px 10px", borderRadius: 999,
+      fontFamily: SANS, fontSize: 11.5, fontWeight: 500, lineHeight: 1.7,
+      background: soft ? p.surface2 : c, color: soft ? p.text : p.bg,
+    }}>
+      {soft && <span style={{ width: 6, height: 6, borderRadius: 99, background: c, flexShrink: 0 }} />}
+      {children}
+    </span>
   );
 }
 
@@ -768,39 +757,38 @@ function Modal({ open, onClose, title, children, width = 480 }) {
       onClick={onClose}
       style={{
         position: "fixed", inset: 0, background: p.overlay, zIndex: 100,
-        display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
-        animation: "fadeIn .18s ease", backdropFilter: "blur(2px)",
+        display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+        animation: "fadeIn .3s ease", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: p.surface, border: "1px solid " + p.border, borderRadius: 6,
+          background: p.modal, border: "1px solid " + p.border, borderRadius: 24, color: p.text,
           width: "100%", maxWidth: width, maxHeight: "88vh", overflowY: "auto",
-          boxShadow: "0 30px 80px rgba(10,14,18,.28)", animation: "popIn .22s cubic-bezier(.16,1,.3,1)",
+          backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+          animation: "popIn .5s cubic-bezier(.16,1,.3,1)",
         }}
       >
         {title && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 22px 16px", borderBottom: "1px solid " + p.border }}>
-            <h3 style={{ margin: 0, fontFamily: SERIF, fontSize: 23, fontWeight: 500, color: p.text, letterSpacing: "-.01em" }}>{title}</h3>
-            <button onClick={onClose} aria-label="Fechar" style={{ background: "none", border: "none", color: p.textSoft, cursor: "pointer", padding: 4 }}><X size={19} /></button>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "22px 24px 8px" }}>
+            <h3 style={{ margin: 0, fontFamily: SANS, fontSize: 21, fontWeight: 600, color: p.text, letterSpacing: "-.02em" }}>{title}</h3>
+            <button onClick={onClose} aria-label="Fechar" style={{ background: p.surface2, border: "none", color: p.textSoft, cursor: "pointer", width: 34, height: 34, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center" }}><X size={16} /></button>
           </div>
         )}
-        <div style={{ padding: 22 }}>{children}</div>
+        <div style={{ padding: "16px 24px 24px" }}>{children}</div>
       </div>
     </div>
   );
 }
 
-// Título de página editorial: serifa grande, subtítulo em sans, fio embaixo.
-
 function SectionTitle({ icon: Icon, title, subtitle, right }) {
   const p = usePalette();
   return (
-    <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 28, paddingBottom: 18, gap: 18, flexWrap: "wrap", borderBottom: "1px solid " + p.border }}>
+    <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 28, gap: 18, flexWrap: "wrap" }}>
       <div style={{ minWidth: 0 }}>
-        <h2 style={{ margin: 0, fontFamily: SERIF, fontSize: "clamp(30px, 3.4vw, 40px)", fontWeight: 500, color: p.text, letterSpacing: "-.02em", lineHeight: 1.05, textWrap: "balance" }}>{title}</h2>
-        {subtitle && <p style={{ margin: "8px 0 0", fontSize: 14.5, color: p.textSoft, textTransform: "none" }}>{subtitle}</p>}
+        <h2 style={{ margin: 0, fontFamily: SANS, fontSize: "clamp(30px, 3.6vw, 48px)", fontWeight: 600, color: p.text, letterSpacing: "-.03em", lineHeight: 1.08, textWrap: "balance" }}>{title}</h2>
+        {subtitle && <p style={{ margin: "10px 0 0", fontSize: 15, color: p.textSoft }}>{subtitle}</p>}
       </div>
       {right}
     </div>
@@ -811,18 +799,18 @@ function Empty({ icon: Icon, title, sub }) {
   const p = usePalette();
   return (
     <div style={{ textAlign: "center", padding: "48px 20px", color: p.textFaint }}>
-      {Icon && <Icon size={28} style={{ marginBottom: 12, opacity: .55 }} />}
-      <p style={{ margin: 0, fontFamily: SERIF, fontSize: 20, color: p.text }}>{title}</p>
-      {sub && <p style={{ margin: "6px 0 0", fontSize: 13.5, color: p.textSoft }}>{sub}</p>}
+      {Icon && <Icon size={26} style={{ marginBottom: 12, opacity: .6 }} />}
+      <p style={{ margin: 0, fontSize: 17, fontWeight: 600, color: p.text }}>{title}</p>
+      {sub && <p style={{ margin: "6px 0 0", fontSize: 14, color: p.textSoft }}>{sub}</p>}
     </div>
   );
 }
 
-function ProgressBar({ value, color, height = 4 }) {
+function ProgressBar({ value, color, height = 5 }) {
   const p = usePalette();
   return (
-    <div style={{ width: "100%", height, background: p.border, borderRadius: 2, overflow: "hidden" }}>
-      <div style={{ width: `${Math.max(0, Math.min(100, value || 0))}%`, height: "100%", background: color || p.accent, borderRadius: 2, transition: "width .6s cubic-bezier(.16,1,.3,1)" }} />
+    <div style={{ width: "100%", height, background: p.border, borderRadius: 999, overflow: "hidden" }}>
+      <div style={{ width: `${Math.max(0, Math.min(100, value || 0))}%`, height: "100%", background: color || p.accent, borderRadius: 999, transition: "width .8s cubic-bezier(.16,1,.3,1)" }} />
     </div>
   );
 }
@@ -871,28 +859,29 @@ function VestBadge({ id, size = "md" }) {
   const v = modeloInfo(id);
   return (
     <span style={{
-      display: "inline-flex", alignItems: "center", gap: 6, padding: size === "sm" ? "2px 7px" : "3px 9px", borderRadius: 3,
-      fontFamily: MONO, fontSize: size === "sm" ? 10 : 11, fontWeight: 500, letterSpacing: ".08em", color: p.text,
-      border: "1px solid " + p.borderStrong, background: "transparent",
+      display: "inline-flex", alignItems: "center", gap: 7, padding: size === "sm" ? "2px 9px" : "4px 12px", borderRadius: 999,
+      fontFamily: SANS, fontSize: size === "sm" ? 11 : 12, fontWeight: 600, letterSpacing: ".02em", color: p.text, background: p.surface2,
     }}>
-      <span style={{ width: 7, height: 7, borderRadius: 1, background: v.cor }} />{v.nome}
+      <span style={{ width: 7, height: 7, borderRadius: 99, background: v.cor }} />{v.nome}
     </span>
   );
 }
-
-// Rótulo pequeno em mono, caixa-alta
 
 /* ----------------------------------------------------------------------------
    TELA DE LOGIN
    🔥 FIREBASE Authentication: signInWithEmailAndPassword(auth, email, senha)
       e depois carregar /users/{uid} para obter o "role".
 ---------------------------------------------------------------------------- */
-function LoginScreen({ onLogin }) {
-  const p = usePalette();
-  const { dark, toggle } = useTheme();
+function LoginScreen({ onLogin, welcome = WELCOME_INICIAL }) {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [passo, setPasso] = useState("email");
   const [erro, setErro] = useState("");
+  const [folha, setFolha] = useState(null);
+  const campoRef = useRef(null);
+  const hero = welcome.hero || {};
+  const destaque = (welcome.blocos || []).find((b) => b.tipo === "destaque");
+  const itens = (destaque && destaque.itens) || [];
 
   const entrar = () => {
     // 🔥 FIREBASE: trocar por chamada real ao Authentication.
@@ -900,49 +889,93 @@ function LoginScreen({ onLogin }) {
     if (!u) { setErro("E-mail ou senha não conferem. Confira os dados e tente de novo."); return; }
     onLogin(u);
   };
+  const avancar = (e) => {
+    if (e) e.preventDefault();
+    if (passo === "email") {
+      if (!/.+@.+\..+/.test(email.trim())) { setErro("Digite um e-mail válido para continuar."); return; }
+      setErro(""); setPasso("senha");
+      setTimeout(() => campoRef.current && campoRef.current.focus(), 30);
+      return;
+    }
+    entrar();
+  };
+  const focarCampo = () => { setPasso("email"); setTimeout(() => campoRef.current && campoRef.current.focus(), 30); };
+  const vest = folha && folha.startsWith("vest:") ? VESTIBULARES.find((v) => "vest:" + v.id === folha) : null;
+
+  const links = [
+    { label: "Método", onClick: () => setFolha("metodo") },
+    { label: "Professores", onClick: () => setFolha("professores") },
+    { label: "Vestibulares", submenu: VESTIBULARES.map((v) => ({ label: v.nome, onClick: () => setFolha("vest:" + v.id) })) },
+    { label: "Acesso", onClick: () => setFolha("acesso") },
+  ];
+  const gaveta = [
+    { label: "Método", onClick: () => setFolha("metodo") },
+    { label: "Professores", onClick: () => setFolha("professores") },
+    { label: "Vestibulares", chevron: true, onClick: () => setFolha("vestibulares") },
+    { label: "Acesso", onClick: () => setFolha("acesso") },
+  ];
 
   return (
-    <div className="login-grid" style={{ minHeight: "100vh", background: p.bg, display: "grid", gridTemplateColumns: "minmax(0, 1.35fr) minmax(360px, 1fr)" }}>
-      <div className="login-arte" style={{ position: "relative", minHeight: 320, overflow: "hidden", background: "#0B1116" }}>
-        <HeroArcadas style={{ position: "absolute", inset: 0 }} foco={[0.52, 0.5]} />
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(7,10,13,.82), rgba(7,10,13,.2) 45%, rgba(7,10,13,.35))", pointerEvents: "none" }} />
-        <div style={{ position: "absolute", left: 0, right: 0, top: 0, padding: "28px clamp(22px, 4vw, 48px)" }}><Wordmark claro /></div>
-        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "clamp(22px, 4vw, 48px)", display: "grid", gap: 12 }}>
-          <Eyebrow color="#B9B3A5">Plataforma de estudos para vestibular</Eyebrow>
-          <h1 style={{ margin: 0, fontFamily: SERIF, fontWeight: 400, fontSize: "clamp(38px, 5.2vw, 72px)", lineHeight: .98, letterSpacing: "-.025em", color: "#F2EEE5", maxWidth: "12ch", textWrap: "balance" }}>
-            Estude como quem já está <em style={{ color: "#E4B868" }}>lá dentro.</em>
-          </h1>
-        </div>
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", padding: "48px clamp(22px, 5vw, 64px)", position: "relative" }}>
-        <button onClick={toggle} aria-label="Alternar tema" style={{ position: "absolute", top: 22, right: 22, background: "none", border: "1px solid " + p.border, borderRadius: 4, padding: 8, cursor: "pointer", color: p.textSoft, display: "flex" }}>
-          {dark ? <Sun size={16} /> : <Moon size={16} />}
-        </button>
-        <div style={{ width: "100%", maxWidth: 380, margin: "0 auto" }}>
-          <Eyebrow>Entrar</Eyebrow>
-          <h2 style={{ fontFamily: SERIF, fontSize: 38, fontWeight: 500, color: p.text, margin: "10px 0 6px", letterSpacing: "-.02em", lineHeight: 1.05 }}>Bem-vindo de volta.</h2>
-          <p style={{ fontSize: 14.5, color: p.textSoft, margin: "0 0 30px" }}>Suas metas de hoje estão esperando.</p>
-
-          <Field label="E-mail">
-            <Input id="login-email" type="email" placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && entrar()} />
-          </Field>
-          <Field label="Senha">
-            <Input id="login-senha" type="password" placeholder="••••••••" value={senha} onChange={(e) => setSenha(e.target.value)} onKeyDown={(e) => e.key === "Enter" && entrar()} />
-          </Field>
-
-          {erro && <div style={{ borderLeft: "2px solid " + p.danger, color: p.danger, padding: "4px 0 4px 10px", fontSize: 13.5, marginBottom: 16 }}>{erro}</div>}
-
-          <Btn onClick={entrar} size="lg" icon={ArrowRight} style={{ width: "100%", marginTop: 4, flexDirection: "row-reverse" }}>Entrar</Btn>
-
-          <div style={{ marginTop: 28, paddingTop: 16, borderTop: "1px solid " + p.border, fontSize: 13, color: p.textSoft, lineHeight: 1.8 }}>
-            <Eyebrow style={{ marginBottom: 6 }}>Contas de teste</Eyebrow>
-            Moderador: <code style={{ fontFamily: MONO, fontSize: 12.5, color: p.text }}>moderador@curso.com</code> / 123<br />
-            Aluno: <code style={{ fontFamily: MONO, fontSize: 12.5, color: p.text }}>aluno@curso.com</code> / 123
+    <>
+      <HeroCinema
+        links={links} gaveta={gaveta}
+        cta={{ label: "Entrar", onClick: focarCampo }}
+        titulo="Seu vestibular, planejado meta por meta."
+        capsula={() => (
+          <form onSubmit={avancar} noValidate>
+            <Capsula>
+              {passo === "email"
+                ? <CampoCapsula ref={campoRef} key="email" id="login-email" type="email" autoComplete="email" placeholder="Digite seu e-mail" value={email} onChange={(e) => { setEmail(e.target.value); setErro(""); }} aria-label="E-mail" />
+                : <CampoCapsula ref={campoRef} key="senha" id="login-senha" type="password" autoComplete="current-password" placeholder="Sua senha" value={senha} onChange={(e) => { setSenha(e.target.value); setErro(""); }} aria-label="Senha" />}
+              <PilulaCTA type="submit" className="px-6 py-3 sm:py-2.5">{passo === "email" ? "Continuar" : "Entrar"}</PilulaCTA>
+            </Capsula>
+          </form>
+        )}
+        abaixoCapsula={(claro) => (
+          <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 text-xs ${claro ? "text-[#010101]/70 lg:text-white/70" : "text-white/70"}`}>
+            {erro ? <span className="font-medium text-[#FF8A7E]">{erro}</span>
+              : passo === "senha"
+                ? <><span>{email}</span><button type="button" onClick={() => { setPasso("email"); setSenha(""); }} className="underline underline-offset-4 hover:opacity-80">trocar e-mail</button></>
+                : <span>Teste: aluno@curso.com ou moderador@curso.com · senha 123</span>}
           </div>
-        </div>
-      </div>
-    </div>
+        )}
+        cartoes={(claro) => (
+          <>
+            {itens[0] && <CartaoNumero claroNoMobile={claro} numero={itens[0].valor}
+              texto={[itens[0].label, ...itens.slice(1).map((d) => d.valor + " " + d.label)].join(" · ")} />}
+            <CartaoRecado claroNoMobile={claro} selo={(hero.nome || "?").charAt(0)} titulo="Quem somos"
+              texto={hero.subtitulo} fotoUrl={hero.foto} nome={hero.nome} papel="Seus professores" />
+          </>
+        )}
+      />
+      <FolhaVidro aberta={!!folha} onFechar={() => setFolha(null)}
+        titulo={folha === "metodo" ? "Método" : folha === "professores" ? "Professores" : folha === "acesso" ? "Acesso" : folha === "vestibulares" ? "Vestibulares" : vest ? vest.nome : ""}>
+        {folha === "metodo" && <ConteudoVidro welcome={welcome} parte="metodo" />}
+        {folha === "professores" && <ConteudoVidro welcome={welcome} parte="professores" />}
+        {folha === "acesso" && <p className="text-[15px] leading-relaxed text-white/75">O acesso é criado pelo seu professor. Use o e-mail cadastrado e a senha que você recebeu. Se esqueceu a senha, fale com a coordenação.</p>}
+        {folha === "vestibulares" && (
+          <div className="flex flex-wrap gap-2">
+            {VESTIBULARES.map((v) => <button key={v.id} type="button" onClick={() => setFolha("vest:" + v.id)} className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm text-white/85 transition-colors hover:bg-white/20"><span className="h-2 w-2 rounded-full" style={{ background: v.cor }} />{v.nome}</button>)}
+          </div>
+        )}
+        {vest && (
+          <div className="flex flex-col gap-3 text-[15px] leading-relaxed text-white/75">
+            <p>{(CICLO_TEMPLATES[vest.id] || {}).desc || "Plano de estudos montado a partir do programa deste vestibular."}</p>
+            {CICLO_TEMPLATES[vest.id] && (
+              <div className="flex flex-col gap-2">
+                {CICLO_TEMPLATES[vest.id].alocacoes.slice(0, 6).map((a) => (
+                  <div key={a.materiaId} className="flex items-center gap-3">
+                    <span className="w-28 shrink-0 text-sm text-white/80">{a.materiaNome}</span>
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-white" style={{ width: Math.min(100, a.minutosSemanais / 5) + "%" }} /></div>
+                    <span className="w-14 text-right text-xs text-white/60">{fmtMin(a.minutosSemanais)}/sem</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </FolhaVidro>
+    </>
   );
 }
 
@@ -955,57 +988,50 @@ function BlocoView({ bloco }) {
   const p = usePalette();
   switch (bloco.tipo) {
     case "titulo":
-      return <h2 style={{ fontFamily: SERIF, fontSize: "clamp(30px, 3.6vw, 44px)", fontWeight: 500, color: p.text, letterSpacing: "-.02em", lineHeight: 1.08, margin: "28px 0 0", textWrap: "balance" }}>{bloco.texto}</h2>;
+      return <h2 style={{ fontFamily: SANS, fontSize: "clamp(26px, 3vw, 36px)", fontWeight: 600, color: p.text, letterSpacing: "-.025em", lineHeight: 1.12, margin: "18px 0 0", textWrap: "balance" }}>{bloco.texto}</h2>;
     case "texto":
-      return <p style={{ fontSize: 17, color: p.textSoft, lineHeight: 1.75, margin: 0, whiteSpace: "pre-wrap", maxWidth: "62ch" }}>{bloco.texto}</p>;
+      return <p style={{ fontSize: 16, color: p.textSoft, lineHeight: 1.75, margin: 0, whiteSpace: "pre-wrap", maxWidth: "64ch" }}>{bloco.texto}</p>;
     case "foto":
       return bloco.url ? (
-        <figure style={{ margin: 0 }}>
-          <img src={bloco.url} alt={bloco.legenda || ""} style={{ width: "100%", borderRadius: 4, display: "block" }} />
-          {bloco.legenda && <figcaption style={{ fontFamily: MONO, fontSize: 11.5, color: p.textFaint, marginTop: 8 }}>{bloco.legenda}</figcaption>}
-        </figure>
+        <img src={bloco.url} alt={bloco.legenda || ""} style={{ width: "100%", borderRadius: 16, display: "block" }} />
       ) : (
-        <div style={{ width: "100%", height: 200, borderRadius: 4, background: p.surface2, border: "1px dashed " + p.borderStrong, display: "flex", alignItems: "center", justifyContent: "center", color: p.textFaint }}>
+        <div style={{ width: "100%", height: 200, borderRadius: 16, background: p.surface, border: "1px dashed " + p.borderStrong, display: "flex", alignItems: "center", justifyContent: "center", color: p.textFaint }}>
           <ImageIcon size={28} style={{ opacity: .5 }} />
         </div>
       );
     case "destaque":
       return (
-        <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(1, (bloco.itens || []).length)}, minmax(0, 1fr))`, borderTop: "1px solid " + p.borderStrong }} className="welcome-grid">
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(1, (bloco.itens || []).length)}, minmax(0, 1fr))`, gap: 14 }} className="welcome-grid">
           {(bloco.itens || []).map((d, i) => (
-            <div key={i} style={{ padding: "18px 18px 6px " + (i ? "18px" : "0"), borderLeft: i ? "1px solid " + p.border : "none" }}>
-              <div style={{ fontFamily: SERIF, fontSize: "clamp(40px, 5vw, 60px)", fontWeight: 400, color: p.text, letterSpacing: "-.02em", lineHeight: 1 }}>{d.valor}</div>
-              <div style={{ fontFamily: MONO, fontSize: 11, letterSpacing: ".1em", textTransform: "uppercase", color: p.textFaint, marginTop: 8 }}>{d.label}</div>
+            <div key={i} style={{ padding: 22, borderRadius: 16, background: p.surface, border: "1px solid " + p.border }}>
+              <div style={{ fontFamily: PIXEL, fontSize: "clamp(28px, 3vw, 36px)", color: p.text, letterSpacing: "-.02em", lineHeight: 1 }}>{d.valor}</div>
+              <div style={{ fontSize: 13.5, color: p.textSoft, marginTop: 12 }}>{d.label}</div>
             </div>
           ))}
         </div>
       );
     case "divisor":
-      return <div style={{ height: 1, background: p.border, margin: "12px 0" }} />;
+      return <div style={{ height: 1, background: p.border, margin: "8px 0" }} />;
     default:
       return null;
   }
 }
 
-// Conteúdo editorial abaixo do hero (usado na tela de boas-vindas e na página "Boas-Vindas")
-
 function WelcomePage({ welcome, onEnter, isStandalone, alunoStats }) {
   const p = usePalette();
   const hero = welcome.hero || {};
   return (
-    <div style={{ maxWidth: 980, margin: "0 auto", animation: "fadeIn .4s ease" }}>
-      <div style={{ position: "relative", borderRadius: 6, overflow: "hidden", marginBottom: 56, height: "clamp(360px, 52vw, 520px)", background: "#0B1116" }}>
+    <div style={{ maxWidth: 1040, margin: "0 auto", animation: "fadeIn .4s ease" }}>
+      <div className="cine" style={{ position: "relative", borderRadius: 24, overflow: "hidden", marginBottom: 20, height: "clamp(360px, 50vw, 520px)", background: "#0B1116" }}>
         <HeroArcadas style={{ position: "absolute", inset: 0 }} />
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(7,10,13,.85), rgba(7,10,13,.1) 60%)", pointerEvents: "none" }} />
-        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "clamp(22px, 4vw, 40px)", display: "grid", gap: 10 }}>
-          <Eyebrow color="#B9B3A5">Boas-vindas</Eyebrow>
-          <h1 style={{ margin: 0, fontFamily: SERIF, fontWeight: 400, fontSize: "clamp(36px, 5.4vw, 64px)", color: "#F2EEE5", letterSpacing: "-.025em", lineHeight: 1 }}>{hero.nome}</h1>
-          {hero.subtitulo && <p style={{ margin: 0, fontSize: 15.5, color: "#CFC9BC", maxWidth: "52ch" }}>{hero.subtitulo}</p>}
+        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "clamp(20px, 4vw, 40px)", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
+          <h1 className="max-w-xl text-3xl font-semibold leading-[1.1] tracking-tight text-white sm:text-4xl lg:text-[3.2rem]">{hero.nome}</h1>
+          {hero.subtitulo && <div className="max-w-xs rounded-2xl bg-white/10 p-5 text-sm leading-relaxed text-white/80 backdrop-blur-lg">{hero.subtitulo}</div>}
         </div>
       </div>
       <WelcomeConteudo welcome={welcome} alunoStats={alunoStats} />
       {!isStandalone && (
-        <div style={{ marginTop: 48 }}>
+        <div style={{ marginTop: 28 }}>
           <Btn onClick={onEnter} size="lg" icon={ArrowRight}>Acessar a plataforma</Btn>
         </div>
       )}
@@ -1019,42 +1045,22 @@ function WelcomePage({ welcome, onEnter, isStandalone, alunoStats }) {
    3 indicadores chave em linha + um destaque (próxima conquista ou alerta). */
 function WelcomePainelResumo({ stats }) {
   const p = usePalette();
-  const { streak = 0, progresso = 0, aderencia = 0, proximaConquista, materiaRisco } = stats;
+  const { streak = 0, progresso = 0, aderencia = 0 } = stats;
   const itens = [
-    { v: streak, u: streak === 1 ? "dia" : "dias", l: "Sequência" },
-    { v: progresso, u: "%", l: "Do programa" },
-    { v: aderencia, u: "%", l: "Aderência no mês" },
+    { v: streak + (streak === 1 ? " dia" : " dias"), l: "de sequência cumprindo as metas" },
+    { v: progresso + "%", l: "do programa concluído" },
+    { v: aderencia + "%", l: "de aderência no mês" },
   ];
   return (
-    <div>
-      <Eyebrow style={{ marginBottom: 14 }}>Seu momento</Eyebrow>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", borderTop: "1px solid " + p.borderStrong }} className="resumo-grid">
-        {itens.map((x, i) => (
-          <div key={x.l} style={{ padding: "18px 18px 4px " + (i ? "18px" : "0"), borderLeft: i ? "1px solid " + p.border : "none" }}>
-            <div style={{ fontFamily: SERIF, fontSize: "clamp(44px, 6vw, 72px)", fontWeight: 400, color: p.text, lineHeight: 1, letterSpacing: "-.03em", fontVariantNumeric: "tabular-nums" }}>
-              {x.v}<span style={{ fontSize: ".4em", color: p.textFaint, marginLeft: 4, letterSpacing: 0 }}>{x.u}</span>
-            </div>
-            <div style={{ fontFamily: MONO, fontSize: 11, letterSpacing: ".1em", textTransform: "uppercase", color: p.textFaint, marginTop: 10 }}>{x.l}</div>
-          </div>
-        ))}
-      </div>
-      {materiaRisco ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 22, paddingLeft: 12, borderLeft: "2px solid " + p.danger, fontSize: 14.5, color: p.textSoft }}>
-          <span>Atenção em <strong style={{ color: p.text }}>{materiaRisco}</strong>: está atrás do cronograma.</span>
-        </div>
-      ) : proximaConquista ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 26 }}>
-          <Selo semente={proximaConquista.id} size={56} />
-          <div>
-            <Eyebrow>Próximo selo</Eyebrow>
-            <div style={{ fontFamily: SERIF, fontSize: 21, color: p.text, marginTop: 2 }}>{proximaConquista.titulo}</div>
-            <div style={{ fontSize: 13.5, color: p.textSoft }}>{proximaConquista.desc}</div>
-          </div>
-        </div>
-      ) : null}
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 14 }} className="resumo-grid">
+      {itens.map((x) => <StatCard key={x.l} label={x.l} value={x.v} />)}
     </div>
   );
 }
+
+/* ----------------------------------------------------------------------------
+   LAYOUT / SHELL — navegação superior em pílula de vidro + gaveta no celular
+---------------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------------
    LAYOUT / SHELL — menu lateral de papel + cabeçalho discreto
@@ -1066,104 +1072,116 @@ function WelcomePainelResumo({ stats }) {
 function Shell({ user, menu, active, setActive, onLogout, children }) {
   const p = usePalette();
   const { dark, toggle } = useTheme();
-  const [open, setOpen] = useState(false); // mobile
-  const mainRef = useRef(null);
+  const [aberto, setAberto] = useState(false);
+  const [mais, setMais] = useState(false);
+  const [conta, setConta] = useState(false);
+  const [rolou, setRolou] = useState(false);
 
-  const SidebarInner = (
-    <>
-      <div style={{ padding: "26px 22px 22px" }}>
-        <Wordmark tamanho={26} />
-        <Eyebrow style={{ marginTop: 8 }}>{user.role === "moderador" ? "Painel do moderador" : "Área do aluno"}</Eyebrow>
-      </div>
+  useEffect(() => {
+    const f = () => setRolou(window.scrollY > 8);
+    f(); window.addEventListener("scroll", f, { passive: true });
+    return () => window.removeEventListener("scroll", f);
+  }, []);
+  useEffect(() => { try { window.scrollTo({ top: 0 }); } catch (e) { /* ignora */ } setMais(false); setConta(false); }, [active]);
 
-      <nav style={{ flex: 1, padding: "6px 12px", overflowY: "auto" }}>
-        {menu.map((item) => {
-          const on = active === item.k;
-          return (
-            <button
-              key={item.k}
-              onClick={() => { setActive(item.k); setOpen(false); }}
-              aria-current={on ? "page" : undefined}
-              style={{
-                width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "8px 10px",
-                marginBottom: 1, borderRadius: 4, border: "none", cursor: "pointer", textAlign: "left",
-                background: on ? p.surface2 : "transparent", fontFamily: SANS,
-                color: on ? p.text : p.textSoft, fontWeight: on ? 600 : 500, fontSize: 14,
-                transition: "color .15s, background-color .15s", position: "relative",
-              }}
-              onMouseEnter={(e) => { if (!on) e.currentTarget.style.color = p.text; }}
-              onMouseLeave={(e) => { if (!on) e.currentTarget.style.color = p.textSoft; }}
-            >
-              {on && <span style={{ position: "absolute", left: -12, top: 7, bottom: 7, width: 2, background: p.accent }} />}
-              <item.icon size={16} style={{ flexShrink: 0, color: on ? p.accent : p.textFaint }} />
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.label}</span>
-            </button>
-          );
-        })}
-      </nav>
-
-      <div style={{ padding: "14px 16px 18px", borderTop: "1px solid " + p.border }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "4px 6px 10px" }}>
-          <div style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid " + p.borderStrong, display: "flex", alignItems: "center", justifyContent: "center", color: p.text, fontFamily: SERIF, fontSize: 17, flexShrink: 0 }}>
-            {user.name.charAt(0)}
-          </div>
-          <div style={{ overflow: "hidden" }}>
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: p.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.name}</div>
-            <div style={{ fontSize: 12, color: p.textFaint, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.email}</div>
-          </div>
-        </div>
-        <button onClick={onLogout} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "7px 8px", borderRadius: 4, border: "none", background: "transparent", color: p.textSoft, cursor: "pointer", fontSize: 13.5, fontWeight: 500, fontFamily: SANS }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = p.danger; }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = p.textSoft; }}>
-          <LogOut size={15} /> Sair
-        </button>
-      </div>
-    </>
-  );
-
-  const activeItem = menu.find((m) => m.k === active);
-  const hoje = new Date().toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" });
-
-  // rola para o topo ao trocar de tela
-  useEffect(() => { try { window.scrollTo({ top: 0 }); } catch (e) { /* ignora */ } }, [active]);
+  const ir = (k) => { setActive(k); setAberto(false); };
+  const principais = menu.slice(0, 5);
+  const extras = menu.slice(5);
+  const corTexto = dark ? "text-white" : "text-[#010101]";
+  const pill = dark ? "bg-white/10" : "bg-[#010101]/[0.06]";
+  const linkOff = dark ? "text-white/80 hover:bg-white/10 hover:text-white" : "text-[#010101]/70 hover:bg-[#010101]/[0.06] hover:text-[#010101]";
+  const linkOn = dark ? "bg-white/10 text-white" : "bg-[#010101]/[0.08] text-[#010101]";
+  // painéis dentro do cabeçalho: o desfoque aninhado não funciona nos navegadores, então ficam quase opacos
+  const painel = dark ? "bg-[#101113]/[0.97] text-white shadow-2xl shadow-black/40" : "bg-white/[0.97] text-[#010101] shadow-2xl shadow-black/10";
+  const itemPainel = dark ? "text-white/80 hover:bg-white/10 hover:text-white" : "text-[#010101]/75 hover:bg-[#010101]/[0.06] hover:text-[#010101]";
+  const itemAtivo = (k) => active === k;
+  const primeiro = (user.name || "").split(" ")[0];
 
   return (
-    <div style={{ minHeight: "100vh", background: p.bg, display: "flex" }}>
-      <aside style={{ width: 244, borderRight: "1px solid " + p.border, background: p.bg, display: "flex", flexDirection: "column", position: "sticky", top: 0, height: "100vh" }} className="sidebar-desktop">
-        {SidebarInner}
-      </aside>
+    <div style={{ minHeight: "100vh", position: "relative", color: p.text }}>
+      <FundoApp />
+      <header className={`cine sticky top-0 z-40 transition-colors duration-300 ${rolou ? (dark ? "bg-black/35 backdrop-blur-xl" : "bg-white/45 backdrop-blur-xl") : ""}`}>
+        <div className="flex items-center justify-between px-5 py-4 sm:px-8 lg:px-12">
+          <button type="button" onClick={() => ir(menu[0].k)} className={`flex items-center gap-2 ${corTexto}`} aria-label="Ir para o início">
+            <Logo /><span className="text-lg font-semibold tracking-tight">aprova+</span>
+          </button>
 
-      {open && (
-        <>
-          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, background: p.overlay, zIndex: 40 }} className="sidebar-overlay" />
-          <aside style={{ width: 260, borderRight: "1px solid " + p.border, background: p.bg, display: "flex", flexDirection: "column", position: "fixed", top: 0, left: 0, height: "100vh", zIndex: 50, animation: "slideIn .22s cubic-bezier(.16,1,.3,1)" }} className="sidebar-mobile">
-            {SidebarInner}
-          </aside>
-        </>
-      )}
-
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-        <header style={{ height: 56, borderBottom: "1px solid " + p.border, background: p.bg + "e8", backdropFilter: "blur(10px)", position: "sticky", top: 0, zIndex: 30, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 clamp(16px, 3vw, 36px)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-            <button onClick={() => setOpen(true)} className="menu-btn" aria-label="Abrir menu" style={{ display: "none", background: "none", border: "none", color: p.text, cursor: "pointer", padding: 4 }}><Menu size={20} /></button>
-            <span style={{ fontFamily: MONO, fontSize: 11, letterSpacing: ".12em", textTransform: "uppercase", color: p.textFaint, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{activeItem?.label}</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <span className="cab-data" style={{ fontFamily: MONO, fontSize: 11, letterSpacing: ".08em", textTransform: "uppercase", color: p.textFaint }}>{hoje}</span>
-            <button onClick={toggle} aria-label="Alternar tema" title="Alternar tema" style={{ background: "none", border: "1px solid " + p.border, borderRadius: 4, padding: 7, cursor: "pointer", color: p.textSoft, display: "flex" }}>
-              {dark ? <Sun size={15} /> : <Moon size={15} />}
+          <div className="hidden items-stretch gap-3 md:flex">
+            <nav className={`flex items-center gap-1 rounded-full px-1.5 py-1.5 backdrop-blur-lg ${pill}`}>
+              {principais.map((it, i) => (
+                <button key={it.k} type="button" onClick={() => ir(it.k)} aria-current={itemAtivo(it.k) ? "page" : undefined}
+                  className={`${i >= 3 ? "hidden xl:inline-flex" : "inline-flex"} items-center rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${itemAtivo(it.k) ? linkOn : linkOff}`}>
+                  {it.label}
+                </button>
+              ))}
+              {(extras.length > 0 || principais.length > 3) && (
+                <div className="relative">
+                  <button type="button" onClick={() => { setMais(!mais); setConta(false); }} aria-expanded={mais}
+                    className={`inline-flex items-center gap-1 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${[...extras, ...principais.slice(3)].some((x) => itemAtivo(x.k)) ? linkOn : linkOff}`}>
+                    Mais <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-300 ${mais ? "rotate-180" : ""}`} />
+                  </button>
+                  <div className={`absolute right-0 top-full z-50 mt-3 w-60 origin-top-right rounded-2xl p-1.5 backdrop-blur-xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${painel} ${mais ? "scale-100 opacity-100" : "pointer-events-none scale-95 opacity-0"}`}>
+                    {principais.slice(3).map((it) => (
+                      <button key={it.k} type="button" onClick={() => ir(it.k)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left text-sm transition-colors xl:hidden ${itemAtivo(it.k) ? linkOn : itemPainel}`}>
+                        <it.icon className="h-4 w-4 opacity-70" />{it.label}
+                      </button>
+                    ))}
+                    {extras.map((it) => (
+                      <button key={it.k} type="button" onClick={() => ir(it.k)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left text-sm transition-colors ${itemAtivo(it.k) ? linkOn : itemPainel}`}>
+                        <it.icon className="h-4 w-4 opacity-70" />{it.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </nav>
+            <button type="button" onClick={toggle} aria-label="Alternar tema" title="Alternar tema"
+              className={`flex w-10 items-center justify-center rounded-full backdrop-blur-lg transition-colors ${pill} ${dark ? "text-white/80 hover:text-white" : "text-[#010101]/70 hover:text-[#010101]"}`}>
+              {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
+            <div className="relative flex">
+              <PilulaCTA onClick={() => { setConta(!conta); setMais(false); }} className="self-stretch px-5">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/15 text-[11px] font-semibold">{user.name.charAt(0)}</span>{primeiro}
+              </PilulaCTA>
+              <div className={`absolute right-0 top-full z-50 mt-3 w-64 origin-top-right rounded-2xl p-1.5 backdrop-blur-xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${painel} ${conta ? "scale-100 opacity-100" : "pointer-events-none scale-95 opacity-0"}`}>
+                <div className="px-4 pb-2 pt-3">
+                  <div className="text-sm font-semibold">{user.name}</div>
+                  <div className={`text-xs ${dark ? "text-white/60" : "text-[#010101]/60"}`}>{user.email}</div>
+                  <div className={`mt-1 text-xs ${dark ? "text-white/60" : "text-[#010101]/60"}`}>{user.role === "moderador" ? "Moderador" : "Aluno"}</div>
+                </div>
+                <button type="button" onClick={onLogout} className={`flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left text-sm transition-colors ${itemPainel}`}>
+                  <LogOut className="h-4 w-4 opacity-70" /> Sair
+                </button>
+              </div>
+            </div>
           </div>
-        </header>
-        <main ref={mainRef} key={active} style={{ flex: 1, padding: "clamp(22px, 3.2vw, 44px) clamp(16px, 3.2vw, 44px) 96px", maxWidth: 1140, width: "100%", margin: "0 auto", boxSizing: "border-box", animation: "entraTela .45s cubic-bezier(.16,1,.3,1)" }}>
-          {children}
-        </main>
-      </div>
+
+          <BotaoMenu aberto={aberto} onClick={() => setAberto(!aberto)} claroNoMobile={!dark} />
+        </div>
+      </header>
+      {(mais || conta) && <div className="fixed inset-0 z-30" onClick={() => { setMais(false); setConta(false); }} />}
+
+      <GavetaMobile
+        aberto={aberto} onFechar={() => setAberto(false)}
+        itens={menu.map((it) => ({ k: it.k, label: it.label, icone: it.icon, ativo: itemAtivo(it.k), onClick: () => ir(it.k) }))}
+        cta={{ label: "Sair", onClick: onLogout }}
+        rodape={
+          <div className="mb-4 flex items-center justify-between gap-3 px-1 text-white">
+            <div className="min-w-0">
+              <div className="truncate text-sm font-semibold">{user.name}</div>
+              <div className="truncate text-xs text-white/60">{user.email}</div>
+            </div>
+            <button type="button" onClick={toggle} aria-label="Alternar tema" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-white/80">{dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button>
+          </div>
+        }
+      />
+
+      <main key={active} style={{ position: "relative", zIndex: 1, padding: "clamp(12px, 2vw, 28px) clamp(20px, 4vw, 48px) 96px", maxWidth: 1180, width: "100%", margin: "0 auto", boxSizing: "border-box", animation: "entraTela .6s cubic-bezier(.16,1,.3,1)" }}>
+        {children}
+      </main>
     </div>
   );
 }
-
-// Uma meta do dia: a bolha é a caneta azul do aluno marcando a folha de respostas
 
 /* ============================================================================
    PAINEL DO ALUNO
@@ -1236,7 +1254,7 @@ function AlunoDashboard({ store, setStore, vestibular, disp, semana, setSemana, 
         <div style={{ display: "flex", alignItems: "flex-start", gap: 11, padding: "2px 0 2px 14px", marginBottom: 30, borderLeft: "2px solid " + p.accent }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <Eyebrow color={p.accent} style={{ marginBottom: 4 }}>Recado do instrutor</Eyebrow>
-            <div style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: 18, color: p.text, lineHeight: 1.45, maxWidth: "62ch" }}>{recadoAtual.texto}</div>
+            <div style={{ fontSize: 17, fontWeight: 500, color: p.text, lineHeight: 1.5, maxWidth: "62ch", letterSpacing: "-.01em" }}>{recadoAtual.texto}</div>
           </div>
           <button onClick={() => setRecadoVisto(true)} style={{ background: "none", border: "none", color: p.textFaint, cursor: "pointer", padding: 2 }}><X size={16} /></button>
         </div>
@@ -1281,7 +1299,7 @@ function AlunoDashboard({ store, setStore, vestibular, disp, semana, setSemana, 
 
       {/* resumo rodapé */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 20 }} className="stat-grid">
-        <StatCard icon={FileQuestion} label="Questões hoje" value={store.questoesHoje} color="#1F6FA0" />
+        <StatCard icon={FileQuestion} label="Questões hoje" value={store.questoesHoje} color="#4B8FC4" />
         <StatCard icon={Clock4} label="Horas estudadas hoje" value={(minutosEstudados / 60).toFixed(1) + "h"} color={p.green} />
         <StatCard icon={Target} label="Progresso do plano" value={store.progressoGeral + "%"} color={p.accent} />
       </div>
@@ -1291,7 +1309,7 @@ function AlunoDashboard({ store, setStore, vestibular, disp, semana, setSemana, 
 
       {/* botão flutuante redistribuir */}
       <button onClick={() => setRedistOpen(true)} title="Redistribuir metas atrasadas"
-        style={{ position: "fixed", right: 24, bottom: 24, width: 50, height: 50, borderRadius: 6, background: p.ink, border: "none", color: p.inkFg, cursor: "pointer", boxShadow: "0 10px 30px rgba(10,14,18,.22)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 35, transition: "transform .2s" }}
+        style={{ position: "fixed", right: 24, bottom: 24, width: 52, height: 52, borderRadius: 999, ...GRADIENTE, border: "none", color: "#FFFFFF", cursor: "pointer", boxShadow: "inset 0 1px 0 rgba(255,255,255,.12), 0 0 0 1px rgba(255,255,255,.1), 0 12px 32px rgba(0,0,0,.35)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 35, transition: "transform .2s" }}
         onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-2px)"}
         onMouseLeave={(e) => e.currentTarget.style.transform = "none"}>
         <RefreshCw size={19} />
@@ -1302,7 +1320,7 @@ function AlunoDashboard({ store, setStore, vestibular, disp, semana, setSemana, 
         {popup && (
           <div style={{ textAlign: "center" }}>
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}><Selo semente={popup.topicoId || "topico"} size={72} /></div>
-            <h3 style={{ margin: "0 0 8px", fontSize: 19, fontWeight: 500, fontFamily: SERIF, color: p.text }}>Tempo planejado concluído!</h3>
+            <h3 style={{ margin: "0 0 8px", fontSize: 19, fontFamily: PIXEL, fontWeight: 400, color: p.text }}>Tempo planejado concluído!</h3>
             <p style={{ fontSize: 14, color: p.textSoft, margin: "0 0 22px", lineHeight: 1.6 }}>
               Você concluiu o tempo planejado para <strong style={{ color: p.accent }}>{popup.topico}</strong>! Como você se sente sobre o conteúdo?
             </p>
@@ -1334,11 +1352,11 @@ function AlunoDashboard({ store, setStore, vestibular, disp, semana, setSemana, 
         {/* resumo do recálculo */}
         <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
           <div style={{ flex: 1, padding: "11px 13px", borderRadius: 5, background: p.surface2, textAlign: "center" }}>
-            <div style={{ fontSize: 20, fontWeight: 500, fontFamily: SERIF, color: p.accent }}>{fmtMin(resumoRecalc.totalRealocado)}</div>
+            <div style={{ fontSize: 20, fontFamily: PIXEL, fontWeight: 400, color: p.accent }}>{fmtMin(resumoRecalc.totalRealocado)}</div>
             <div style={{ fontSize: 11, color: p.textSoft, marginTop: 2 }}>tempo replanejado</div>
           </div>
           <div style={{ flex: 1, padding: "11px 13px", borderRadius: 5, background: p.surface2, textAlign: "center" }}>
-            <div style={{ fontSize: 20, fontWeight: 500, fontFamily: SERIF, color: p.text }}>{resumoRecalc.materiasFundidas}</div>
+            <div style={{ fontSize: 20, fontFamily: PIXEL, fontWeight: 400, color: p.text }}>{resumoRecalc.materiasFundidas}</div>
             <div style={{ fontSize: 11, color: p.textSoft, marginTop: 2 }}>blocos fundidos</div>
           </div>
         </div>
@@ -1379,45 +1397,42 @@ function MetaRow({ meta, onDone, atrasada }) {
   return (
     <div style={{
       display: "grid", gridTemplateColumns: "26px minmax(0, 1fr) auto", alignItems: "center", gap: 14,
-      padding: "14px 0 14px " + (atrasada ? "12px" : "0"), borderBottom: "1px solid " + p.border,
-      borderLeft: atrasada ? "2px solid " + p.danger : "none", transition: "opacity .25s",
+      padding: "15px 18px", marginBottom: 8, borderRadius: 16, background: p.surface,
+      border: "1px solid " + (atrasada ? p.danger + "55" : p.border), transition: "opacity .25s, background-color .2s",
     }}>
       <button
         onClick={meta.done ? undefined : onDone} disabled={meta.done} aria-label={meta.done ? "Meta concluída" : "Marcar meta como concluída"} title={meta.done ? "Concluída" : "Marcar como concluída"}
-        className="bolha"
         style={{ width: 22, height: 22, borderRadius: "50%", padding: 0, cursor: meta.done ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-          border: "1.5px solid " + (meta.done ? p.accent : p.textFaint), background: meta.done ? p.accent : "transparent", color: p.bg, transition: "background-color .2s, border-color .2s" }}
-        onMouseEnter={(e) => { if (!meta.done) e.currentTarget.style.borderColor = p.accent; }}
-        onMouseLeave={(e) => { if (!meta.done) e.currentTarget.style.borderColor = p.textFaint; }}
+          border: "1.5px solid " + (meta.done ? p.accent : p.textFaint), background: meta.done ? p.accent : "transparent", color: p.bg, transition: "background-color .25s, border-color .2s, transform .2s" }}
+        onMouseEnter={(e) => { if (!meta.done) { e.currentTarget.style.borderColor = p.accent; e.currentTarget.style.transform = "scale(1.08)"; } }}
+        onMouseLeave={(e) => { if (!meta.done) { e.currentTarget.style.borderColor = p.textFaint; e.currentTarget.style.transform = "none"; } }}
       >
         {meta.done && <Check size={13} strokeWidth={3} />}
       </button>
       <div style={{ minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 15.5, fontWeight: 600, color: meta.done ? p.textFaint : p.text, textDecoration: meta.done ? "line-through" : "none", textDecorationColor: p.accent, textDecorationThickness: "1.5px" }}>{meta.materia}</span>
-          {isRev && <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: ".1em", textTransform: "uppercase", color: p.rev }}>Revisão</span>}
-          {atrasada && <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: ".1em", textTransform: "uppercase", color: p.danger }}>Atrasada · {meta.origem || "ontem"}</span>}
+          <span style={{ fontSize: 15.5, fontWeight: 600, color: meta.done ? p.textFaint : p.text, textDecoration: meta.done ? "line-through" : "none" }}>{meta.materia}</span>
+          {isRev && <Badge soft color={p.rev}>Revisão</Badge>}
+          {atrasada && <Badge soft color={p.danger}>Atrasada · {meta.origem || "ontem"}</Badge>}
         </div>
         <div style={{ fontSize: 13.5, color: p.textSoft, marginTop: 2 }}>{meta.topico}</div>
       </div>
-      <span style={{ fontFamily: MONO, fontSize: 13, color: meta.done ? p.textFaint : p.textSoft, fontVariantNumeric: "tabular-nums" }}>{fmtMin(meta.minutos)}</span>
+      <span style={{ fontSize: 13.5, fontWeight: 500, color: meta.done ? p.textFaint : p.textSoft, fontVariantNumeric: "tabular-nums" }}>{fmtMin(meta.minutos)}</span>
     </div>
   );
 }
 
-// Número editorial: serifa grande, rótulo em mono
+// Cartão de número: Silkscreen para o valor, texto curto embaixo (como o cartão de estatística do hero)
 
 function StatCard({ icon: Icon, label, value, color }) {
   const p = usePalette();
   return (
-    <div style={{ padding: "16px 0 6px", borderTop: "1px solid " + p.borderStrong }}>
-      <div style={{ fontFamily: SERIF, fontSize: "clamp(34px, 3.6vw, 46px)", fontWeight: 400, color: p.text, lineHeight: 1, letterSpacing: "-.02em", fontVariantNumeric: "tabular-nums" }}>{value}</div>
-      <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: ".1em", textTransform: "uppercase", color: p.textFaint, marginTop: 9 }}>{label}</div>
+    <div style={{ padding: "20px 22px", borderRadius: 16, background: p.surface, border: "1px solid " + p.border }}>
+      <div style={{ fontFamily: PIXEL, fontSize: "clamp(28px, 3vw, 36px)", color: p.text, lineHeight: 1, letterSpacing: "-.02em", fontVariantNumeric: "tabular-nums" }}>{value}</div>
+      <div style={{ fontSize: 13.5, color: p.textSoft, marginTop: 12, lineHeight: 1.5 }}>{label}</div>
     </div>
   );
 }
-
-// Consistência do mês como folha de respostas: cada dia é uma bolha preenchida a caneta
 
 function ProgressoModal({ open, onClose }) {
   const p = usePalette();
@@ -1534,7 +1549,7 @@ function AlunoSemana({ semana, semanaEditada, setSemanaEditada }) {
               </div>
               {metas.map((m) => {
                 const isRev = m.tipo === "revisao";
-                const corRev = "#6A4C93";
+                const corRev = "#8FB3FF";
                 const mat = MATERIAS_FLAT.find((x) => x.id === m.materiaId);
                 const corMat = mat?.areaCor || p.accent;
                 const isDraggingThis = dragging?.metaId === m.id;
@@ -1610,7 +1625,7 @@ function AlunoQuestoes({ store, setStore }) {
 
       {/* resumo */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 18 }} className="stat-grid">
-        <StatCard icon={FileQuestion} label="Total de questões" value={totalFeitas} color="#1F6FA0" />
+        <StatCard icon={FileQuestion} label="Total de questões" value={totalFeitas} color="#4B8FC4" />
         <StatCard icon={CheckCircle2} label="Acertos" value={totalAcertos} color={p.green} />
         <StatCard icon={TrendingUp} label="Taxa de acerto" value={taxa + "%"} color={p.accent} />
       </div>
@@ -1696,11 +1711,11 @@ function AlunoDesempenho({ store }) {
       <SectionTitle icon={TrendingUp} title="Desempenho" subtitle="Questões, simulados e consistência" />
 
       {/* sub-abas internas */}
-      <div role="tablist" style={{ display: "flex", gap: 22, marginBottom: 26, borderBottom: "1px solid " + p.border, overflowX: "auto" }}>
+      <div role="tablist" style={{ display: "inline-flex", gap: 4, marginBottom: 26, padding: 6, borderRadius: 999, background: p.surface, border: "1px solid " + p.border, overflowX: "auto", maxWidth: "100%" }}>
         {abas.map((a) => (
           <button key={a.k} role="tab" aria-selected={aba === a.k} onClick={() => setAba(a.k)} style={{
-            display: "inline-flex", alignItems: "center", gap: 7, padding: "10px 0 11px", cursor: "pointer", transition: "color .15s, border-color .15s", border: "none",
-            borderBottom: "2px solid " + (aba === a.k ? p.accent : "transparent"), marginBottom: -1, background: "transparent", whiteSpace: "nowrap",
+            display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 16px", cursor: "pointer", transition: "color .15s, background-color .2s", border: "none",
+            borderRadius: 999, background: aba === a.k ? p.surface2 : "transparent", whiteSpace: "nowrap",
             color: aba === a.k ? p.text : p.textSoft, fontWeight: aba === a.k ? 600 : 500, fontSize: 14, fontFamily: SANS,
           }}>
             <a.icon size={14} style={{ color: aba === a.k ? p.accent : p.textFaint }} />{a.label}
@@ -1712,7 +1727,7 @@ function AlunoDesempenho({ store }) {
         <>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 16, marginBottom: 16 }} className="chart-grid">
             <Card>
-              <h3 style={{ margin: "0 0 14px", fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Acertos × Erros</h3>
+              <h3 style={{ margin: "0 0 14px", fontSize: 18, fontWeight: 600, letterSpacing: "-.015em", color: p.text }}>Acertos × Erros</h3>
               <ResponsiveContainer width="100%" height={210}>
                 <PieChart>
                   <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3}>
@@ -1725,7 +1740,7 @@ function AlunoDesempenho({ store }) {
               <div style={{ textAlign: "center", fontSize: 13, color: p.textSoft }}>Taxa de acerto: <strong style={{ color: p.green }}>{totalQ ? Math.round(acertos / totalQ * 100) : 0}%</strong></div>
             </Card>
             <Card>
-              <h3 style={{ margin: "0 0 14px", fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Evolução ao longo do tempo</h3>
+              <h3 style={{ margin: "0 0 14px", fontSize: 18, fontWeight: 600, letterSpacing: "-.015em", color: p.text }}>Evolução ao longo do tempo</h3>
               <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={evolucao} margin={{ top: 8, right: 18, left: -8, bottom: 0 }}>
                   <CartesianGrid stroke={p.chartGrid} vertical={false} />
@@ -1738,7 +1753,7 @@ function AlunoDesempenho({ store }) {
             </Card>
           </div>
           <Card>
-            <h3 style={{ margin: "0 0 14px", fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Comparativo entre matérias</h3>
+            <h3 style={{ margin: "0 0 14px", fontSize: 18, fontWeight: 600, letterSpacing: "-.015em", color: p.text }}>Comparativo entre matérias</h3>
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={porMateria}>
                 <CartesianGrid stroke={p.chartGrid} vertical={false} />
@@ -1754,14 +1769,14 @@ function AlunoDesempenho({ store }) {
 
       {aba === "simulados" && (
         <Card>
-          <h3 style={{ margin: "0 0 14px", fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Desempenho nos simulados</h3>
+          <h3 style={{ margin: "0 0 14px", fontSize: 18, fontWeight: 600, letterSpacing: "-.015em", color: p.text }}>Desempenho nos simulados</h3>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={simData}>
               <CartesianGrid stroke={p.chartGrid} vertical={false} />
               <XAxis dataKey="nome" stroke={p.textSoft} fontSize={12} />
               <YAxis stroke={p.textSoft} fontSize={12} domain={[0, 100]} />
               <Tooltip contentStyle={{ background: p.surface, border: "1px solid " + p.border, borderRadius: 5, color: p.text }} cursor={{ fill: p.accent + "11" }} />
-              <Bar dataKey="taxa" fill="#1F6FA0" radius={[3, 3, 0, 0]} maxBarSize={34} />
+              <Bar dataKey="taxa" fill="#4B8FC4" radius={[3, 3, 0, 0]} maxBarSize={34} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
@@ -1789,40 +1804,37 @@ function GridConsistencia({ seed = 0 }) {
   const aderencia = totalAteHoje ? Math.round((cumpridos / totalAteHoje) * 100) : 0;
   const hoje = new Date();
   const mes = hoje.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-  // posiciona o dia 1 na coluna do dia da semana (S T Q Q S S D)
   const offset = (new Date(hoje.getFullYear(), hoje.getMonth(), 1).getDay() + 6) % 7;
   const celulas = [...Array(offset).fill(null), ...dados];
   const semanas = Math.ceil(celulas.length / 7);
 
   return (
     <Card>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18, flexWrap: "wrap", gap: 12 }}>
         <div>
-          <h3 style={{ margin: 0, fontFamily: SERIF, fontSize: 22, fontWeight: 500, color: p.text, textTransform: "capitalize" }}>{mes}</h3>
-          <Eyebrow style={{ marginTop: 4 }}>Consistência</Eyebrow>
+          <h3 style={{ margin: 0, fontSize: 20, fontWeight: 600, color: p.text, textTransform: "capitalize", letterSpacing: "-.02em" }}>{mes}</h3>
+          <div style={{ fontSize: 13.5, color: p.textSoft, marginTop: 4 }}>{cumpridos} de {totalAteHoje} dias cumpridos</div>
         </div>
-        <div style={{ fontFamily: MONO, fontSize: 12, color: p.textSoft, fontVariantNumeric: "tabular-nums" }}>{cumpridos} de {totalAteHoje} dias · {aderencia}%</div>
+        <div style={{ fontFamily: PIXEL, fontSize: 30, color: p.text, lineHeight: 1 }}>{aderencia}%</div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "24px repeat(7, minmax(0, 1fr))", gap: "8px 4px", alignItems: "center", maxWidth: 380 }}>
-        <span />
-        {["S", "T", "Q", "Q", "S", "S", "D"].map((d, i) => <span key={i} style={{ fontFamily: MONO, fontSize: 10.5, color: p.danger, textAlign: "center", opacity: .85 }}>{d}</span>)}
-        {Array.from({ length: semanas }).map((_, s) => (
-          <React.Fragment key={s}>
-            <span style={{ fontFamily: MONO, fontSize: 10.5, color: p.danger, opacity: .85 }}>{String(s + 1).padStart(2, "0")}</span>
-            {celulas.slice(s * 7, s * 7 + 7).concat(Array(Math.max(0, 7 - celulas.slice(s * 7, s * 7 + 7).length)).fill(null)).map((d, i) => d ? (
-              <span key={i} title={`Dia ${d.dia} · ${d.status}`} style={{ justifySelf: "center", width: 22, height: 22, borderRadius: "50%", position: "relative",
-                border: "1.3px solid " + (d.status === "cumprido" ? p.accent : d.status === "perdido" ? p.danger + "aa" : p.border),
-                background: d.status === "cumprido" ? p.accent : "transparent" }}>
-                {d.status === "perdido" && <span style={{ position: "absolute", left: -2, right: -2, top: "50%", borderTop: "1.5px solid " + p.danger, transform: "rotate(-35deg)" }} />}
-              </span>
-            ) : <span key={i} />)}
-          </React.Fragment>
-        ))}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: "10px 6px", alignItems: "center", maxWidth: 360 }}>
+        {["S", "T", "Q", "Q", "S", "S", "D"].map((d, i) => <span key={i} style={{ fontSize: 11.5, fontWeight: 500, color: p.textFaint, textAlign: "center" }}>{d}</span>)}
+        {Array.from({ length: semanas * 7 }).map((_, i) => {
+          const d = celulas[i];
+          if (!d) return <span key={i} />;
+          return (
+            <span key={i} title={`Dia ${d.dia} · ${d.status}`} style={{ justifySelf: "center", width: 24, height: 24, borderRadius: "50%", position: "relative",
+              border: "1.5px solid " + (d.status === "cumprido" ? p.accent : d.status === "perdido" ? p.danger + "aa" : p.border),
+              background: d.status === "cumprido" ? p.accent : "transparent", transition: "transform .2s" }}>
+              {d.status === "perdido" && <span style={{ position: "absolute", left: -2, right: -2, top: "50%", borderTop: "1.5px solid " + p.danger, transform: "rotate(-35deg)" }} />}
+            </span>
+          );
+        })}
       </div>
-      <div style={{ display: "flex", gap: 16, marginTop: 16, fontSize: 12, color: p.textSoft, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 16, marginTop: 18, fontSize: 12.5, color: p.textSoft, flexWrap: "wrap" }}>
         <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 11, height: 11, background: p.accent, borderRadius: "50%" }} /> Cumprido</span>
-        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 11, height: 11, border: "1.3px solid " + p.danger, borderRadius: "50%" }} /> Perdido</span>
-        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 11, height: 11, border: "1.3px solid " + p.border, borderRadius: "50%" }} /> A seguir</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 11, height: 11, border: "1.5px solid " + p.danger, borderRadius: "50%" }} /> Perdido</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 11, height: 11, border: "1.5px solid " + p.border, borderRadius: "50%" }} /> A seguir</span>
       </div>
     </Card>
   );
@@ -1842,9 +1854,9 @@ function PrevisaoConclusao({ progresso = 0 }) {
     <Card>
       <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
         <Target size={17} color={p.accent} />
-        <h3 style={{ margin: 0, fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Previsão de conclusão</h3>
+        <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, letterSpacing: "-.015em", color: p.text }}>Previsão de conclusão</h3>
       </div>
-      <div style={{ fontSize: 26, fontWeight: 500, fontFamily: SERIF, color: p.text, lineHeight: 1, textTransform: "capitalize" }}>{dataPrev}</div>
+      <div style={{ fontSize: 26, fontFamily: PIXEL, fontWeight: 400, color: p.text, lineHeight: 1, textTransform: "capitalize" }}>{dataPrev}</div>
       <p style={{ margin: "8px 0 0", fontSize: 12.5, color: p.textSoft, lineHeight: 1.55 }}>
         Estimativa baseada no ritmo atual de ~{ritmoSemanal}% por semana. Você está em <strong style={{ color: p.text }}>{progresso}%</strong> e faltam aproximadamente <strong style={{ color: p.text }}>{semanas} semanas</strong>.
       </p>
@@ -1861,13 +1873,13 @@ function MateriasEmRisco() {
     { materia: "Física", topico: "Eletricidade", atraso: 3, severidade: "media" },
     { materia: "Redação", topico: "Tese", atraso: 2, severidade: "baixa" },
   ];
-  const corSev = (s) => s === "alta" ? p.danger : s === "media" ? p.accent : "#A07C1C";
+  const corSev = (s) => s === "alta" ? p.danger : s === "media" ? p.accent : "#C9A13A";
 
   return (
     <Card>
       <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
         <AlertTriangle size={17} color={p.danger} />
-        <h3 style={{ margin: 0, fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Matérias em risco</h3>
+        <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, letterSpacing: "-.015em", color: p.text }}>Matérias em risco</h3>
       </div>
       {risco.length === 0 ? (
         <p style={{ fontSize: 13, color: p.textFaint, margin: 0 }}>Nada em risco no momento.</p>
@@ -1915,7 +1927,7 @@ function AlunoPlano({ ordemSubs, setOrdemSubs }) {
         <div key={area.id} style={{ marginBottom: 24 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
             <div style={{ width: 10, height: 10, borderRadius: 3, background: area.cor }} />
-            <h3 style={{ margin: 0, fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>{area.nome}</h3>
+            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, letterSpacing: "-.015em", color: p.text }}>{area.nome}</h3>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }} className="plano-grid">
             {area.materias.flatMap((m) => m.topicos.map((t) => {
@@ -1927,7 +1939,7 @@ function AlunoPlano({ ordemSubs, setOrdemSubs }) {
                     <span style={{ fontSize: 11, fontWeight: 500, fontFamily: MONO, color: area.cor, textTransform: "uppercase", letterSpacing: ".1em" }}>{m.nome}</span>
                     <span style={{ fontSize: 11, color: p.textFaint }}>{Math.round(t.carga / 60)}h</span>
                   </div>
-                  <h4 style={{ margin: "0 0 10px", fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: p.text }}>{t.nome}</h4>
+                  <h4 style={{ margin: "0 0 10px", fontSize: 16, fontWeight: 600, letterSpacing: "-.01em", color: p.text }}>{t.nome}</h4>
                   <div style={{ marginBottom: 12 }}><ProgressBar value={prog} color={area.cor} /><div style={{ fontSize: 11, color: p.textFaint, marginTop: 4 }}>{prog}% concluído</div></div>
                   {subs.map((s, idx) => (
                     <div key={s} draggable
@@ -2003,7 +2015,7 @@ function AlunoOrganizacao({ disp, setDisp, onRecalc, recesso, setRecesso }) {
       <Card style={{ marginTop: 18 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
           <Sun size={18} color={p.accent} />
-          <h3 style={{ margin: 0, fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Modo Férias / Pausa</h3>
+          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, letterSpacing: "-.015em", color: p.text }}>Modo Férias / Pausa</h3>
         </div>
         <p style={{ fontSize: 13, color: p.textSoft, margin: "0 0 14px", lineHeight: 1.6 }}>
           Defina um período em que você estará ausente. O sistema pausa as metas e reagenda automaticamente após o término, <strong style={{ color: p.text }}>sem gerar atrasos</strong>.
@@ -2035,7 +2047,6 @@ function AlunoOrganizacao({ disp, setDisp, onRecalc, recesso, setRecesso }) {
 /* ---- 7b. CONQUISTAS (badges desbloqueáveis) ------------------------------ */
 function AlunoConquistas({ store }) {
   const p = usePalette();
-  // calcula stats agregados que servem de input para as regras
   const totalFeitas = (store.questoes || []).reduce((s, q) => s + (q.feitas || 0), 0);
   const totalAcertos = (store.questoes || []).reduce((s, q) => s + (q.acertos || 0), 0);
   const taxaAcerto = totalFeitas ? Math.round((totalAcertos / totalFeitas) * 100) : 0;
@@ -2051,15 +2062,15 @@ function AlunoConquistas({ store }) {
   const bloqueadas = CONQUISTAS_CATALOGO.filter((c) => !c.regra(stats));
 
   const grade = (lista, ok) => (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(168px, 1fr))", gap: "28px 18px", marginBottom: 40 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 14, marginBottom: 32 }}>
       {lista.map((c) => (
-        <div key={c.id} style={{ display: "grid", justifyItems: "start", gap: 10 }}>
-          <Selo semente={c.id} size={92} apagado={!ok} />
+        <Card key={c.id} hover style={{ display: "flex", flexDirection: "column", gap: 14, opacity: ok ? 1 : 0.7 }}>
+          <Selo semente={c.id} size={72} apagado={!ok} />
           <div>
-            <div style={{ fontFamily: SERIF, fontSize: 19, fontWeight: 500, color: ok ? p.text : p.textSoft, lineHeight: 1.2 }}>{c.titulo}</div>
-            <div style={{ fontSize: 13, color: p.textFaint, marginTop: 4, lineHeight: 1.45 }}>{c.desc}</div>
+            <div style={{ fontSize: 16, fontWeight: 600, color: p.text, letterSpacing: "-.01em" }}>{c.titulo}</div>
+            <div style={{ fontSize: 13, color: p.textSoft, marginTop: 4, lineHeight: 1.5 }}>{c.desc}</div>
           </div>
-        </div>
+        </Card>
       ))}
     </div>
   );
@@ -2067,8 +2078,8 @@ function AlunoConquistas({ store }) {
   return (
     <div style={{ animation: "fadeIn .3s ease" }}>
       <SectionTitle icon={Trophy} title="Conquistas" subtitle={`${desbloqueadas.length} de ${CONQUISTAS_CATALOGO.length} selos conquistados`} />
-      {desbloqueadas.length > 0 && <><Eyebrow color={p.accent} style={{ marginBottom: 18 }}>Conquistados</Eyebrow>{grade(desbloqueadas, true)}</>}
-      {bloqueadas.length > 0 && <><Eyebrow style={{ marginBottom: 18 }}>A conquistar</Eyebrow>{grade(bloqueadas, false)}</>}
+      {desbloqueadas.length > 0 && <><Eyebrow style={{ marginBottom: 14 }}>Conquistados</Eyebrow>{grade(desbloqueadas, true)}</>}
+      {bloqueadas.length > 0 && <><Eyebrow style={{ marginBottom: 14 }}>A conquistar</Eyebrow>{grade(bloqueadas, false)}</>}
     </div>
   );
 }
@@ -2113,7 +2124,7 @@ function AlunoAnotacoes({ notas, setNotas }) {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1.3fr", gap: 16 }} className="chart-grid">
         <Card>
-          <h4 style={{ margin: "0 0 12px", fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: p.text }}>Nova anotação</h4>
+          <h4 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 600, letterSpacing: "-.01em", color: p.text }}>Nova anotação</h4>
           <Field label="Título"><Input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Ex: Resumo de Leis de Newton" /></Field>
           <Field label="Conteúdo"><Textarea rows={6} value={conteudo} onChange={(e) => setConteudo(e.target.value)} placeholder="Escreva livremente..." /></Field>
           <Btn onClick={addNota} icon={Plus} style={{ width: "100%" }}>Adicionar</Btn>
@@ -2123,7 +2134,7 @@ function AlunoAnotacoes({ notas, setNotas }) {
           {lista.map((n) => (
             <Card key={n.id} pad={16} style={{ marginBottom: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                <h4 style={{ margin: 0, fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: p.text }}>{n.titulo}</h4>
+                <h4 style={{ margin: 0, fontSize: 16, fontWeight: 600, letterSpacing: "-.01em", color: p.text }}>{n.titulo}</h4>
                 <span style={{ fontSize: 11, color: p.textFaint }}>{n.data}</span>
               </div>
               <p style={{ margin: "8px 0 0", fontSize: 13.5, color: p.textSoft, lineHeight: 1.65, whiteSpace: "pre-wrap" }}>{n.conteudo}</p>
@@ -2173,7 +2184,7 @@ function AlunoSimulados({ simulados, user, envios = [], setEnvios }) {
           </Card>
           {/* cartão-resposta */}
           <Card>
-            <h4 style={{ margin: "0 0 14px", fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: p.text }}>Cartão-resposta</h4>
+            <h4 style={{ margin: "0 0 14px", fontSize: 16, fontWeight: 600, letterSpacing: "-.01em", color: p.text }}>Cartão-resposta</h4>
             {ativo.questoes.map((q) => (
               <div key={q.num} style={{ marginBottom: 12 }}>
                 <div style={{ fontSize: 12.5, color: p.textSoft, marginBottom: 5 }}>Q{q.num} · {q.materia}</div>
@@ -2191,7 +2202,7 @@ function AlunoSimulados({ simulados, user, envios = [], setEnvios }) {
             {!resultado
               ? <Btn onClick={finalizar} style={{ width: "100%", marginTop: 8 }} icon={Check}>Finalizar e corrigir</Btn>
               : <div style={{ marginTop: 14, padding: 16, background: p.green + "15", border: "1px solid " + p.green + "44", borderRadius: 6, textAlign: "center" }}>
-                  <div style={{ fontSize: 28, fontWeight: 500, fontFamily: SERIF, color: p.green }}>{resultado.acertos}/{resultado.total}</div>
+                  <div style={{ fontSize: 28, fontFamily: PIXEL, fontWeight: 400, color: p.green }}>{resultado.acertos}/{resultado.total}</div>
                   <div style={{ fontSize: 13, color: p.textSoft }}>{Math.round(resultado.acertos / resultado.total * 100)}% de acerto · adicionado ao Desempenho</div>
                 </div>}
           </Card>
@@ -2287,7 +2298,7 @@ function AlunoMateriais({ materiais, user }) {
               <BookMarked size={26} color={m.cor} />
             </div>
             <Badge soft color={m.cor}>{m.materia}</Badge>
-            <h4 style={{ margin: "8px 0 4px", fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: p.text }}>{m.titulo}</h4>
+            <h4 style={{ margin: "8px 0 4px", fontSize: 16, fontWeight: 600, letterSpacing: "-.01em", color: p.text }}>{m.titulo}</h4>
             <p style={{ margin: 0, fontSize: 12, color: p.textFaint }}>{m.vestibular} · {m.area}</p>
             {/* 🔥 FIREBASE Storage: visualizar PDF via getDownloadURL */}
             <Btn size="sm" variant="soft" icon={Eye} style={{ marginTop: 12, width: "100%" }}>Abrir PDF</Btn>
@@ -2517,7 +2528,7 @@ function ModAlunoPerfil({ aluno, onBack, alunos, setAlunos, envios, setEnvios, m
         <div style={{ width: 52, height: 52, borderRadius: 6, background: v.cor + "22", display: "flex", alignItems: "center", justifyContent: "center", color: v.cor, fontWeight: 600, fontSize: 21, flexShrink: 0 }}>{aluno.nome.charAt(0)}</div>
         <div style={{ flex: 1 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <h2 style={{ margin: 0, fontSize: 22, fontWeight: 500, fontFamily: SERIF, color: p.text, letterSpacing: "-.02em" }}>{aluno.nome}</h2>
+            <h2 style={{ margin: 0, fontSize: 22, fontFamily: PIXEL, fontWeight: 400, color: p.text, letterSpacing: "-.02em" }}>{aluno.nome}</h2>
             <VestBadge id={aluno.vestibular} />
           </div>
           <p style={{ margin: "2px 0 0", fontSize: 13, color: p.textSoft }}>{aluno.email}</p>
@@ -2535,13 +2546,13 @@ function ModAlunoPerfil({ aluno, onBack, alunos, setAlunos, envios, setEnvios, m
       <div style={{ height: 2, background: v.cor, opacity: .85, margin: "16px 0 20px" }} />
 
       {/* abas internas — rolam horizontalmente em telas pequenas */}
-      <div role="tablist" style={{ display: "flex", gap: 22, marginBottom: 26, overflowX: "auto", borderBottom: "1px solid " + p.border }}>
+      <div role="tablist" style={{ display: "inline-flex", gap: 4, marginBottom: 26, padding: 6, borderRadius: 999, background: p.surface, border: "1px solid " + p.border, overflowX: "auto", maxWidth: "100%" }}>
         {abas.map((t) => {
           const badge = t.k === "simulados" ? meusEnvios.filter((e) => e.status === "pendente").length : 0;
           return (
             <button key={t.k} role="tab" aria-selected={aba === t.k} onClick={() => setAba(t.k)} style={{
-              display: "inline-flex", alignItems: "center", gap: 7, padding: "10px 0 11px", cursor: "pointer", flexShrink: 0, fontFamily: SANS,
-              border: "none", borderBottom: "2px solid " + (aba === t.k ? p.accent : "transparent"), marginBottom: -1, background: "transparent",
+              display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 16px", cursor: "pointer", flexShrink: 0, fontFamily: SANS,
+              border: "none", borderRadius: 999, background: aba === t.k ? p.surface2 : "transparent",
               color: aba === t.k ? p.text : p.textSoft, fontWeight: aba === t.k ? 600 : 500, fontSize: 13.5, transition: "color .15s, border-color .15s", whiteSpace: "nowrap",
             }}>
               <t.icon size={14} style={{ color: aba === t.k ? p.accent : p.textFaint }} />{t.label}
@@ -2605,9 +2616,9 @@ function PerfilDesempenhoQuestoes({ aluno }) {
       {/* cards-resumo */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 18 }} className="stat-grid">
         <StatCard icon={Target} label="Metas concluídas" value={aluno.metas} color={p.accent} />
-        <StatCard icon={FileQuestion} label="Questões" value={aluno.questoes} color="#1F6FA0" />
+        <StatCard icon={FileQuestion} label="Questões" value={aluno.questoes} color="#4B8FC4" />
         <StatCard icon={Clock4} label="Horas" value={aluno.horas + "h"} color={p.green} />
-        <StatCard icon={TrendingUp} label="Progresso" value={aluno.progresso + "%"} color="#6A4C93" />
+        <StatCard icon={TrendingUp} label="Progresso" value={aluno.progresso + "%"} color="#8FB3FF" />
       </div>
 
       {/* filtros — matéria + tópico (cascata) + período (presets) */}
@@ -2671,7 +2682,7 @@ function PerfilDesempenhoQuestoes({ aluno }) {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }} className="chart-grid">
         <Card>
-          <h3 style={{ margin: "0 0 14px", fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Evolução da taxa de acerto</h3>
+          <h3 style={{ margin: "0 0 14px", fontSize: 18, fontWeight: 600, letterSpacing: "-.015em", color: p.text }}>Evolução da taxa de acerto</h3>
           <ResponsiveContainer width="100%" height={230}>
             <LineChart data={evolucao} margin={{ top: 8, right: 18, left: -8, bottom: 0 }}>
               <CartesianGrid stroke={p.chartGrid} vertical={false} />
@@ -2682,7 +2693,7 @@ function PerfilDesempenhoQuestoes({ aluno }) {
           </ResponsiveContainer>
         </Card>
         <Card>
-          <h3 style={{ margin: "0 0 14px", fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Acertos por matéria</h3>
+          <h3 style={{ margin: "0 0 14px", fontSize: 18, fontWeight: 600, letterSpacing: "-.015em", color: p.text }}>Acertos por matéria</h3>
           <ResponsiveContainer width="100%" height={230}>
             <BarChart data={porMateria}>
               <CartesianGrid stroke={p.chartGrid} vertical={false} />
@@ -2744,7 +2755,7 @@ function PerfilSimulados({ aluno, envios, setEnvios, todosEnvios }) {
           <FileText size={26} style={{ opacity: .5, marginBottom: 6 }} />
           <div style={{ fontSize: 12.5 }}>Pré-visualização do PDF enviado pelo aluno</div>
         </div>
-        <h4 style={{ margin: "0 0 12px", fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: p.text }}>Classificar questões</h4>
+        <h4 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 600, letterSpacing: "-.01em", color: p.text }}>Classificar questões</h4>
         <div style={{ display: "grid", gridTemplateColumns: "54px 1fr 1fr 62px auto", gap: 8, alignItems: "end" }}>
           <Field label="Nº"><Input value={questao.num} onChange={(ev) => setQuestao({ ...questao, num: ev.target.value })} /></Field>
           <Field label="Matéria"><Select value={questao.materiaId} onChange={(ev) => setQuestao({ ...questao, materiaId: ev.target.value, topicoId: "" })}><option value="">—</option>{MATERIAS_FLAT.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}</Select></Field>
@@ -2834,11 +2845,11 @@ function PerfilCiclo({ aluno, ciclosPorAluno, setCiclosPorAluno, dispPorAluno })
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, padding: 14, background: p.surface2, borderRadius: 6, marginBottom: 14 }}>
               <div>
                 <div style={{ fontSize: 11, color: p.textFaint, marginBottom: 3 }}>Total alocado/semana</div>
-                <div style={{ fontSize: 20, fontWeight: 500, fontFamily: SERIF, color: overflow ? p.danger : p.accent }}>{fmtMin(totalAloc)}</div>
+                <div style={{ fontSize: 20, fontFamily: PIXEL, fontWeight: 400, color: overflow ? p.danger : p.accent }}>{fmtMin(totalAloc)}</div>
               </div>
               <div>
                 <div style={{ fontSize: 11, color: p.textFaint, marginBottom: 3 }}>Disponível/semana</div>
-                <div style={{ fontSize: 20, fontWeight: 500, fontFamily: SERIF, color: p.text }}>{fmtMin(totalDisp)}</div>
+                <div style={{ fontSize: 20, fontFamily: PIXEL, fontWeight: 400, color: p.text }}>{fmtMin(totalDisp)}</div>
               </div>
             </div>
             {overflow && (
@@ -2881,7 +2892,7 @@ function PerfilCiclo({ aluno, ciclosPorAluno, setCiclosPorAluno, dispPorAluno })
         {/* --- editor de alocações --- */}
         <Card>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <h4 style={{ margin: 0, fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: p.text }}>Horas semanais por matéria</h4>
+            <h4 style={{ margin: 0, fontSize: 16, fontWeight: 600, letterSpacing: "-.01em", color: p.text }}>Horas semanais por matéria</h4>
             <Btn size="sm" variant="outline" icon={Plus} onClick={addAloc}>Matéria</Btn>
           </div>
 
@@ -2941,7 +2952,7 @@ function PerfilCiclo({ aluno, ciclosPorAluno, setCiclosPorAluno, dispPorAluno })
       {/* Pré-visualização da semana gerada */}
       {preview && previewSemana && (
         <Card style={{ marginTop: 16 }}>
-          <h4 style={{ margin: "0 0 14px", fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: p.text }}>Como ficará a semana gerada automaticamente</h4>
+          <h4 style={{ margin: "0 0 14px", fontSize: 16, fontWeight: 600, letterSpacing: "-.01em", color: p.text }}>Como ficará a semana gerada automaticamente</h4>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8 }} className="week-grid">
             {DIAS.map((d) => {
               const metas = previewSemana[d.k] || [];
@@ -3000,7 +3011,7 @@ function PerfilMaterial({ aluno, materiais, setMateriais }) {
                   <Badge soft color={m.cor}>{m.materia}</Badge>
                   <button onClick={() => setMateriais(materiais.filter((x) => x.id !== m.id))} style={{ background: "none", border: "none", color: p.danger, cursor: "pointer" }}><Trash2 size={15} /></button>
                 </div>
-                <h4 style={{ margin: "4px 0", fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: p.text }}>{m.titulo}</h4>
+                <h4 style={{ margin: "4px 0", fontSize: 16, fontWeight: 600, letterSpacing: "-.01em", color: p.text }}>{m.titulo}</h4>
                 <p style={{ margin: 0, fontSize: 12, color: p.textFaint }}>{m.area}</p>
               </Card>
             ))}
@@ -3037,7 +3048,7 @@ function PerfilDesempenhoSimulados({ aluno }) {
       {/* resumo geral */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 18 }} className="stat-grid">
         <StatCard icon={Trophy} label="Taxa média" value={taxaMedia + "%"} color={p.accent} />
-        <StatCard icon={FileText} label="Simulados feitos" value={dados.geral.length} color="#1F6FA0" />
+        <StatCard icon={FileText} label="Simulados feitos" value={dados.geral.length} color="#4B8FC4" />
         <StatCard icon={CheckCircle2} label="Total de acertos" value={`${totalA}/${totalQ}`} color={p.green} />
       </div>
 
@@ -3046,14 +3057,14 @@ function PerfilDesempenhoSimulados({ aluno }) {
       ) : (
         <>
           <Card style={{ marginBottom: 16 }}>
-            <h3 style={{ margin: "0 0 14px", fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Desempenho geral nos simulados</h3>
+            <h3 style={{ margin: "0 0 14px", fontSize: 18, fontWeight: 600, letterSpacing: "-.015em", color: p.text }}>Desempenho geral nos simulados</h3>
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={dados.geral}>
                 <CartesianGrid stroke={p.chartGrid} vertical={false} />
                 <XAxis dataKey="nome" stroke={p.textSoft} fontSize={12} />
                 <YAxis stroke={p.textSoft} fontSize={12} domain={[0, 100]} />
                 <Tooltip contentStyle={{ background: p.surface, border: "1px solid " + p.border, borderRadius: 5, color: p.text }} cursor={{ fill: p.accent + "11" }} />
-                <Bar dataKey="taxa" fill="#1F6FA0" radius={[3, 3, 0, 0]} maxBarSize={34} />
+                <Bar dataKey="taxa" fill="#4B8FC4" radius={[3, 3, 0, 0]} maxBarSize={34} />
               </BarChart>
             </ResponsiveContainer>
           </Card>
@@ -3061,7 +3072,7 @@ function PerfilDesempenhoSimulados({ aluno }) {
           {/* lista de simulados clicável para abrir o por matéria */}
           <Card pad={0} style={{ marginBottom: 16 }}>
             <div style={{ padding: "14px 18px", borderBottom: "1px solid " + p.border }}>
-              <h3 style={{ margin: 0, fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Histórico de simulados</h3>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, letterSpacing: "-.015em", color: p.text }}>Histórico de simulados</h3>
               <p style={{ margin: "3px 0 0", fontSize: 12, color: p.textFaint }}>Clique para ver o detalhamento por matéria</p>
             </div>
             {dados.geral.map((e, i) => (
@@ -3082,7 +3093,7 @@ function PerfilDesempenhoSimulados({ aluno }) {
           {/* detalhamento por matéria — abre quando clica em um simulado */}
           {verMaterias && porMatArr.length > 0 && (
             <Card>
-              <h3 style={{ margin: "0 0 14px", fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Desempenho por matéria (consolidado)</h3>
+              <h3 style={{ margin: "0 0 14px", fontSize: 18, fontWeight: 600, letterSpacing: "-.015em", color: p.text }}>Desempenho por matéria (consolidado)</h3>
               <ResponsiveContainer width="100%" height={Math.max(240, porMatArr.length * 32)}>
                 <BarChart data={porMatArr} layout="vertical" margin={{ left: 70 }}>
                   <CartesianGrid stroke={p.chartGrid} horizontal={false} />
@@ -3124,7 +3135,7 @@ function PerfilProgresso({ aluno, progressoAlunos }) {
           <Card key={area.id} style={{ marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
               <div style={{ width: 10, height: 10, borderRadius: 3, background: area.cor }} />
-              <h3 style={{ margin: 0, fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text, flex: 1 }}>{area.nome}</h3>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, letterSpacing: "-.015em", color: p.text, flex: 1 }}>{area.nome}</h3>
               <span style={{ fontSize: 13, fontWeight: 700, color: area.cor }}>{pctArea}%</span>
             </div>
             <div style={{ marginBottom: 14 }}><ProgressBar value={pctArea} color={area.cor} /></div>
@@ -3329,8 +3340,8 @@ function PerfilRecados({ aluno, recadosPorAluno, setRecadosPorAluno }) {
 
   return (
     <>
-      <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 13px", marginBottom: 16, borderRadius: 5, background: "#1F6FA0" + "12", border: "1px solid " + "#1F6FA0" + "33" }}>
-        <Mail size={14} color="#1F6FA0" />
+      <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 13px", marginBottom: 16, borderRadius: 5, background: "#4B8FC4" + "12", border: "1px solid " + "#4B8FC4" + "33" }}>
+        <Mail size={14} color="#4B8FC4" />
         <span style={{ fontSize: 12.5, color: p.textSoft }}>Os recados aparecem como notificação no Dashboard de {aluno.nome.split(" ")[0]}.</span>
       </div>
       <Card style={{ marginBottom: 16 }}>
@@ -3360,13 +3371,13 @@ function MiniStat({ label, value }) {
   const p = usePalette();
   return (
     <div className="mini-stat" style={{ textAlign: "center" }}>
-      <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 500, color: p.text, fontVariantNumeric: "tabular-nums", lineHeight: 1.1 }}>{value}</div>
-      <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: ".1em", textTransform: "uppercase", color: p.textFaint, marginTop: 4 }}>{label}</div>
+      <div style={{ fontFamily: PIXEL, fontSize: 20, color: p.text, fontVariantNumeric: "tabular-nums", lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontSize: 11, color: p.textFaint, marginTop: 5 }}>{label}</div>
     </div>
   );
 }
 
-// Tela de boas-vindas em tela cheia (gate pós-login): hero com a arte das Arcadas e narrativa por rolagem
+// Tela de boas-vindas (primeira tela após o login): o hero cinematográfico com os dados do aluno
 
 /* ---- 2. PLANO DE ESTUDOS (estrutura universal) --------------------------- */
 function ModPlano({ plano, setPlano }) {
@@ -3440,7 +3451,7 @@ function ModPlano({ plano, setPlano }) {
                         </div>
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
                           {t.subs.map((s) => <span key={s} style={{ fontSize: 11.5, padding: "3px 9px", borderRadius: 4, background: p.surface, border: "1px solid " + p.border, color: p.textSoft }}>{s}</span>)}
-                          {t.subs.length === 0 && <span style={{ fontSize: 11.5, color: p.textFaint, fontStyle: "italic" }}>sem subtópicos</span>}
+                          {t.subs.length === 0 && <span style={{ fontSize: 11.5, color: p.textFaint, fontStyle: "normal" }}>sem subtópicos</span>}
                         </div>
                       </div>
                     ))}
@@ -3513,7 +3524,7 @@ function EditarTopicoModal({ edit, onClose, onSave }) {
             <button onClick={() => remSub(i)} style={{ background: "none", border: "none", color: p.danger, cursor: "pointer", padding: 4, display: "flex" }}><Trash2 size={15} /></button>
           </div>
         ))}
-        {subs.length === 0 && <p style={{ fontSize: 12.5, color: p.textFaint, fontStyle: "italic", margin: "0 0 8px" }}>Nenhum subtópico ainda.</p>}
+        {subs.length === 0 && <p style={{ fontSize: 12.5, color: p.textFaint, fontStyle: "normal", margin: "0 0 8px" }}>Nenhum subtópico ainda.</p>}
       </div>
       <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
         <Input value={novoSub} onChange={(e) => setNovoSub(e.target.value)} placeholder="Novo subtópico..." onKeyDown={(e) => e.key === "Enter" && addSub()} style={{ flex: 1 }} />
@@ -3579,7 +3590,7 @@ function ModSimulados({ simulados, setSimulados }) {
         </div>
 
         <div style={{ borderTop: "1px solid " + p.border, paddingTop: 16, marginTop: 6 }}>
-          <h4 style={{ margin: "0 0 12px", fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: p.text }}>Classificar questões</h4>
+          <h4 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 600, letterSpacing: "-.01em", color: p.text }}>Classificar questões</h4>
           <div style={{ display: "grid", gridTemplateColumns: "54px 1fr 1fr 62px auto", gap: 8, alignItems: "end" }}>
             <Field label="Nº"><Input value={questao.num} onChange={(e) => setQuestao({ ...questao, num: e.target.value })} /></Field>
             <Field label="Matéria"><Select value={questao.materiaId} onChange={(e) => setQuestao({ ...questao, materiaId: e.target.value, topicoId: "" })}><option value="">—</option>{MATERIAS_FLAT.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}</Select></Field>
@@ -3628,7 +3639,7 @@ function ModMateriais({ materiais, setMateriais, alunos }) {
               <Badge soft color={m.cor}>{m.materia}</Badge>
               <button onClick={() => setMateriais(materiais.filter((x) => x.id !== m.id))} style={{ background: "none", border: "none", color: p.danger, cursor: "pointer" }}><Trash2 size={15} /></button>
             </div>
-            <h4 style={{ margin: "4px 0", fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: p.text }}>{m.titulo}</h4>
+            <h4 style={{ margin: "4px 0", fontSize: 16, fontWeight: 600, letterSpacing: "-.01em", color: p.text }}>{m.titulo}</h4>
             <p style={{ margin: 0, fontSize: 12, color: p.textFaint }}>{m.vestibular} · {m.area}</p>
             <div style={{ marginTop: 8, fontSize: 11.5, color: p.textSoft }}>{m.para === "todos" ? "Todos os alunos" : "Alunos específicos"}</div>
           </Card>
@@ -3748,7 +3759,7 @@ function ModBoasVindas({ welcome, setWelcome }) {
             <Field label="Subtítulo"><Textarea rows={2} value={draft.hero.subtitulo} onChange={(e) => setHero("subtitulo", e.target.value)} /></Field>
             <Field label="Cor de destaque">
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {["#B0601E", "#C1342A", "#1F6FA0", "#3E8A3A", "#6A4C93", "#2E7D74", "#A07C1C"].map((c) => (
+                {["#C9793A", "#FF6B5E", "#4B8FC4", "#5AA555", "#8FB3FF", "#3FA99B", "#C9A13A"].map((c) => (
                   <button key={c} onClick={() => setHero("cor", c)} style={{ width: 30, height: 30, borderRadius: 4, background: c, border: draft.hero.cor === c ? "3px solid " + p.text : "2px solid " + p.border, cursor: "pointer" }} />
                 ))}
               </div>
@@ -3843,7 +3854,7 @@ const WELCOME_INICIAL = {
     foto: null,
     nome: "Joca & Rossini",
     subtitulo: "Texto de exemplo: edite em Boas-Vindas, no painel do moderador.",
-    cor: "#B0601E",
+    cor: "#C9793A",
   },
   blocos: [
     { id: "b1", tipo: "destaque", itens: [
@@ -3881,10 +3892,10 @@ const SIMULADOS_INICIAIS = [
 ];
 
 const MATERIAIS_INICIAIS = [
-  { id: "m1", titulo: "Apostila de Funções", vestibular: "FUVEST", area: "Matemática", materia: "Álgebra", para: "todos", cor: "#B0601E" },
-  { id: "m2", titulo: "Resumo de Mecânica", vestibular: "UNICAMP", area: "Naturais", materia: "Física", para: "todos", cor: "#3E8A3A" },
-  { id: "m3", titulo: "Modernismo Brasileiro", vestibular: "FUVEST", area: "Linguagens", materia: "Literatura", para: "especificos", cor: "#1F6FA0" },
-  { id: "m4", titulo: "Era Vargas Completa", vestibular: "UNICAMP", area: "Humanas", materia: "História", para: "todos", cor: "#6A4C93" },
+  { id: "m1", titulo: "Apostila de Funções", vestibular: "FUVEST", area: "Matemática", materia: "Álgebra", para: "todos", cor: "#C9793A" },
+  { id: "m2", titulo: "Resumo de Mecânica", vestibular: "UNICAMP", area: "Naturais", materia: "Física", para: "todos", cor: "#5AA555" },
+  { id: "m3", titulo: "Modernismo Brasileiro", vestibular: "FUVEST", area: "Linguagens", materia: "Literatura", para: "especificos", cor: "#4B8FC4" },
+  { id: "m4", titulo: "Era Vargas Completa", vestibular: "UNICAMP", area: "Humanas", materia: "História", para: "todos", cor: "#8FB3FF" },
 ];
 
 const QUESTOES_INICIAIS = [
@@ -4022,29 +4033,29 @@ const CATEGORIAS_PLAYLIST = [
   { id: "redacao", nome: "Redação" },
   { id: "outro", nome: "Outros cursos" },
 ];
-const CORES_PLAYLIST = ["#B0601E", "#1F6FA0", "#6A4C93", "#3E8A3A", "#C1342A", "#2E7D74", "#A07C1C"];
+const CORES_PLAYLIST = ["#C9793A", "#4B8FC4", "#8FB3FF", "#5AA555", "#FF6B5E", "#3FA99B", "#C9A13A"];
 
 const PLAYLISTS_INICIAIS = [
-  { id: "pl1", titulo: "Introdução ao curso", categoria: "introducao", cor: "#B0601E", publicada: true, para: "todos",
+  { id: "pl1", titulo: "Introdução ao curso", categoria: "introducao", cor: "#C9793A", publicada: true, para: "todos",
     descricao: "Comece por aqui: como o método funciona, como usar a plataforma e como montar o seu plano.",
     videos: [
       { id: "v1", titulo: "Boas-vindas: como o curso funciona", descricao: "Visão geral do método: ciclos de estudo, metas diárias e revisão espaçada.", duracao: "08:30", fonte: "exemplo" },
       { id: "v2", titulo: "Montando o seu plano de estudos", descricao: "Como escolher o vestibular-foco, os horários e a incidência de cada matéria.", duracao: "12:10", fonte: "exemplo" },
       { id: "v3", titulo: "Revisão espaçada na prática", descricao: "Por que revisar em 1, 7, 15 e 30 dias e como a plataforma agenda isso.", duracao: "09:45", fonte: "exemplo" },
     ] },
-  { id: "pl2", titulo: "Atualidades · Outubro/2026", categoria: "atualidades", cor: "#1F6FA0", publicada: true, para: "todos",
+  { id: "pl2", titulo: "Atualidades · Outubro/2026", categoria: "atualidades", cor: "#4B8FC4", publicada: true, para: "todos",
     descricao: "Os temas do mês com o gancho para a prova e para a redação.",
     videos: [
       { id: "v4", titulo: "Transição energética e o Brasil", descricao: "Como o tema aparece em Geografia e em propostas de redação.", duracao: "15:20", fonte: "exemplo" },
       { id: "v5", titulo: "Inteligência artificial e trabalho", descricao: "Repertórios e dados para usar na argumentação.", duracao: "11:05", fonte: "exemplo" },
     ] },
-  { id: "pl3", titulo: "Redação · dissecando textos nota 1000", categoria: "redacao", cor: "#6A4C93", publicada: true, para: "todos",
+  { id: "pl3", titulo: "Redação · dissecando textos nota 1000", categoria: "redacao", cor: "#8FB3FF", publicada: true, para: "todos",
     descricao: "Leitura comentada de redações nota máxima, parágrafo por parágrafo.",
     videos: [
       { id: "v6", titulo: "Introdução: tese e repertório", descricao: "Como a tese é apresentada já no primeiro parágrafo.", duracao: "13:40", fonte: "exemplo" },
       { id: "v7", titulo: "Desenvolvimento: argumentação em camadas", descricao: "Tópico frasal, fundamentação e fechamento de cada parágrafo.", duracao: "16:25", fonte: "exemplo" },
     ] },
-  { id: "pl4", titulo: "Aulão de véspera FUVEST", categoria: "outro", cor: "#C1342A", publicada: false, para: "fuvest",
+  { id: "pl4", titulo: "Aulão de véspera FUVEST", categoria: "outro", cor: "#FF6B5E", publicada: false, para: "fuvest",
     descricao: "Revisão final dos temas de maior incidência.",
     videos: [
       { id: "v8", titulo: "Os 10 temas que mais caem", descricao: "", duracao: "45:00", fonte: "exemplo" },
@@ -4116,7 +4127,7 @@ function AlunoCursos({ playlists, vestibular, assistidos, setAssistidos, aberta,
           <Badge soft color={pl.cor}>{categoriaNome(pl.categoria)}</Badge>
           <span style={{ fontSize: 12.5, color: p.textFaint }}>{pl.videos.length} aulas · {pct(pl)}% concluído</span>
         </div>
-        <h2 style={{ margin: "6px 0 18px", fontSize: 22, fontWeight: 500, fontFamily: SERIF, color: p.text, letterSpacing: "-.02em" }}>{pl.titulo}</h2>
+        <h2 style={{ margin: "6px 0 18px", fontSize: 22, fontFamily: PIXEL, fontWeight: 400, color: p.text, letterSpacing: "-.02em" }}>{pl.titulo}</h2>
         <div className="curso-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 320px", gap: 18, alignItems: "start" }}>
           <div>
             <VideoPlayer video={atual} cor={pl.cor} />
@@ -4170,11 +4181,11 @@ function AlunoCursos({ playlists, vestibular, assistidos, setAssistidos, aberta,
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 14 }}>
               {lista.map((x) => (
                 <Card key={x.id} pad={0} hover onClick={() => setAberta(x.id)} style={{ overflow: "hidden" }}>
-                  <div style={{ height: 88, background: x.cor, backgroundImage: "repeating-linear-gradient(0deg, rgba(255,255,255,.07) 0 1px, transparent 1px 9px)", display: "flex", alignItems: "flex-end", padding: 12 }}>
-                    <PlayCircle size={28} color="#fff" />
+                  <div style={{ height: 88, background: x.cor + "2e", borderBottom: "1px solid " + x.cor + "55", display: "flex", alignItems: "flex-end", padding: 12, color: p.text }}>
+                    <PlayCircle size={28} />
                   </div>
                   <div style={{ padding: 14 }}>
-                    <h4 style={{ margin: 0, fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: p.text }}>{x.titulo}</h4>
+                    <h4 style={{ margin: 0, fontSize: 16, fontWeight: 600, letterSpacing: "-.01em", color: p.text }}>{x.titulo}</h4>
                     <p style={{ margin: "4px 0 10px", fontSize: 12, color: p.textFaint }}>{x.videos.length} aulas · {pct(x)}% concluído</p>
                     <ProgressBar value={pct(x)} color={x.cor} height={5} />
                   </div>
@@ -4318,7 +4329,7 @@ function ModPlaylistEditor({ playlist, onChange, onBack }) {
         <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
           <div style={{ width: 48, height: 48, borderRadius: 6, background: playlist.cor, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><PlayCircle size={24} color="#fff" /></div>
           <div style={{ flex: 1, minWidth: 200 }}>
-            <h2 style={{ margin: 0, fontSize: 19, fontWeight: 500, fontFamily: SERIF, color: p.text }}>{playlist.titulo}</h2>
+            <h2 style={{ margin: 0, fontSize: 19, fontFamily: PIXEL, fontWeight: 400, color: p.text }}>{playlist.titulo}</h2>
             <div style={{ fontSize: 12.5, color: p.textFaint, marginTop: 3 }}>{categoriaNome(playlist.categoria)} · {playlist.para === "todos" ? "todos os alunos" : "só " + vestInfo(playlist.para).nome}</div>
           </div>
           <Btn size="sm" variant="soft" icon={Settings2} onClick={() => { setForm(playlist); setDados(true); }}>Dados da playlist</Btn>
@@ -4330,7 +4341,7 @@ function ModPlaylistEditor({ playlist, onChange, onBack }) {
       </Card>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 10, flexWrap: "wrap" }}>
-        <h3 style={{ margin: 0, fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Vídeos ({videos.length})</h3>
+        <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, letterSpacing: "-.015em", color: p.text }}>Vídeos ({videos.length})</h3>
         <Btn size="sm" icon={Plus} onClick={() => setVideoModal("novo")}>Adicionar vídeo</Btn>
       </div>
       {videos.length === 0 && <Card><Empty icon={Video} title="Nenhum vídeo ainda" sub="Adicione o primeiro vídeo desta playlist." /></Card>}
@@ -4506,11 +4517,11 @@ function AlunoRedacao({ user, devolutivas, setDevolutivas, instrucoes, playlists
           <VestBadge id={det.vestibular} size="sm" />
           <span style={{ fontSize: 12.5, color: p.textFaint }}>Enviada em {fmtData(det.recebidaEm)} · devolutiva em {fmtData(det.enviadaEm)}</span>
         </div>
-        <h2 style={{ margin: "8px 0 18px", fontSize: 20, fontWeight: 500, fontFamily: SERIF, color: p.text, textWrap: "balance" }}>{det.tema}</h2>
+        <h2 style={{ margin: "8px 0 18px", fontSize: 20, fontFamily: PIXEL, fontWeight: 400, color: p.text, textWrap: "balance" }}>{det.tema}</h2>
         <div className="curso-grid" style={{ display: "grid", gridTemplateColumns: "280px minmax(0,1fr)", gap: 16, alignItems: "start" }}>
           <Card>
             <div style={{ fontSize: 12, fontWeight: 500, fontFamily: MONO, color: p.textFaint, textTransform: "uppercase", letterSpacing: ".1em" }}>Nota</div>
-            <div style={{ fontSize: 40, fontWeight: 500, fontFamily: SERIF, color: p.accent, letterSpacing: "-.03em", fontVariantNumeric: "tabular-nums" }}>{n.texto}</div>
+            <div style={{ fontSize: 40, fontFamily: PIXEL, fontWeight: 400, color: p.accent, letterSpacing: "-.03em", fontVariantNumeric: "tabular-nums" }}>{n.texto}</div>
             {det.rubrica === "enem" && (
               <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
                 {COMPETENCIAS_ENEM.map((c) => (
@@ -4555,7 +4566,7 @@ function AlunoRedacao({ user, devolutivas, setDevolutivas, instrucoes, playlists
       <div className="stat-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 16 }}>
         <StatCard icon={FileText} label="Redações corrigidas" value={minhas.length} color={p.accent} />
         <StatCard icon={Target} label="Última nota" value={ultima ? notaDevolutiva(ultima).texto : "—"} color={p.green} />
-        <StatCard icon={TrendingUp} label="Média (% da nota máx.)" value={minhas.length ? media + "%" : "—"} color="#1F6FA0" />
+        <StatCard icon={TrendingUp} label="Média (% da nota máx.)" value={minhas.length ? media + "%" : "—"} color="#4B8FC4" />
       </div>
 
       {serie.length >= 2 && (
@@ -4575,7 +4586,7 @@ function AlunoRedacao({ user, devolutivas, setDevolutivas, instrucoes, playlists
         </Card>
       )}
 
-      <h3 style={{ margin: "0 0 10px", fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Minhas redações</h3>
+      <h3 style={{ margin: "0 0 10px", fontSize: 18, fontWeight: 600, letterSpacing: "-.015em", color: p.text }}>Minhas redações</h3>
       {minhas.length === 0 && <Card><Empty icon={PenLine} title="Nenhuma devolutiva ainda" sub="Quando o professor corrigir uma redação sua, ela aparece aqui." /></Card>}
       <div style={{ display: "grid", gap: 8, marginBottom: 24 }}>
         {minhas.map((d) => (
@@ -4587,7 +4598,7 @@ function AlunoRedacao({ user, devolutivas, setDevolutivas, instrucoes, playlists
               </div>
               <div style={{ fontSize: 12, color: p.textFaint, marginTop: 3 }}>{vestInfo(d.vestibular).nome} · devolutiva em {fmtData(d.enviadaEm)}</div>
             </div>
-            <div style={{ fontSize: 20, fontWeight: 500, fontFamily: SERIF, color: p.accent, fontVariantNumeric: "tabular-nums" }}>{notaDevolutiva(d).texto}</div>
+            <div style={{ fontSize: 20, fontFamily: PIXEL, fontWeight: 400, color: p.accent, fontVariantNumeric: "tabular-nums" }}>{notaDevolutiva(d).texto}</div>
             <ChevronRight size={18} color={p.textFaint} />
           </Card>
         ))}
@@ -4595,7 +4606,7 @@ function AlunoRedacao({ user, devolutivas, setDevolutivas, instrucoes, playlists
 
       {aulas.length > 0 && (
         <>
-          <h3 style={{ margin: "0 0 10px", fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Aulas de redação</h3>
+          <h3 style={{ margin: "0 0 10px", fontSize: 18, fontWeight: 600, letterSpacing: "-.015em", color: p.text }}>Aulas de redação</h3>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 12 }}>
             {aulas.map((x) => (
               <Card key={x.id} pad={14} hover onClick={() => abrirPlaylist(x.id)} style={{ display: "flex", gap: 12, alignItems: "center" }}>
@@ -4657,7 +4668,7 @@ function ModRedacao({ alunos, devolutivas, setDevolutivas, instrucoes, setInstru
       <div className="stat-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 16 }}>
         <StatCard icon={Send} label="Devolutivas enviadas" value={devolutivas.filter((d) => d.status === "enviada").length} color={p.green} />
         <StatCard icon={Pencil} label="Rascunhos" value={rascunhos} color={p.accent} />
-        <StatCard icon={EyeOff} label="Ainda não lidas pelo aluno" value={naoLidas} color="#1F6FA0" />
+        <StatCard icon={EyeOff} label="Ainda não lidas pelo aluno" value={naoLidas} color="#4B8FC4" />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10, marginBottom: 12 }}>
@@ -4680,12 +4691,12 @@ function ModRedacao({ alunos, devolutivas, setDevolutivas, instrucoes, setInstru
               <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                 <span style={{ fontSize: 14, fontWeight: 700, color: p.text }}>{nomeAluno(d.alunoId)}</span>
                 <Badge soft color={d.status === "enviada" ? p.green : p.accent}>{d.status === "enviada" ? "Enviada" : "Rascunho"}</Badge>
-                {d.status === "enviada" && <Badge soft color={d.lida ? p.textFaint : "#1F6FA0"}>{d.lida ? "Lida" : "Não lida"}</Badge>}
+                {d.status === "enviada" && <Badge soft color={d.lida ? p.textFaint : "#4B8FC4"}>{d.lida ? "Lida" : "Não lida"}</Badge>}
               </div>
               <div style={{ fontSize: 12.5, color: p.textSoft, marginTop: 3 }}>{d.tema || "Sem tema"}</div>
               <div style={{ fontSize: 11.5, color: p.textFaint, marginTop: 2 }}>{vestInfo(d.vestibular).nome} · recebida em {fmtData(d.recebidaEm)} por {(CANAIS_ENVIO.find((c) => c.id === d.canal) || {}).nome}</div>
             </div>
-            <div style={{ fontSize: 19, fontWeight: 500, fontFamily: SERIF, color: p.text, fontVariantNumeric: "tabular-nums" }}>{notaDevolutiva(d).texto}</div>
+            <div style={{ fontSize: 19, fontFamily: PIXEL, fontWeight: 400, color: p.text, fontVariantNumeric: "tabular-nums" }}>{notaDevolutiva(d).texto}</div>
             <ChevronRight size={18} color={p.textFaint} />
           </Card>
         ))}
@@ -4721,7 +4732,7 @@ function DevolutivaEditor({ inicial, alunos, onCancel, onSave, onDelete }) {
         <ChevronRight size={15} style={{ transform: "rotate(180deg)" }} /> Todas as devolutivas
       </button>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
-        <h2 style={{ margin: 0, fontSize: 21, fontWeight: 500, fontFamily: SERIF, color: p.text }}>{inicial._nova ? "Nova devolutiva" : "Editar devolutiva"}</h2>
+        <h2 style={{ margin: 0, fontSize: 21, fontFamily: PIXEL, fontWeight: 400, color: p.text }}>{inicial._nova ? "Nova devolutiva" : "Editar devolutiva"}</h2>
         {!inicial._nova && <Badge soft color={d.status === "enviada" ? p.green : p.accent}>{d.status === "enviada" ? "Já enviada ao aluno" : "Rascunho"}</Badge>}
       </div>
 
@@ -4799,7 +4810,7 @@ function DevolutivaEditor({ inicial, alunos, onCancel, onSave, onDelete }) {
         <div style={{ display: "grid", gap: 14 }}>
           <Card>
             <div style={{ fontSize: 12, fontWeight: 500, fontFamily: MONO, color: p.textFaint, textTransform: "uppercase", letterSpacing: ".1em" }}>Nota final</div>
-            <div style={{ fontSize: 38, fontWeight: 500, fontFamily: SERIF, color: p.accent, fontVariantNumeric: "tabular-nums", letterSpacing: "-.03em" }}>{n.texto}</div>
+            <div style={{ fontSize: 38, fontFamily: PIXEL, fontWeight: 400, color: p.accent, fontVariantNumeric: "tabular-nums", letterSpacing: "-.03em" }}>{n.texto}</div>
             {d.rubrica === "enem" && <div style={{ fontSize: 12, color: p.textFaint }}>de 1000</div>}
           </Card>
           <Card>
@@ -4831,18 +4842,18 @@ function DevolutivaEditor({ inicial, alunos, onCancel, onSave, onDelete }) {
   );
 }
 
-const SERIF = "'Newsreader', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif";
+const SERIF = "'Geist', -apple-system, BlinkMacSystemFont, sans-serif";
 
-const SANS = "'Schibsted Grotesk', 'Helvetica Neue', Arial, sans-serif";
+const SANS = "'Geist', -apple-system, BlinkMacSystemFont, sans-serif";
 
-const MONO = "'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace";
+const MONO = "'Geist', -apple-system, BlinkMacSystemFont, sans-serif";
 
 function Eyebrow({ children, color, style }) {
   const p = usePalette();
-  return <span style={{ display: "block", fontFamily: MONO, fontSize: 11, letterSpacing: ".12em", textTransform: "uppercase", color: color || p.textFaint, ...style }}>{children}</span>;
+  return <span style={{ display: "block", fontFamily: SANS, fontSize: 12, fontWeight: 500, letterSpacing: ".06em", textTransform: "uppercase", color: color || p.textFaint, ...style }}>{children}</span>;
 }
 
-// Selo guilhochê (o desenho de diplomas e cédulas), gerado por fórmula a partir de uma semente
+// Selo de conquista (rosácea gerada por fórmula a partir de uma semente)
 
 function Selo({ semente = "a", size = 88, apagado = false }) {
   const p = usePalette();
@@ -4852,9 +4863,8 @@ function Selo({ semente = "a", size = 88, apagado = false }) {
     const R = 27 + (h % 6), r = 7 + ((h >> 3) % 7), d = 11 + ((h >> 6) % 7);
     const curva = (R, r, d, esc) => {
       const pts = [];
-      const voltas = r;
       for (let i = 0; i <= 900; i++) {
-        const t = (i / 900) * Math.PI * 2 * voltas;
+        const t = (i / 900) * Math.PI * 2 * r;
         const x = ((R - r) * Math.cos(t) + d * Math.cos(((R - r) / r) * t)) * esc;
         const y = ((R - r) * Math.sin(t) - d * Math.sin(((R - r) / r) * t)) * esc;
         pts.push((50 + x).toFixed(2) + " " + (50 + y).toFixed(2));
@@ -4864,11 +4874,10 @@ function Selo({ semente = "a", size = 88, apagado = false }) {
     return { a: curva(R, r, d, 1), b: curva(R, r, d * 0.6, 0.6) };
   }, [semente]);
   return (
-    <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden="true" style={{ opacity: apagado ? 0.28 : 1, flexShrink: 0 }}>
-      <circle cx="50" cy="50" r="47" fill="none" stroke={p.brass} strokeWidth=".8" />
-      <circle cx="50" cy="50" r="44" fill="none" stroke={p.brass} strokeWidth=".4" />
-      <path d={svg.a} fill="none" stroke={p.brass} strokeWidth=".45" />
-      <path d={svg.b} fill="none" stroke={p.accent} strokeWidth=".4" />
+    <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden="true" style={{ opacity: apagado ? 0.25 : 1, flexShrink: 0 }}>
+      <circle cx="50" cy="50" r="47" fill="none" stroke={p.textSoft} strokeWidth=".7" />
+      <path d={svg.a} fill="none" stroke={p.brass} strokeWidth=".5" />
+      <path d={svg.b} fill="none" stroke={p.text} strokeWidth=".4" />
     </svg>
   );
 }
@@ -4892,37 +4901,96 @@ function Revelar({ children, style, atraso = 0 }) {
   );
 }
 
-function Wordmark({ claro, tamanho = 24 }) {
+function Wordmark({ claro }) {
   const p = usePalette();
-  return (
-    <span style={{ fontFamily: SERIF, fontSize: tamanho, fontWeight: 500, letterSpacing: "-.02em", color: claro ? "#F2EEE5" : p.text, lineHeight: 1 }}>
-      Aprova<span style={{ fontStyle: "italic", color: claro ? "#E4B868" : p.accent }}>+</span>
-    </span>
-  );
+  return <Marca className={claro ? "" : ""} />;
 }
+
+/* Fundo fixo das telas internas: a cena das Arcadas desfocada, escurecida (ou clareada) */
 
 function WelcomeConteudo({ welcome, alunoStats }) {
   const p = usePalette();
   const hero = welcome.hero || {};
   return (
-    <div style={{ display: "grid", gap: 64 }}>
+    <div style={{ display: "grid", gap: 20 }}>
       {alunoStats && <Revelar><WelcomePainelResumo stats={alunoStats} /></Revelar>}
       <Revelar>
-        <div style={{ display: "flex", gap: 22, alignItems: "center", flexWrap: "wrap", paddingTop: 20, borderTop: "1px solid " + p.borderStrong }}>
-          <div style={{ width: 84, height: 84, borderRadius: "50%", overflow: "hidden", background: p.surface2, border: "2px solid " + (hero.cor || p.border), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <Card style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ width: 64, height: 64, borderRadius: 999, overflow: "hidden", background: p.surface2, border: "2px solid " + (hero.cor || p.border), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             {/* 🔥 FIREBASE Storage: foto de perfil do instrutor */}
-            {hero.foto ? <img src={hero.foto} alt={hero.nome || ""} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontFamily: SERIF, fontSize: 34, color: p.textSoft }}>{(hero.nome || "?").charAt(0)}</span>}
+            {hero.foto ? <img src={hero.foto} alt={hero.nome || ""} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 24, fontWeight: 600, color: p.text }}>{(hero.nome || "?").charAt(0)}</span>}
           </div>
-          <div style={{ flex: 1, minWidth: 220 }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
             <Eyebrow>Seus professores</Eyebrow>
-            <div style={{ fontFamily: SERIF, fontSize: 30, fontWeight: 500, color: p.text, letterSpacing: "-.015em", marginTop: 4 }}>{hero.nome}</div>
-            {hero.subtitulo && <p style={{ margin: "4px 0 0", fontSize: 15, color: p.textSoft, maxWidth: "60ch" }}>{hero.subtitulo}</p>}
+            <div style={{ fontSize: 22, fontWeight: 600, color: p.text, letterSpacing: "-.02em", marginTop: 4 }}>{hero.nome}</div>
+            {hero.subtitulo && <p style={{ margin: "4px 0 0", fontSize: 14.5, color: p.textSoft, maxWidth: "60ch" }}>{hero.subtitulo}</p>}
           </div>
-        </div>
+        </Card>
       </Revelar>
-      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-        {(welcome.blocos || []).map((b, i) => <Revelar key={b.id} atraso={Math.min(i, 3) * 40}><BlocoView bloco={b} /></Revelar>)}
+      <Card pad={28}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          {(welcome.blocos || []).map((b, i) => <Revelar key={b.id} atraso={Math.min(i, 3) * 40}><BlocoView bloco={b} /></Revelar>)}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function estiloCampo(p) {
+  return {
+    width: "100%", boxSizing: "border-box", padding: "11px 14px", borderRadius: 12,
+    background: p.inputBg, border: "1px solid " + p.border, color: p.text, fontFamily: SANS,
+    fontSize: 14.5, outline: "none", transition: "border-color .15s, box-shadow .15s",
+  };
+}
+
+function FundoApp() {
+  const { dark } = useTheme();
+  return (
+    <div aria-hidden="true" style={{ position: "fixed", inset: 0, zIndex: 0, overflow: "hidden", background: dark ? "#0A0B0D" : "#E9E9EC" }}>
+      <img src={arteFundoUrl} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", transform: "scale(1.25)",
+        filter: dark ? "blur(56px) brightness(.62) saturate(1.25)" : "blur(56px) brightness(1.35) saturate(.8)" }} />
+      <div style={{ position: "absolute", inset: 0, background: dark ? "rgba(8,9,11,.5)" : "rgba(233,233,236,.7)" }} />
+    </div>
+  );
+}
+
+/* Folha com o conteúdo editável da página de boas-vindas (método, professores) */
+
+function ConteudoVidro({ welcome, parte }) {
+  const hero = welcome.hero || {};
+  if (parte === "professores") {
+    return (
+      <div className="flex items-center gap-4">
+        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full bg-white/15">
+          {hero.foto ? <img src={hero.foto} alt={hero.nome} className="h-full w-full object-cover" /> : <span className="flex h-full w-full items-center justify-center text-2xl font-semibold">{(hero.nome || "?").charAt(0)}</span>}
+        </div>
+        <div>
+          <div className="text-lg font-semibold">{hero.nome}</div>
+          <p className="mt-1 text-sm leading-relaxed text-white/70">{hero.subtitulo}</p>
+        </div>
       </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-4">
+      {(welcome.blocos || []).map((b) => {
+        if (b.tipo === "titulo") return <h3 key={b.id} className="mt-2 text-xl font-semibold tracking-tight">{b.texto}</h3>;
+        if (b.tipo === "texto") return <p key={b.id} className="whitespace-pre-wrap text-[15px] leading-relaxed text-white/75">{b.texto}</p>;
+        if (b.tipo === "destaque") return (
+          <div key={b.id} className="grid grid-cols-3 gap-3">
+            {(b.itens || []).map((d, i) => (
+              <div key={i} className="rounded-2xl bg-white/10 p-4">
+                <div className="text-2xl tracking-tight" style={{ fontFamily: PIXEL }}>{d.valor}</div>
+                <div className="mt-2 text-xs text-white/70">{d.label}</div>
+              </div>
+            ))}
+          </div>
+        );
+        if (b.tipo === "foto" && b.url) return <img key={b.id} src={b.url} alt={b.legenda || ""} className="w-full rounded-2xl" />;
+        if (b.tipo === "divisor") return <div key={b.id} className="h-px bg-white/10" />;
+        return null;
+      })}
     </div>
   );
 }
@@ -5026,7 +5094,7 @@ function App() {
     setHistoricoReplan((prev) => [{ id: "rp" + Date.now(), data: new Date().toISOString().slice(0, 10), ...resumo }, ...prev]);
   };
 
-  if (!user) return <ThemeShell><LoginScreen onLogin={login} /></ThemeShell>;
+  if (!user) return <ThemeShell><LoginScreen onLogin={login} welcome={welcome} /></ThemeShell>;
 
   // gate da página de boas-vindas (primeira tela após login)
   if (verBoasVindas) {
@@ -5047,11 +5115,15 @@ function App() {
         aderencia,
         proximaConquista: proxima || null,
         materiaRisco: null, // mock: pode vir de "Matérias em risco" futuramente
+        proximaMeta: [...(alunoStore.atrasadas || []), ...(alunoStore.metasHoje || [])].find((m) => !m.done) || null,
       };
     }
     return (
       <ThemeShell>
-        <BoasVindasGate welcome={welcome} user={user} onEnter={() => setVerBoasVindas(false)} onLogout={logout} alunoStats={alunoStats} />
+        <BoasVindasGate welcome={welcome} user={user} onEnter={() => setVerBoasVindas(false)} onLogout={logout} alunoStats={alunoStats}
+          onIr={(k) => { setActive(k); setVerBoasVindas(false); }}
+          recado={user.role === "aluno" ? (recadosPorAluno[user.uid] || [])[0] : null}
+          resumoMod={{ alunos: alunos.length, pendentes: envios.filter((e) => e.status === "pendente").length }} />
       </ThemeShell>
     );
   }
@@ -5119,69 +5191,84 @@ function App() {
 }
 
 // Tela de boas-vindas em tela cheia (gate pós-login), com seu próprio fundo
-function BoasVindasGate({ welcome, onEnter, onLogout, alunoStats, user }) {
-  const p = usePalette();
+function BoasVindasGate({ welcome, onEnter, onLogout, alunoStats, user, onIr, recado, resumoMod }) {
   const { dark, toggle } = useTheme();
   const hero = welcome.hero || {};
   const primeiro = ((user && user.name) || "").split(" ")[0];
   const hora = new Date().getHours();
   const saudacao = hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite";
-  const hoje = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
-  const conteudoRef = useRef(null);
-  const botaoClaro = { background: "rgba(11,17,22,.5)", border: "1px solid rgba(236,232,223,.28)", borderRadius: 4, padding: "8px 12px", cursor: "pointer", color: "#ECE8DF", display: "flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 500, fontFamily: SANS, backdropFilter: "blur(6px)" };
+  const ehAluno = !!alunoStats;
+  const irPara = (k) => (onIr ? onIr(k) : onEnter());
+  const meta = alunoStats && alunoStats.proximaMeta;
+
+  const links = ehAluno
+    ? [
+        { label: "Metas de hoje", onClick: () => irPara("dashboard") },
+        { label: "Semana", onClick: () => irPara("semana") },
+        { label: "Estudar", submenu: [
+          { label: "Cursos em vídeo", onClick: () => irPara("cursos") },
+          { label: "Banco de Questões", onClick: () => irPara("questoes") },
+          { label: "Simulados", onClick: () => irPara("simulados") },
+          { label: "Redação", onClick: () => irPara("redacao") },
+        ] },
+        { label: "Conquistas", onClick: () => irPara("conquistas") },
+      ]
+    : [
+        { label: "Alunos", onClick: () => irPara("alunos") },
+        { label: "Redação", onClick: () => irPara("redacaomod") },
+        { label: "Conteúdo", submenu: [
+          { label: "Cursos em vídeo", onClick: () => irPara("cursosmod") },
+          { label: "Simulados", onClick: () => irPara("simuladosmod") },
+          { label: "Materiais", onClick: () => irPara("materiaismod") },
+          { label: "Boas-Vindas", onClick: () => irPara("boasvindasmod") },
+        ] },
+        { label: "Plano de Estudos", onClick: () => irPara("planomod") },
+      ];
+  const gaveta = [
+    ...links.flatMap((l) => (l.submenu ? l.submenu : [l])),
+    { label: dark ? "Tema claro" : "Tema escuro", onClick: toggle },
+    { label: "Sair", onClick: onLogout },
+  ];
+  const botaoRedondo = "flex w-10 items-center justify-center rounded-full bg-white/10 text-white/80 backdrop-blur-lg transition-colors hover:text-white";
 
   return (
-    <div style={{ background: p.bg, minHeight: "100vh" }}>
-      <section style={{ position: "relative", height: "100svh", minHeight: 580, maxHeight: 1000, background: "#0B1116", overflow: "hidden" }}>
-        <HeroArcadas style={{ position: "absolute", inset: 0 }} rolagem />
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(7,10,13,.9) 0%, rgba(7,10,13,.55) 32%, rgba(7,10,13,0) 62%), linear-gradient(to bottom, rgba(7,10,13,.55), rgba(7,10,13,0) 22%)", pointerEvents: "none" }} />
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "22px clamp(18px, 4vw, 56px)", zIndex: 3 }}>
-          <Wordmark claro />
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={toggle} aria-label="Alternar tema" style={botaoClaro}>{dark ? <Sun size={15} /> : <Moon size={15} />}</button>
-            <button onClick={onLogout} style={botaoClaro}><LogOut size={15} /> Sair</button>
+    <HeroCinema
+      links={links} gaveta={gaveta}
+      extra={<>
+        <button type="button" onClick={toggle} aria-label="Alternar tema" title="Alternar tema" className={botaoRedondo}>{dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button>
+        <button type="button" onClick={onLogout} aria-label="Sair" title="Sair" className={botaoRedondo}><LogOut className="h-4 w-4" /></button>
+      </>}
+      cta={{ label: "Acessar a plataforma", onClick: onEnter }}
+      titulo={ehAluno ? `${saudacao}, ${primeiro}. Suas metas de hoje já estão prontas.` : `${saudacao}, ${primeiro}. Sua turma está esperando.`}
+      capsula={() => (
+        <Capsula>
+          <div className="rounded-full bg-white px-5 py-3 text-sm text-gray-900 sm:w-72 sm:truncate sm:rounded-none sm:bg-transparent sm:px-4 sm:py-2">
+            {ehAluno
+              ? (meta ? <><span className="text-gray-400">Próxima meta · </span>{meta.materia} · {fmtMin(meta.minutos)}</> : "Nenhuma meta pendente hoje")
+              : <><span className="text-gray-400">Para classificar · </span>{(resumoMod && resumoMod.pendentes) || 0} simulado(s)</>}
           </div>
-        </div>
-        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 3, padding: "0 clamp(18px, 4vw, 56px) clamp(28px, 6vh, 64px)" }}>
-          <div style={{ maxWidth: 1180, display: "grid", gap: 18 }}>
-            <Eyebrow color="#B9B3A5" style={{ animation: "sobe .9s cubic-bezier(.16,1,.3,1) both" }}>{hoje}</Eyebrow>
-            <h1 style={{ margin: 0, fontFamily: SERIF, fontWeight: 400, fontSize: "clamp(46px, 8vw, 118px)", lineHeight: .94, letterSpacing: "-.03em", color: "#F2EEE5", maxWidth: "11ch", textWrap: "balance", animation: "sobe 1s .08s cubic-bezier(.16,1,.3,1) both" }}>
-              {alunoStats ? <>{saudacao}, <em style={{ color: "#E4B868" }}>{primeiro}.</em></> : <>{hero.nome}</>}
-            </h1>
-            <p style={{ margin: 0, fontSize: "clamp(15px, 1.4vw, 18px)", color: "#CFC9BC", maxWidth: "48ch", lineHeight: 1.55, animation: "sobe 1s .16s cubic-bezier(.16,1,.3,1) both" }}>
-              {alunoStats ? "Seu plano de hoje já está montado. Cada meta cumprida é um passo a mais pelas Arcadas." : hero.subtitulo}
-            </p>
-            {alunoStats && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 24px", fontFamily: MONO, fontSize: 12.5, color: "#CFC9BC", animation: "sobe 1s .22s cubic-bezier(.16,1,.3,1) both" }}>
-                <span><b style={{ color: "#F2EEE5", fontWeight: 500 }}>{alunoStats.streak}</b> dias seguidos</span>
-                <span><b style={{ color: "#F2EEE5", fontWeight: 500 }}>{alunoStats.progresso}%</b> do programa</span>
-                <span><b style={{ color: "#F2EEE5", fontWeight: 500 }}>{alunoStats.aderencia}%</b> de aderência</span>
-              </div>
-            )}
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", marginTop: 6, animation: "sobe 1s .3s cubic-bezier(.16,1,.3,1) both" }}>
-              <button onClick={onEnter} className="btn-ui" style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "13px 22px", borderRadius: 4, border: "1px solid #F2EEE5", background: "#F2EEE5", color: "#0B1116", fontFamily: SANS, fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
-                Acessar a plataforma <ArrowRight size={16} />
-              </button>
-              <button onClick={() => conteudoRef.current && conteudoRef.current.scrollIntoView({ behavior: "smooth" })} style={{ background: "none", border: "none", color: "#CFC9BC", fontFamily: SANS, fontSize: 14, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, padding: "10px 4px" }}>
-                Conheça o curso <ChevronDown size={15} />
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <div ref={conteudoRef} style={{ maxWidth: 980, margin: "0 auto", padding: "clamp(56px, 9vw, 112px) clamp(18px, 4vw, 40px) 96px" }}>
-        <WelcomeConteudo welcome={welcome} alunoStats={alunoStats} />
-        <Revelar style={{ marginTop: 64, paddingTop: 28, borderTop: "1px solid " + p.borderStrong, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
-          <div style={{ fontFamily: SERIF, fontSize: "clamp(26px, 3vw, 36px)", color: p.text, letterSpacing: "-.015em" }}>Pronto para as metas de hoje?</div>
-          <Btn onClick={onEnter} size="lg" icon={ArrowRight}>Acessar a plataforma</Btn>
-        </Revelar>
-      </div>
-    </div>
+          <PilulaCTA onClick={() => irPara(ehAluno ? "dashboard" : "alunos")} className="px-6 py-3 sm:py-2.5">{ehAluno ? "Começar" : "Ver alunos"}</PilulaCTA>
+        </Capsula>
+      )}
+      cartoes={(claro) => ehAluno ? (
+        <>
+          <CartaoNumero claroNoMobile={claro} numero={alunoStats.streak + (alunoStats.streak === 1 ? " dia" : " dias")}
+            texto={`de sequência cumprindo as metas. ${alunoStats.progresso}% do programa concluído${alunoStats.proximaConquista ? `; próximo selo: ${alunoStats.proximaConquista.titulo}.` : "."}`} />
+          <CartaoRecado claroNoMobile={claro} selo={(hero.nome || "?").charAt(0)} titulo={recado ? "Recado do instrutor" : "Seus professores"}
+            texto={recado ? recado.texto : hero.subtitulo} fotoUrl={hero.foto} nome={hero.nome} papel="Professores" />
+        </>
+      ) : (
+        <>
+          <CartaoNumero claroNoMobile={claro} numero={String((resumoMod && resumoMod.alunos) || 0)}
+            texto={`alunos na plataforma. ${(resumoMod && resumoMod.pendentes) || 0} simulado(s) aguardando classificação.`} />
+          <CartaoRecado claroNoMobile={claro} selo={(hero.nome || "?").charAt(0)} titulo="Página de boas-vindas"
+            texto={hero.subtitulo} fotoUrl={hero.foto} nome={hero.nome} papel="Visto pelos alunos ao entrar" />
+        </>
+      )}
+    />
   );
 }
 
-// Provider de tema + injeção de estilos globais e classe no root para o bg
 function ThemeShell({ children }) {
   return (
     <ThemeProvider>
@@ -5200,18 +5287,18 @@ function GlobalStyles() {
   const p = usePalette();
   return (
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
       * { box-sizing: border-box; }
       html, body { margin: 0; background: ${p.bg}; color-scheme: ${dark ? "dark" : "light"}; }
-      body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+      body { font-family: ${SANS}; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
       h1, h2, h3, h4 { text-wrap: balance; }
-      svg.lucide { stroke-width: 1.6; }
-      ::selection { background: ${p.accent}33; }
-      :focus-visible { outline: 2px solid ${p.accent}; outline-offset: 2px; }
+      svg.lucide { stroke-width: 1.75; }
+      ::selection { background: ${dark ? "#FFFFFF33" : "#01010122"}; }
+      :focus-visible { outline: 2px solid ${dark ? "#FFFFFFAA" : "#010101AA"}; outline-offset: 2px; }
+      select option { background: ${dark ? "#141518" : "#FFFFFF"}; color: ${p.text}; }
       @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-      @keyframes entraTela { from { opacity: .001; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-      @keyframes sobe { from { opacity: .001; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-      @keyframes popIn { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
+      @keyframes entraTela { from { opacity: .001; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+      @keyframes cineSobe { from { opacity: .001; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+      @keyframes popIn { from { opacity: 0; transform: translateY(16px) scale(.98); } to { opacity: 1; transform: none; } }
       @keyframes slideIn { from { transform: translateX(-100%); } to { transform: none; } }
       .revelar { opacity: .25; transform: translateY(18px); transition: opacity .9s cubic-bezier(.16,1,.3,1), transform .9s cubic-bezier(.16,1,.3,1); }
       .revelar.visivel { opacity: 1; transform: none; }
@@ -5221,37 +5308,30 @@ function GlobalStyles() {
       }
       ::-webkit-scrollbar { width: 10px; height: 10px; }
       ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: ${dark ? "#2A343A" : "#CFD0CA"}; border-radius: 99px; border: 3px solid ${p.bg}; }
+      ::-webkit-scrollbar-thumb { background: ${dark ? "#FFFFFF26" : "#0101012A"}; border-radius: 99px; border: 3px solid transparent; background-clip: padding-box; }
       input[type=number]::-webkit-inner-spin-button { opacity: .4; }
       .num-dia { -moz-appearance: textfield; }
       .num-dia::-webkit-inner-spin-button, .num-dia::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-      .recharts-cartesian-axis-tick-value { font-family: ${MONO}; font-size: 11px; fill: ${p.textFaint}; }
+      input:not(.campo-capsula)::placeholder, textarea::placeholder { color: ${p.textFaint}; }
+      .campo-capsula::placeholder { color: #9CA3AF; }
+      .recharts-cartesian-axis-tick-value { font-family: ${SANS}; font-size: 11.5px; fill: ${p.textFaint}; }
       .recharts-cartesian-axis-line, .recharts-cartesian-axis-tick-line { stroke: ${p.border}; }
       .recharts-legend-item-text { color: ${p.textSoft} !important; font-size: 13px; }
-      .recharts-default-tooltip { border-radius: 4px !important; font-family: ${SANS}; box-shadow: 0 10px 30px rgba(10,14,18,.12); }
-      .recharts-tooltip-label { font-family: ${MONO}; font-size: 11px; letter-spacing: .06em; color: ${p.textFaint}; }
-      input::placeholder, textarea::placeholder { color: ${p.textFaint}; opacity: .8; }
+      .recharts-default-tooltip { border-radius: 12px !important; font-family: ${SANS}; background: ${p.modal} !important; border: 1px solid ${p.border} !important; backdrop-filter: blur(16px); }
+      .recharts-tooltip-label { font-size: 12px; color: ${p.textFaint}; }
 
       @media (max-width: 900px) {
-        .sidebar-desktop { display: none !important; }
-        .menu-btn { display: block !important; }
         .welcome-grid { grid-template-columns: 1fr !important; }
-        .welcome-grid > div { border-left: none !important; padding-left: 0 !important; border-bottom: 1px solid ${p.border}; }
         .chart-grid { grid-template-columns: 1fr !important; }
         .plano-grid { grid-template-columns: 1fr !important; }
         .week-grid { grid-template-columns: repeat(2,1fr) !important; }
         .stat-grid { grid-template-columns: 1fr !important; }
         .curso-grid { grid-template-columns: 1fr !important; }
         .aluno-stats { display: none !important; }
-        .login-grid { grid-template-columns: 1fr !important; }
-        .login-arte { min-height: 44vh !important; }
-        .cab-data { display: none; }
       }
-      @media (min-width: 901px) { .sidebar-mobile, .sidebar-overlay { display: none; } }
       @media (max-width: 560px) {
         .week-grid { grid-template-columns: 1fr !important; }
         .resumo-grid { grid-template-columns: 1fr !important; }
-        .resumo-grid > div { border-left: none !important; padding-left: 0 !important; border-bottom: 1px solid ${p.border}; }
       }
     `}</style>
   );

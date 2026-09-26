@@ -17,7 +17,7 @@ if im.mode not in ("RGB", "RGBA"):
 im = im.convert("RGB")
 alt = round(im.height * larg / im.width)
 im = im.resize((larg, alt), Image.LANCZOS)
-im.save(os.path.join(dst, "arcadas.webp"), "WEBP", quality=84, method=6)
+im.save(os.path.join(dst, "arcadas.webp"), "WEBP", quality=90, method=6)
 
 # profundidade: EXR em metros -> disparidade normalizada (perto = branco)
 exr = [f for f in os.listdir(src) if f.startswith("profundidade_") and f.endswith(".exr")][0]
@@ -28,7 +28,7 @@ z = np.flipud(z)  # Blender guarda de baixo para cima
 z = np.where(z > 1e5, 1e5, z)
 perto, longe = 2.6, 70.0
 disp = (1.0 / np.maximum(z, perto) - 1.0 / longe) / (1.0 / perto - 1.0 / longe)
-disp = np.clip(disp, 0, 1)
+disp = np.clip(disp, 0, 1) ** 0.55  # espalha o meio do pátio
 d8 = Image.fromarray((disp * 255).astype(np.uint8), "L")
 dl = max(256, larg // 2)
 d8 = d8.resize((dl, round(h * dl / w)), Image.BILINEAR)
