@@ -56,6 +56,10 @@ Regras dos ids: slug estável (`fisica`, `mecanica-cinematica`). **Nunca renomei
 
 ### 2.2 Motor de Conteúdo
 
+**Decisão (v3, já no ambiente de teste):** a área de vídeos é uma lista de **playlists de cursos** criadas pelo moderador, cada uma com uma categoria (Introdução ao curso, Atualidades, Redação, Outros cursos) e vídeos ordenados. É uma simplificação de `modules` + `sections` + `contents` abaixo: `playlists/{id} { titulo, descricao, categoria, cor, para, publicada, videos: [...] }`. Se um dia precisar de subdivisões dentro de uma playlist, migra-se para o modelo completo.
+
+**Redação (v3):** o aluno envia o texto **fora da plataforma**. A plataforma só registra a devolutiva: `essayFeedback/{id} { alunoId, tema, vestibular, rubrica: "enem" | "livre", notas, comentario, pontosFortes, aMelhorar, arquivo, status: "rascunho" | "enviada", lida }`. As coleções `essays` e `essayPrompts` da seção 2.4 ficam para quando o envio vier para dentro da plataforma.
+
 **Decisão (v2):** Introdução ao curso, Atualidades e Redação são **abas de videoaulas personalizáveis**, com aulas anexadas pelo moderador. O código não conhece essas três abas: ele conhece um *tipo* de módulo (`videoaulas`). As três são registros em `modules/`, e você pode criar uma quarta (por exemplo, "Aulões de véspera") sem deploy.
 
 ```
