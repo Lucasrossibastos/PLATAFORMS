@@ -13,6 +13,7 @@ import {
   ArrowRight, Zap, PlusCircle, Save, Image as ImageIcon, Minus,
   PlayCircle, PenLine, Video, ArrowUp, ArrowDown, Link2, Send, Paperclip, ExternalLink, EyeOff
 } from "lucide-react";
+import HeroArcadas from "./HeroArcadas.jsx";
 
 /* ============================================================================
    PLATAFORMA PRÉ-VESTIBULAR — PROTÓTIPO VISUAL COMPLETO (MOCK)
@@ -33,32 +34,43 @@ import {
 const ThemeContext = createContext();
 const useTheme = () => useContext(ThemeContext);
 
-const ACCENT = "#f97316"; // laranja
-const ACCENT_SOFT = "#fb923c";
-const DANGER = "#ef4444";
-const GREEN = "#22c55e";
+const ACCENT = "#2A45A8"; // caneta azul: as marcas do aluno (feito, selecionado, progresso)
+
+const ACCENT_SOFT = "#4A63C4";
+
+const DANGER = "#C1342A"; // caneta vermelha: correção (erro, atraso, devolutiva)
+
+const GREEN = "#2E7D4F"; // acerto
+
+// Tipografia da identidade "Arcadas & Gabarito"
 
 function ThemeProvider({ children }) {
-  const [dark, setDark] = useState(true); // dark mode padrão
+  // segue o tema do sistema na primeira abertura; o botão alterna depois
+  const [dark, setDark] = useState(() => {
+    try { return window.matchMedia("(prefers-color-scheme: dark)").matches; } catch (e) { return false; }
+  });
   const value = useMemo(() => ({ dark, toggle: () => setDark((d) => !d) }), [dark]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
-// Paleta derivada do tema, usada em estilos inline e nos gráficos
+// Paleta derivada do tema. Valores em hex de 6 dígitos (o código concatena alfa: p.accent + "1f").
+
 function usePalette() {
   const { dark } = useTheme();
   return dark
     ? {
-        bg: "#0c0d10", surface: "#15171c", surface2: "#1c1f26", border: "#2a2e37",
-        text: "#e7e9ee", textSoft: "#9aa0ac", textFaint: "#5f6672",
-        accent: ACCENT, accentSoft: ACCENT_SOFT, danger: DANGER, green: GREEN,
-        chartGrid: "#262a33", inputBg: "#1c1f26", overlay: "rgba(0,0,0,.6)",
+        bg: "#0F1417", surface: "#161D21", surface2: "#1C252A", border: "#263036", borderStrong: "#3A464D",
+        text: "#E6E6E0", textSoft: "#AEB3B5", textFaint: "#8A9195",
+        accent: "#8EA2F2", accentSoft: "#B4C1F6", danger: "#F07F73", green: "#62BE8B", brass: "#D2A95E", rev: "#B39DDB",
+        ink: "#E6E6E0", inkFg: "#0F1417",
+        chartGrid: "#232C31", inputBg: "#12181B", overlay: "rgba(5,8,10,.66)",
       }
     : {
-        bg: "#f6f7f9", surface: "#ffffff", surface2: "#f0f1f4", border: "#e3e6ea",
-        text: "#1a1c20", textSoft: "#5b626d", textFaint: "#9aa0ac",
-        accent: "#ea580c", accentSoft: ACCENT, danger: "#dc2626", green: "#16a34a",
-        chartGrid: "#e8eaee", inputBg: "#f0f1f4", overlay: "rgba(15,18,24,.35)",
+        bg: "#F4F4F1", surface: "#FBFBF9", surface2: "#EDEDE8", border: "#DADBD5", borderStrong: "#B7B9B1",
+        text: "#1C2024", textSoft: "#4F565C", textFaint: "#6A7177",
+        accent: "#2A45A8", accentSoft: "#4A63C4", danger: "#C1342A", green: "#2E7D4F", brass: "#9C7430", rev: "#6A4C93",
+        ink: "#1C2024", inkFg: "#F4F4F1",
+        chartGrid: "#E3E4DE", inputBg: "#FFFFFF", overlay: "rgba(20,24,28,.42)",
       };
 }
 
@@ -77,7 +89,7 @@ const MOCK_USERS = [
 // Estrutura universal de matérias — 🔥 FIREBASE: /studyPlan (global)
 const AREAS = [
   {
-    id: "humanas", nome: "Humanas", cor: "#a855f7",
+    id: "humanas", nome: "Humanas", cor: "#B0601E",
     materias: [
       { id: "historia", nome: "História", topicos: [
         { id: "h1", nome: "Brasil Colônia", carga: 360, subs: ["Pré-colonial", "Capitanias hereditárias", "Ciclo da cana-de-açúcar", "Insurreição Pernambucana", "Ciclo do ouro", "Inconfidências"] },
@@ -95,7 +107,7 @@ const AREAS = [
     ],
   },
   {
-    id: "linguagens", nome: "Linguagens", cor: "#3b82f6",
+    id: "linguagens", nome: "Linguagens", cor: "#1F6FA0",
     materias: [
       { id: "portugues", nome: "Português", topicos: [
         { id: "p1", nome: "Sintaxe", carga: 300, subs: ["Período composto", "Regência", "Concordância"] },
@@ -112,7 +124,7 @@ const AREAS = [
     ],
   },
   {
-    id: "matematica", nome: "Matemática", cor: "#f97316",
+    id: "matematica", nome: "Matemática", cor: "#A8356B",
     materias: [
       { id: "algebra", nome: "Álgebra", topicos: [
         { id: "a1", nome: "Funções", carga: 420, subs: ["Função afim", "Função quadrática", "Exponencial", "Logaritmo"] },
@@ -129,7 +141,7 @@ const AREAS = [
     ],
   },
   {
-    id: "naturais", nome: "Naturais", cor: "#22c55e",
+    id: "naturais", nome: "Naturais", cor: "#3E8A3A",
     materias: [
       { id: "fisica", nome: "Física", topicos: [
         { id: "fi1", nome: "Mecânica", carga: 420, subs: ["Cinemática", "Dinâmica", "Energia"] },
@@ -161,13 +173,13 @@ const topicosDaMateria = (materiaId) => {
 // Vestibulares disponíveis — 🔥 FIREBASE: poderia virar coleção /vestibulares
 // Cada um tem uma cor de acento para a etiqueta visual minimalista.
 const VESTIBULARES = [
-  { id: "fuvest", nome: "FUVEST", cor: "#ef4444" },
-  { id: "unicamp", nome: "UNICAMP", cor: "#3b82f6" },
-  { id: "unesp", nome: "UNESP", cor: "#eab308" },
-  { id: "enem_med", nome: "ENEM MED", cor: "#ec4899" },
-  { id: "bahiana", nome: "BAHIANA", cor: "#14b8a6" },
-  { id: "fgv_insper", nome: "FGV/INSPER", cor: "#8b5cf6" },
-  { id: "enem", nome: "ENEM", cor: "#f97316" },
+  { id: "fuvest", nome: "FUVEST", cor: "#8C2F39" },
+  { id: "unicamp", nome: "UNICAMP", cor: "#1F6FA0" },
+  { id: "unesp", nome: "UNESP", cor: "#8A6A12" },
+  { id: "enem_med", nome: "ENEM MED", cor: "#A8356B" },
+  { id: "bahiana", nome: "BAHIANA", cor: "#2E7D74" },
+  { id: "fgv_insper", nome: "FGV/INSPER", cor: "#4B4E8C" },
+  { id: "enem", nome: "ENEM", cor: "#B0601E" },
 ];
 const vestInfo = (id) => VESTIBULARES.find((v) => v.id === id) || VESTIBULARES[0];
 
@@ -175,13 +187,13 @@ const vestInfo = (id) => VESTIBULARES.find((v) => v.id === id) || VESTIBULARES[0
 // Diferente da lista de vestibular-alvo: aqui o aluno indica de qual prova é o
 // simulado que está enviando.
 const MODELOS_PROVA = [
-  { id: "enem", nome: "ENEM", cor: "#f97316" },
-  { id: "fuvest", nome: "FUVEST", cor: "#ef4444" },
-  { id: "unicamp", nome: "UNICAMP", cor: "#3b82f6" },
-  { id: "unesp", nome: "UNESP", cor: "#eab308" },
-  { id: "bahiana", nome: "BAHIANA", cor: "#14b8a6" },
-  { id: "insper", nome: "INSPER", cor: "#8b5cf6" },
-  { id: "fgv", nome: "FGV", cor: "#a855f7" },
+  { id: "enem", nome: "ENEM", cor: "#B0601E" },
+  { id: "fuvest", nome: "FUVEST", cor: "#8C2F39" },
+  { id: "unicamp", nome: "UNICAMP", cor: "#1F6FA0" },
+  { id: "unesp", nome: "UNESP", cor: "#8A6A12" },
+  { id: "bahiana", nome: "BAHIANA", cor: "#2E7D74" },
+  { id: "insper", nome: "INSPER", cor: "#4B4E8C" },
+  { id: "fgv", nome: "FGV", cor: "#5E4B8C" },
 ];
 const modeloInfo = (id) => MODELOS_PROVA.find((v) => v.id === id) || VESTIBULARES.find((v) => v.id === id) || MODELOS_PROVA[0];
 
@@ -206,7 +218,7 @@ const modeloInfo = (id) => MODELOS_PROVA.find((v) => v.id === id) || VESTIBULARE
 const CICLO_TEMPLATES = {
   enem: {
     nome: "ENEM",
-    cor: "#f97316",
+    cor: "#B0601E",
     desc: "Distribuição equilibrada entre as 4 áreas + Redação.",
     alocacoes: [
       { materiaId: "matematica",  materiaNome: "Matemática",  minutosSemanais: 300, maxSessao: 90 },
@@ -222,7 +234,7 @@ const CICLO_TEMPLATES = {
   },
   enem_med: {
     nome: "ENEM Medicina",
-    cor: "#ec4899",
+    cor: "#A8356B",
     desc: "Foco em Ciências da Natureza. Biologia e Química com peso alto.",
     alocacoes: [
       { materiaId: "biologia",    materiaNome: "Biologia",    minutosSemanais: 480, maxSessao: 90 },
@@ -235,7 +247,7 @@ const CICLO_TEMPLATES = {
   },
   fuvest: {
     nome: "FUVEST",
-    cor: "#ef4444",
+    cor: "#8C2F39",
     desc: "Vestibular abrangente. Matemática e Ciências com peso alto.",
     alocacoes: [
       { materiaId: "matematica",  materiaNome: "Matemática",  minutosSemanais: 360, maxSessao: 90 },
@@ -251,7 +263,7 @@ const CICLO_TEMPLATES = {
   },
   unicamp: {
     nome: "UNICAMP",
-    cor: "#3b82f6",
+    cor: "#1F6FA0",
     desc: "Forte ênfase em Redação e Linguagens. Interdisciplinar.",
     alocacoes: [
       { materiaId: "redacao",     materiaNome: "Redação",     minutosSemanais: 360, maxSessao: 90 },
@@ -267,7 +279,7 @@ const CICLO_TEMPLATES = {
   },
   unesp: {
     nome: "UNESP",
-    cor: "#eab308",
+    cor: "#8A6A12",
     desc: "Equilibrado. Peso ligeiramente maior em Exatas e Humanas.",
     alocacoes: [
       { materiaId: "matematica",  materiaNome: "Matemática",  minutosSemanais: 300, maxSessao: 90 },
@@ -282,7 +294,7 @@ const CICLO_TEMPLATES = {
   },
   bahiana: {
     nome: "BAHIANA",
-    cor: "#14b8a6",
+    cor: "#2E7D74",
     desc: "Saúde: Biologia e Química com muito peso. Foco biomédico.",
     alocacoes: [
       { materiaId: "biologia",    materiaNome: "Biologia",    minutosSemanais: 480, maxSessao: 90 },
@@ -294,7 +306,7 @@ const CICLO_TEMPLATES = {
   },
   fgv_insper: {
     nome: "FGV/INSPER",
-    cor: "#8b5cf6",
+    cor: "#4B4E8C",
     desc: "Exatas e Inglês com peso alto. Foco em raciocínio lógico.",
     alocacoes: [
       { materiaId: "matematica",  materiaNome: "Matemática",  minutosSemanais: 480, maxSessao: 90 },
@@ -629,30 +641,31 @@ function recalcularPlanoInteligente(cicloConfig, disp, semanaAtual, atrasadas, r
 function Btn({ children, onClick, variant = "primary", size = "md", icon: Icon, style, disabled, title }) {
   const p = usePalette();
   const sizes = {
-    sm: { padding: "6px 12px", fontSize: 13, gap: 6 },
-    md: { padding: "10px 16px", fontSize: 14, gap: 8 },
-    lg: { padding: "13px 22px", fontSize: 15, gap: 8 },
+    sm: { padding: "6px 11px", fontSize: 13, gap: 6, icon: 14 },
+    md: { padding: "9px 15px", fontSize: 14, gap: 8, icon: 15 },
+    lg: { padding: "12px 20px", fontSize: 15, gap: 9, icon: 16 },
   }[size];
   const variants = {
-    primary: { background: p.accent, color: "#fff", border: "1px solid " + p.accent },
-    soft: { background: p.surface2, color: p.text, border: "1px solid " + p.border },
+    primary: { background: p.ink, color: p.inkFg, border: "1px solid " + p.ink },
+    soft: { background: "transparent", color: p.text, border: "1px solid " + p.borderStrong },
     ghost: { background: "transparent", color: p.textSoft, border: "1px solid transparent" },
-    danger: { background: "transparent", color: p.danger, border: "1px solid " + p.danger + "55" },
+    danger: { background: "transparent", color: p.danger, border: "1px solid " + p.danger + "66" },
     outline: { background: "transparent", color: p.accent, border: "1px solid " + p.accent + "88" },
   }[variant];
   return (
     <button
-      onClick={onClick} disabled={disabled} title={title}
+      type="button" onClick={onClick} disabled={disabled} title={title} className="btn-ui"
       style={{
         display: "inline-flex", alignItems: "center", justifyContent: "center",
-        gap: sizes.gap, padding: sizes.padding, fontSize: sizes.fontSize, fontWeight: 600,
-        borderRadius: 10, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.5 : 1,
-        transition: "all .18s ease", whiteSpace: "nowrap", ...variants, ...style,
+        gap: sizes.gap, padding: sizes.padding, fontSize: sizes.fontSize, fontWeight: 600, fontFamily: SANS,
+        borderRadius: 4, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.45 : 1,
+        transition: "transform .15s ease, background-color .15s, border-color .15s, color .15s", whiteSpace: "nowrap",
+        ...variants, ...style,
       }}
-      onMouseEnter={(e) => { if (!disabled) e.currentTarget.style.filter = "brightness(1.1)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.filter = "none"; }}
+      onMouseEnter={(e) => { if (!disabled) e.currentTarget.style.transform = "translateY(-1px)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; }}
     >
-      {Icon && <Icon size={sizes.fontSize + 3} />}
+      {Icon && <Icon size={sizes.icon} />}
       {children}
     </button>
   );
@@ -664,11 +677,11 @@ function Card({ children, style, pad = 20, onClick, hover }) {
     <div
       onClick={onClick}
       style={{
-        background: p.surface, border: "1px solid " + p.border, borderRadius: 16,
-        padding: pad, transition: "all .2s ease", cursor: onClick ? "pointer" : "default", ...style,
+        background: p.surface, border: "1px solid " + p.border, borderRadius: 6,
+        padding: pad, transition: "border-color .2s ease, transform .2s ease", cursor: onClick ? "pointer" : "default", ...style,
       }}
-      onMouseEnter={(e) => { if (hover) { e.currentTarget.style.borderColor = p.accent + "66"; e.currentTarget.style.transform = "translateY(-2px)"; } }}
-      onMouseLeave={(e) => { if (hover) { e.currentTarget.style.borderColor = p.border; e.currentTarget.style.transform = "none"; } }}
+      onMouseEnter={(e) => { if (hover || onClick) e.currentTarget.style.borderColor = p.borderStrong; }}
+      onMouseLeave={(e) => { if (hover || onClick) e.currentTarget.style.borderColor = (style && style.borderColor) || p.border; }}
     >
       {children}
     </div>
@@ -678,8 +691,8 @@ function Card({ children, style, pad = 20, onClick, hover }) {
 function Field({ label, children }) {
   const p = usePalette();
   return (
-    <label style={{ display: "block", marginBottom: 14 }}>
-      {label && <span style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: p.textSoft, marginBottom: 6, letterSpacing: ".02em" }}>{label}</span>}
+    <label style={{ display: "block", marginBottom: 16 }}>
+      {label && <span style={{ display: "block", fontFamily: MONO, fontSize: 10.5, fontWeight: 500, color: p.textFaint, marginBottom: 7, letterSpacing: ".1em", textTransform: "uppercase" }}>{label}</span>}
       {children}
     </label>
   );
@@ -691,12 +704,12 @@ function Input(props) {
     <input
       {...props}
       style={{
-        width: "100%", boxSizing: "border-box", padding: "11px 13px", borderRadius: 10,
-        background: p.inputBg, border: "1px solid " + p.border, color: p.text,
-        fontSize: 14, outline: "none", transition: "border .15s", ...props.style,
+        width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 4,
+        background: p.inputBg, border: "1px solid " + p.border, color: p.text, fontFamily: SANS,
+        fontSize: 14.5, outline: "none", transition: "border-color .15s, box-shadow .15s", ...props.style,
       }}
-      onFocus={(e) => (e.target.style.borderColor = p.accent)}
-      onBlur={(e) => (e.target.style.borderColor = p.border)}
+      onFocus={(e) => { e.target.style.borderColor = p.accent; e.target.style.boxShadow = "0 0 0 3px " + p.accent + "22"; }}
+      onBlur={(e) => { e.target.style.borderColor = p.border; e.target.style.boxShadow = "none"; }}
     />
   );
 }
@@ -707,9 +720,9 @@ function Select({ children, ...props }) {
     <select
       {...props}
       style={{
-        width: "100%", boxSizing: "border-box", padding: "11px 13px", borderRadius: 10,
-        background: p.inputBg, border: "1px solid " + p.border, color: p.text,
-        fontSize: 14, outline: "none", cursor: "pointer", ...props.style,
+        width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 4,
+        background: p.inputBg, border: "1px solid " + p.border, color: p.text, fontFamily: SANS,
+        fontSize: 14.5, outline: "none", cursor: "pointer", ...props.style,
       }}
     >
       {children}
@@ -723,24 +736,26 @@ function Textarea(props) {
     <textarea
       {...props}
       style={{
-        width: "100%", boxSizing: "border-box", padding: "11px 13px", borderRadius: 10,
+        width: "100%", boxSizing: "border-box", padding: "11px 12px", borderRadius: 4,
         background: p.inputBg, border: "1px solid " + p.border, color: p.text,
-        fontSize: 14, outline: "none", resize: "vertical", fontFamily: "inherit", lineHeight: 1.6, ...props.style,
+        fontSize: 14.5, outline: "none", resize: "vertical", fontFamily: SANS, lineHeight: 1.6, ...props.style,
       }}
-      onFocus={(e) => (e.target.style.borderColor = p.accent)}
-      onBlur={(e) => (e.target.style.borderColor = p.border)}
+      onFocus={(e) => { e.target.style.borderColor = p.accent; e.target.style.boxShadow = "0 0 0 3px " + p.accent + "22"; }}
+      onBlur={(e) => { e.target.style.borderColor = p.border; e.target.style.boxShadow = "none"; }}
     />
   );
 }
+
+// Etiqueta em mono, caixa-alta. "soft" = contorno; sem soft = tinta cheia.
 
 function Badge({ children, color, soft }) {
   const p = usePalette();
   const c = color || p.accent;
   return (
     <span style={{
-      display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px", borderRadius: 999,
-      fontSize: 11.5, fontWeight: 700, letterSpacing: ".02em",
-      background: soft ? c + "1f" : c, color: soft ? c : "#fff", border: soft ? "1px solid " + c + "33" : "none",
+      display: "inline-flex", alignItems: "center", gap: 5, padding: "2px 7px", borderRadius: 3,
+      fontFamily: MONO, fontSize: 10.5, fontWeight: 500, letterSpacing: ".06em", textTransform: "uppercase", lineHeight: 1.6,
+      background: soft ? c + "12" : c, color: soft ? c : p.bg, border: "1px solid " + (soft ? c + "44" : c),
     }}>{children}</span>
   );
 }
@@ -754,21 +769,21 @@ function Modal({ open, onClose, title, children, width = 480 }) {
       style={{
         position: "fixed", inset: 0, background: p.overlay, zIndex: 100,
         display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
-        animation: "fadeIn .15s ease", backdropFilter: "blur(3px)",
+        animation: "fadeIn .18s ease", backdropFilter: "blur(2px)",
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: p.surface, border: "1px solid " + p.border, borderRadius: 18,
+          background: p.surface, border: "1px solid " + p.border, borderRadius: 6,
           width: "100%", maxWidth: width, maxHeight: "88vh", overflowY: "auto",
-          boxShadow: "0 24px 60px rgba(0,0,0,.45)", animation: "popIn .2s cubic-bezier(.16,1,.3,1)",
+          boxShadow: "0 30px 80px rgba(10,14,18,.28)", animation: "popIn .22s cubic-bezier(.16,1,.3,1)",
         }}
       >
         {title && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 22px", borderBottom: "1px solid " + p.border }}>
-            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: p.text }}>{title}</h3>
-            <button onClick={onClose} style={{ background: "none", border: "none", color: p.textSoft, cursor: "pointer", padding: 4 }}><X size={20} /></button>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 22px 16px", borderBottom: "1px solid " + p.border }}>
+            <h3 style={{ margin: 0, fontFamily: SERIF, fontSize: 23, fontWeight: 500, color: p.text, letterSpacing: "-.01em" }}>{title}</h3>
+            <button onClick={onClose} aria-label="Fechar" style={{ background: "none", border: "none", color: p.textSoft, cursor: "pointer", padding: 4 }}><X size={19} /></button>
           </div>
         )}
         <div style={{ padding: 22 }}>{children}</div>
@@ -777,20 +792,15 @@ function Modal({ open, onClose, title, children, width = 480 }) {
   );
 }
 
+// Título de página editorial: serifa grande, subtítulo em sans, fio embaixo.
+
 function SectionTitle({ icon: Icon, title, subtitle, right }) {
   const p = usePalette();
   return (
-    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 22, gap: 16, flexWrap: "wrap" }}>
-      <div style={{ display: "flex", gap: 13 }}>
-        {Icon && (
-          <div style={{ width: 42, height: 42, borderRadius: 12, background: p.accent + "1f", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <Icon size={21} color={p.accent} />
-          </div>
-        )}
-        <div>
-          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: p.text, letterSpacing: "-.02em" }}>{title}</h2>
-          {subtitle && <p style={{ margin: "3px 0 0", fontSize: 13.5, color: p.textSoft }}>{subtitle}</p>}
-        </div>
+    <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 28, paddingBottom: 18, gap: 18, flexWrap: "wrap", borderBottom: "1px solid " + p.border }}>
+      <div style={{ minWidth: 0 }}>
+        <h2 style={{ margin: 0, fontFamily: SERIF, fontSize: "clamp(30px, 3.4vw, 40px)", fontWeight: 500, color: p.text, letterSpacing: "-.02em", lineHeight: 1.05, textWrap: "balance" }}>{title}</h2>
+        {subtitle && <p style={{ margin: "8px 0 0", fontSize: 14.5, color: p.textSoft, textTransform: "none" }}>{subtitle}</p>}
       </div>
       {right}
     </div>
@@ -800,19 +810,19 @@ function SectionTitle({ icon: Icon, title, subtitle, right }) {
 function Empty({ icon: Icon, title, sub }) {
   const p = usePalette();
   return (
-    <div style={{ textAlign: "center", padding: "50px 20px", color: p.textFaint }}>
-      {Icon && <Icon size={40} style={{ marginBottom: 12, opacity: .5 }} />}
-      <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: p.textSoft }}>{title}</p>
-      {sub && <p style={{ margin: "5px 0 0", fontSize: 13 }}>{sub}</p>}
+    <div style={{ textAlign: "center", padding: "48px 20px", color: p.textFaint }}>
+      {Icon && <Icon size={28} style={{ marginBottom: 12, opacity: .55 }} />}
+      <p style={{ margin: 0, fontFamily: SERIF, fontSize: 20, color: p.text }}>{title}</p>
+      {sub && <p style={{ margin: "6px 0 0", fontSize: 13.5, color: p.textSoft }}>{sub}</p>}
     </div>
   );
 }
 
-function ProgressBar({ value, color, height = 8 }) {
+function ProgressBar({ value, color, height = 4 }) {
   const p = usePalette();
   return (
-    <div style={{ width: "100%", height, background: p.surface2, borderRadius: 999, overflow: "hidden" }}>
-      <div style={{ width: `${Math.min(100, value)}%`, height: "100%", background: color || p.accent, borderRadius: 999, transition: "width .5s cubic-bezier(.16,1,.3,1)" }} />
+    <div style={{ width: "100%", height, background: p.border, borderRadius: 2, overflow: "hidden" }}>
+      <div style={{ width: `${Math.max(0, Math.min(100, value || 0))}%`, height: "100%", background: color || p.accent, borderRadius: 2, transition: "width .6s cubic-bezier(.16,1,.3,1)" }} />
     </div>
   );
 }
@@ -841,11 +851,11 @@ function MateriaTopicoSelect({ value, onChange, labelMateria = "Matéria", label
       </Field>
       {/* subtópicos como guia de estudos (somente leitura) */}
       {topicoSel && (
-        <div style={{ margin: "-6px 0 14px", padding: "10px 12px", background: p.surface2, borderRadius: 10, border: "1px dashed " + p.border }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, color: p.textFaint, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 7 }}>Guia de estudos — subtópicos</div>
+        <div style={{ margin: "-6px 0 14px", padding: "10px 12px", background: p.surface2, borderRadius: 5, border: "1px dashed " + p.border }}>
+          <div style={{ fontSize: 10.5, fontWeight: 500, fontFamily: MONO, color: p.textFaint, textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 7 }}>Guia de estudos — subtópicos</div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {topicoSel.subs.map((s) => (
-              <span key={s} style={{ fontSize: 11.5, padding: "3px 9px", borderRadius: 7, background: p.surface, border: "1px solid " + p.border, color: p.textSoft }}>{s}</span>
+              <span key={s} style={{ fontSize: 11.5, padding: "3px 9px", borderRadius: 4, background: p.surface, border: "1px solid " + p.border, color: p.textSoft }}>{s}</span>
             ))}
           </div>
         </div>
@@ -857,19 +867,20 @@ function MateriaTopicoSelect({ value, onChange, labelMateria = "Matéria", label
 /* Etiqueta visual de vestibular/modelo — minimalista. Resolve tanto a lista
    de vestibular-alvo quanto a de modelos de prova. */
 function VestBadge({ id, size = "md" }) {
+  const p = usePalette();
   const v = modeloInfo(id);
-  const pad = size === "sm" ? "2px 8px" : "3px 10px";
-  const fs = size === "sm" ? 10.5 : 11.5;
   return (
     <span style={{
-      display: "inline-flex", alignItems: "center", gap: 5, padding: pad, borderRadius: 7,
-      fontSize: fs, fontWeight: 700, letterSpacing: ".02em",
-      background: v.cor + "1c", color: v.cor, border: "1px solid " + v.cor + "44",
+      display: "inline-flex", alignItems: "center", gap: 6, padding: size === "sm" ? "2px 7px" : "3px 9px", borderRadius: 3,
+      fontFamily: MONO, fontSize: size === "sm" ? 10 : 11, fontWeight: 500, letterSpacing: ".08em", color: p.text,
+      border: "1px solid " + p.borderStrong, background: "transparent",
     }}>
-      <span style={{ width: 6, height: 6, borderRadius: 99, background: v.cor }} />{v.nome}
+      <span style={{ width: 7, height: 7, borderRadius: 1, background: v.cor }} />{v.nome}
     </span>
   );
 }
+
+// Rótulo pequeno em mono, caixa-alta
 
 /* ----------------------------------------------------------------------------
    TELA DE LOGIN
@@ -886,57 +897,51 @@ function LoginScreen({ onLogin }) {
   const entrar = () => {
     // 🔥 FIREBASE: trocar por chamada real ao Authentication.
     const u = MOCK_USERS.find((x) => x.email === email.trim() && x.password === senha);
-    if (!u) { setErro("E-mail ou senha inválidos."); return; }
+    if (!u) { setErro("E-mail ou senha não conferem. Confira os dados e tente de novo."); return; }
     onLogin(u);
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: p.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, position: "relative", overflow: "hidden" }}>
-      {/* atmosfera de fundo */}
-      <div style={{ position: "absolute", top: "-20%", right: "-10%", width: 500, height: 500, background: `radial-gradient(circle, ${ACCENT}22, transparent 70%)`, filter: "blur(40px)" }} />
-      <div style={{ position: "absolute", bottom: "-25%", left: "-15%", width: 600, height: 600, background: `radial-gradient(circle, ${ACCENT}14, transparent 70%)`, filter: "blur(50px)" }} />
+    <div className="login-grid" style={{ minHeight: "100vh", background: p.bg, display: "grid", gridTemplateColumns: "minmax(0, 1.35fr) minmax(360px, 1fr)" }}>
+      <div className="login-arte" style={{ position: "relative", minHeight: 320, overflow: "hidden", background: "#0B1116" }}>
+        <HeroArcadas style={{ position: "absolute", inset: 0 }} foco={[0.52, 0.5]} />
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(7,10,13,.82), rgba(7,10,13,.2) 45%, rgba(7,10,13,.35))", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", left: 0, right: 0, top: 0, padding: "28px clamp(22px, 4vw, 48px)" }}><Wordmark claro /></div>
+        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "clamp(22px, 4vw, 48px)", display: "grid", gap: 12 }}>
+          <Eyebrow color="#B9B3A5">Plataforma de estudos para vestibular</Eyebrow>
+          <h1 style={{ margin: 0, fontFamily: SERIF, fontWeight: 400, fontSize: "clamp(38px, 5.2vw, 72px)", lineHeight: .98, letterSpacing: "-.025em", color: "#F2EEE5", maxWidth: "12ch", textWrap: "balance" }}>
+            Estude como quem já está <em style={{ color: "#E4B868" }}>lá dentro.</em>
+          </h1>
+        </div>
+      </div>
 
-      <button onClick={toggle} style={{ position: "absolute", top: 22, right: 22, background: p.surface, border: "1px solid " + p.border, borderRadius: 10, padding: 10, cursor: "pointer", color: p.text, zIndex: 2 }}>
-        {dark ? <Sun size={18} /> : <Moon size={18} />}
-      </button>
+      <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", padding: "48px clamp(22px, 5vw, 64px)", position: "relative" }}>
+        <button onClick={toggle} aria-label="Alternar tema" style={{ position: "absolute", top: 22, right: 22, background: "none", border: "1px solid " + p.border, borderRadius: 4, padding: 8, cursor: "pointer", color: p.textSoft, display: "flex" }}>
+          {dark ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
+        <div style={{ width: "100%", maxWidth: 380, margin: "0 auto" }}>
+          <Eyebrow>Entrar</Eyebrow>
+          <h2 style={{ fontFamily: SERIF, fontSize: 38, fontWeight: 500, color: p.text, margin: "10px 0 6px", letterSpacing: "-.02em", lineHeight: 1.05 }}>Bem-vindo de volta.</h2>
+          <p style={{ fontSize: 14.5, color: p.textSoft, margin: "0 0 30px" }}>Suas metas de hoje estão esperando.</p>
 
-      <Card style={{ width: "100%", maxWidth: 420, position: "relative", zIndex: 2, boxShadow: "0 20px 60px rgba(0,0,0,.3)" }} pad={36}>
-        <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 6 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 13, background: `linear-gradient(135deg, ${ACCENT}, ${ACCENT_SOFT})`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <GraduationCap size={24} color="#fff" />
-          </div>
-          <div>
-            <div style={{ fontSize: 19, fontWeight: 800, color: p.text, letterSpacing: "-.02em" }}>Aprova<span style={{ color: p.accent }}>+</span></div>
-            <div style={{ fontSize: 12, color: p.textSoft }}>Plataforma de estudos</div>
+          <Field label="E-mail">
+            <Input id="login-email" type="email" placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && entrar()} />
+          </Field>
+          <Field label="Senha">
+            <Input id="login-senha" type="password" placeholder="••••••••" value={senha} onChange={(e) => setSenha(e.target.value)} onKeyDown={(e) => e.key === "Enter" && entrar()} />
+          </Field>
+
+          {erro && <div style={{ borderLeft: "2px solid " + p.danger, color: p.danger, padding: "4px 0 4px 10px", fontSize: 13.5, marginBottom: 16 }}>{erro}</div>}
+
+          <Btn onClick={entrar} size="lg" icon={ArrowRight} style={{ width: "100%", marginTop: 4, flexDirection: "row-reverse" }}>Entrar</Btn>
+
+          <div style={{ marginTop: 28, paddingTop: 16, borderTop: "1px solid " + p.border, fontSize: 13, color: p.textSoft, lineHeight: 1.8 }}>
+            <Eyebrow style={{ marginBottom: 6 }}>Contas de teste</Eyebrow>
+            Moderador: <code style={{ fontFamily: MONO, fontSize: 12.5, color: p.text }}>moderador@curso.com</code> / 123<br />
+            Aluno: <code style={{ fontFamily: MONO, fontSize: 12.5, color: p.text }}>aluno@curso.com</code> / 123
           </div>
         </div>
-
-        <h1 style={{ fontSize: 24, fontWeight: 800, color: p.text, margin: "26px 0 4px", letterSpacing: "-.02em" }}>Bem-vindo de volta</h1>
-        <p style={{ fontSize: 14, color: p.textSoft, margin: "0 0 26px" }}>Entre para continuar seus estudos.</p>
-
-        <Field label="E-mail">
-          <div style={{ position: "relative" }}>
-            <Mail size={17} style={{ position: "absolute", left: 12, top: 13, color: p.textFaint }} />
-            <Input type="email" placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} style={{ paddingLeft: 38 }} onKeyDown={(e) => e.key === "Enter" && entrar()} />
-          </div>
-        </Field>
-        <Field label="Senha">
-          <div style={{ position: "relative" }}>
-            <Lock size={17} style={{ position: "absolute", left: 12, top: 13, color: p.textFaint }} />
-            <Input type="password" placeholder="••••••••" value={senha} onChange={(e) => setSenha(e.target.value)} style={{ paddingLeft: 38 }} onKeyDown={(e) => e.key === "Enter" && entrar()} />
-          </div>
-        </Field>
-
-        {erro && <div style={{ background: p.danger + "1a", color: p.danger, padding: "9px 12px", borderRadius: 9, fontSize: 13, marginBottom: 14, fontWeight: 600 }}>{erro}</div>}
-
-        <Btn onClick={entrar} size="lg" style={{ width: "100%", marginTop: 4 }}>Entrar</Btn>
-
-        <div style={{ marginTop: 22, padding: 13, background: p.surface2, borderRadius: 10, fontSize: 12.5, color: p.textSoft, lineHeight: 1.7 }}>
-          <strong style={{ color: p.text }}>Contas de teste:</strong><br />
-          Moderador → <code style={{ color: p.accent }}>moderador@curso.com</code> / 123<br />
-          Aluno → <code style={{ color: p.accent }}>aluno@curso.com</code> / 123
-        </div>
-      </Card>
+      </div>
     </div>
   );
 }
@@ -950,122 +955,110 @@ function BlocoView({ bloco }) {
   const p = usePalette();
   switch (bloco.tipo) {
     case "titulo":
-      return <h2 style={{ fontSize: 22, fontWeight: 800, color: p.text, letterSpacing: "-.02em", margin: "10px 0 2px" }}>{bloco.texto}</h2>;
+      return <h2 style={{ fontFamily: SERIF, fontSize: "clamp(30px, 3.6vw, 44px)", fontWeight: 500, color: p.text, letterSpacing: "-.02em", lineHeight: 1.08, margin: "28px 0 0", textWrap: "balance" }}>{bloco.texto}</h2>;
     case "texto":
-      return <p style={{ fontSize: 15, color: p.textSoft, lineHeight: 1.8, margin: "0 0 4px", whiteSpace: "pre-wrap" }}>{bloco.texto}</p>;
+      return <p style={{ fontSize: 17, color: p.textSoft, lineHeight: 1.75, margin: 0, whiteSpace: "pre-wrap", maxWidth: "62ch" }}>{bloco.texto}</p>;
     case "foto":
       return bloco.url ? (
-        <img src={bloco.url} alt={bloco.legenda || ""} style={{ width: "100%", borderRadius: 16, border: "1px solid " + p.border, display: "block" }} />
+        <figure style={{ margin: 0 }}>
+          <img src={bloco.url} alt={bloco.legenda || ""} style={{ width: "100%", borderRadius: 4, display: "block" }} />
+          {bloco.legenda && <figcaption style={{ fontFamily: MONO, fontSize: 11.5, color: p.textFaint, marginTop: 8 }}>{bloco.legenda}</figcaption>}
+        </figure>
       ) : (
-        <div style={{ width: "100%", height: 200, borderRadius: 16, background: p.surface2, border: "1px dashed " + p.border, display: "flex", alignItems: "center", justifyContent: "center", color: p.textFaint }}>
-          <ImageIcon size={32} style={{ opacity: .5 }} />
+        <div style={{ width: "100%", height: 200, borderRadius: 4, background: p.surface2, border: "1px dashed " + p.borderStrong, display: "flex", alignItems: "center", justifyContent: "center", color: p.textFaint }}>
+          <ImageIcon size={28} style={{ opacity: .5 }} />
         </div>
       );
     case "destaque":
       return (
-        <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(1, (bloco.itens || []).length)},1fr)`, gap: 14 }} className="welcome-grid">
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(1, (bloco.itens || []).length)}, minmax(0, 1fr))`, borderTop: "1px solid " + p.borderStrong }} className="welcome-grid">
           {(bloco.itens || []).map((d, i) => (
-            <Card key={i} pad={20} style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 26, fontWeight: 900, color: p.accent }}>{d.valor}</div>
-              <div style={{ fontSize: 12.5, color: p.textSoft, marginTop: 4 }}>{d.label}</div>
-            </Card>
+            <div key={i} style={{ padding: "18px 18px 6px " + (i ? "18px" : "0"), borderLeft: i ? "1px solid " + p.border : "none" }}>
+              <div style={{ fontFamily: SERIF, fontSize: "clamp(40px, 5vw, 60px)", fontWeight: 400, color: p.text, letterSpacing: "-.02em", lineHeight: 1 }}>{d.valor}</div>
+              <div style={{ fontFamily: MONO, fontSize: 11, letterSpacing: ".1em", textTransform: "uppercase", color: p.textFaint, marginTop: 8 }}>{d.label}</div>
+            </div>
           ))}
         </div>
       );
     case "divisor":
-      return <div style={{ height: 1, background: p.border, margin: "8px 0" }} />;
+      return <div style={{ height: 1, background: p.border, margin: "12px 0" }} />;
     default:
       return null;
   }
 }
 
+// Conteúdo editorial abaixo do hero (usado na tela de boas-vindas e na página "Boas-Vindas")
+
 function WelcomePage({ welcome, onEnter, isStandalone, alunoStats }) {
   const p = usePalette();
   const hero = welcome.hero || {};
-  const cor = hero.cor || ACCENT;
   return (
-    <div style={{ maxWidth: 920, margin: "0 auto", animation: "fadeIn .4s ease" }}>
-      {/* hero */}
-      <div style={{ position: "relative", borderRadius: 22, overflow: "hidden", marginBottom: 26, border: "1px solid " + p.border }}>
-        <div style={{ position: "absolute", inset: 0, background: `linear-gradient(135deg, ${cor}cc, ${cor}77)` }} />
-        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 80% 20%, rgba(255,255,255,.18), transparent 50%)" }} />
-        <div style={{ position: "relative", padding: "46px 40px", display: "flex", gap: 30, alignItems: "center", flexWrap: "wrap" }}>
-          <div style={{ width: 120, height: 120, borderRadius: 24, background: "rgba(255,255,255,.18)", border: "3px solid rgba(255,255,255,.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
-            {/* 🔥 FIREBASE Storage: foto de perfil do instrutor */}
-            {hero.foto ? <img src={hero.foto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <User size={52} color="#fff" />}
-          </div>
-          <div style={{ flex: 1, minWidth: 240 }}>
-            <Badge color="#fff" soft><Sparkles size={12} /> Instrutor</Badge>
-            <h1 style={{ fontSize: 32, fontWeight: 900, color: "#fff", margin: "10px 0 6px", letterSpacing: "-.03em" }}>{hero.nome}</h1>
-            <p style={{ fontSize: 15.5, color: "rgba(255,255,255,.92)", margin: 0, lineHeight: 1.6 }}>{hero.subtitulo}</p>
-          </div>
+    <div style={{ maxWidth: 980, margin: "0 auto", animation: "fadeIn .4s ease" }}>
+      <div style={{ position: "relative", borderRadius: 6, overflow: "hidden", marginBottom: 56, height: "clamp(360px, 52vw, 520px)", background: "#0B1116" }}>
+        <HeroArcadas style={{ position: "absolute", inset: 0 }} />
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(7,10,13,.85), rgba(7,10,13,.1) 60%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "clamp(22px, 4vw, 40px)", display: "grid", gap: 10 }}>
+          <Eyebrow color="#B9B3A5">Boas-vindas</Eyebrow>
+          <h1 style={{ margin: 0, fontFamily: SERIF, fontWeight: 400, fontSize: "clamp(36px, 5.4vw, 64px)", color: "#F2EEE5", letterSpacing: "-.025em", lineHeight: 1 }}>{hero.nome}</h1>
+          {hero.subtitulo && <p style={{ margin: 0, fontSize: 15.5, color: "#CFC9BC", maxWidth: "52ch" }}>{hero.subtitulo}</p>}
         </div>
       </div>
-
-      {/* painel-resumo do aluno (Lote 3) — só aparece quando o aluno está vendo a página, no fluxo de gate */}
-      {alunoStats && <WelcomePainelResumo stats={alunoStats} />}
-
-      {/* blocos */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 28 }}>
-        {(welcome.blocos || []).map((b) => <BlocoView key={b.id} bloco={b} />)}
-      </div>
-
+      <WelcomeConteudo welcome={welcome} alunoStats={alunoStats} />
       {!isStandalone && (
-        <div style={{ textAlign: "center" }}>
-          <Btn onClick={onEnter} size="lg" icon={ArrowRight} style={{ minWidth: 240 }}>Acessar a plataforma</Btn>
+        <div style={{ marginTop: 48 }}>
+          <Btn onClick={onEnter} size="lg" icon={ArrowRight}>Acessar a plataforma</Btn>
         </div>
       )}
     </div>
   );
 }
 
+/* Painel-resumo do aluno na tela de boas-vindas: três números editoriais e um destaque. */
+
 /* Painel-resumo discreto do aluno na tela de boas-vindas — minimalismo intencional:
    3 indicadores chave em linha + um destaque (próxima conquista ou alerta). */
 function WelcomePainelResumo({ stats }) {
   const p = usePalette();
   const { streak = 0, progresso = 0, aderencia = 0, proximaConquista, materiaRisco } = stats;
+  const itens = [
+    { v: streak, u: streak === 1 ? "dia" : "dias", l: "Sequência" },
+    { v: progresso, u: "%", l: "Do programa" },
+    { v: aderencia, u: "%", l: "Aderência no mês" },
+  ];
   return (
-    <div style={{ marginBottom: 26 }}>
-      {/* 3 indicadores essenciais em uma linha */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 14 }} className="stat-grid">
-        <div style={{ padding: 16, borderRadius: 14, background: p.surface, border: "1px solid " + p.border, textAlign: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 4 }}>
-            <Flame size={14} color={p.accent} />
-            <span style={{ fontSize: 10.5, fontWeight: 700, color: p.textFaint, textTransform: "uppercase", letterSpacing: ".06em" }}>Sequência</span>
+    <div>
+      <Eyebrow style={{ marginBottom: 14 }}>Seu momento</Eyebrow>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", borderTop: "1px solid " + p.borderStrong }} className="resumo-grid">
+        {itens.map((x, i) => (
+          <div key={x.l} style={{ padding: "18px 18px 4px " + (i ? "18px" : "0"), borderLeft: i ? "1px solid " + p.border : "none" }}>
+            <div style={{ fontFamily: SERIF, fontSize: "clamp(44px, 6vw, 72px)", fontWeight: 400, color: p.text, lineHeight: 1, letterSpacing: "-.03em", fontVariantNumeric: "tabular-nums" }}>
+              {x.v}<span style={{ fontSize: ".4em", color: p.textFaint, marginLeft: 4, letterSpacing: 0 }}>{x.u}</span>
+            </div>
+            <div style={{ fontFamily: MONO, fontSize: 11, letterSpacing: ".1em", textTransform: "uppercase", color: p.textFaint, marginTop: 10 }}>{x.l}</div>
           </div>
-          <div style={{ fontSize: 26, fontWeight: 900, color: p.text, lineHeight: 1 }}>{streak}<span style={{ fontSize: 13, fontWeight: 600, color: p.textSoft, marginLeft: 4 }}>dias</span></div>
-        </div>
-        <div style={{ padding: 16, borderRadius: 14, background: p.surface, border: "1px solid " + p.border, textAlign: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 4 }}>
-            <Target size={14} color={p.accent} />
-            <span style={{ fontSize: 10.5, fontWeight: 700, color: p.textFaint, textTransform: "uppercase", letterSpacing: ".06em" }}>Progresso</span>
-          </div>
-          <div style={{ fontSize: 26, fontWeight: 900, color: p.text, lineHeight: 1 }}>{progresso}<span style={{ fontSize: 14, color: p.textSoft }}>%</span></div>
-        </div>
-        <div style={{ padding: 16, borderRadius: 14, background: p.surface, border: "1px solid " + p.border, textAlign: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 4 }}>
-            <CalendarDays size={14} color={p.green} />
-            <span style={{ fontSize: 10.5, fontWeight: 700, color: p.textFaint, textTransform: "uppercase", letterSpacing: ".06em" }}>Aderência</span>
-          </div>
-          <div style={{ fontSize: 26, fontWeight: 900, color: p.text, lineHeight: 1 }}>{aderencia}<span style={{ fontSize: 14, color: p.textSoft }}>%</span></div>
-        </div>
+        ))}
       </div>
-
-      {/* um destaque discreto — ou próxima conquista, ou alerta — não os dois ao mesmo tempo */}
       {materiaRisco ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 11, background: p.danger + "0d", border: "1px solid " + p.danger + "33", fontSize: 12.5, color: p.textSoft }}>
-          <AlertTriangle size={14} color={p.danger} style={{ flexShrink: 0 }} />
-          <span>Atenção em <strong style={{ color: p.text }}>{materiaRisco}</strong> — está atrasado em relação ao cronograma.</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 22, paddingLeft: 12, borderLeft: "2px solid " + p.danger, fontSize: 14.5, color: p.textSoft }}>
+          <span>Atenção em <strong style={{ color: p.text }}>{materiaRisco}</strong>: está atrás do cronograma.</span>
         </div>
       ) : proximaConquista ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 11, background: p.surface, border: "1px solid " + p.border, fontSize: 12.5, color: p.textSoft }}>
-          <span style={{ fontSize: 16 }}>{proximaConquista.icon}</span>
-          <span>A próxima conquista é <strong style={{ color: p.text }}>{proximaConquista.titulo}</strong> — {proximaConquista.desc.toLowerCase()}.</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 26 }}>
+          <Selo semente={proximaConquista.id} size={56} />
+          <div>
+            <Eyebrow>Próximo selo</Eyebrow>
+            <div style={{ fontFamily: SERIF, fontSize: 21, color: p.text, marginTop: 2 }}>{proximaConquista.titulo}</div>
+            <div style={{ fontSize: 13.5, color: p.textSoft }}>{proximaConquista.desc}</div>
+          </div>
         </div>
       ) : null}
     </div>
   );
 }
+
+/* ----------------------------------------------------------------------------
+   LAYOUT / SHELL — menu lateral de papel + cabeçalho discreto
+---------------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------------
    LAYOUT / SHELL — sidebar fina + header
@@ -1074,103 +1067,103 @@ function Shell({ user, menu, active, setActive, onLogout, children }) {
   const p = usePalette();
   const { dark, toggle } = useTheme();
   const [open, setOpen] = useState(false); // mobile
+  const mainRef = useRef(null);
 
   const SidebarInner = (
     <>
-      <div style={{ padding: "20px 18px 14px", display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ width: 36, height: 36, borderRadius: 11, background: `linear-gradient(135deg, ${ACCENT}, ${ACCENT_SOFT})`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <GraduationCap size={20} color="#fff" />
-        </div>
-        <div>
-          <div style={{ fontSize: 16, fontWeight: 800, color: p.text, letterSpacing: "-.02em" }}>Aprova<span style={{ color: p.accent }}>+</span></div>
-          <div style={{ fontSize: 10.5, color: p.textFaint, textTransform: "uppercase", letterSpacing: ".08em" }}>{user.role}</div>
-        </div>
+      <div style={{ padding: "26px 22px 22px" }}>
+        <Wordmark tamanho={26} />
+        <Eyebrow style={{ marginTop: 8 }}>{user.role === "moderador" ? "Painel do moderador" : "Área do aluno"}</Eyebrow>
       </div>
 
-      <nav style={{ flex: 1, padding: "8px 10px", overflowY: "auto" }}>
+      <nav style={{ flex: 1, padding: "6px 12px", overflowY: "auto" }}>
         {menu.map((item) => {
           const on = active === item.k;
           return (
             <button
               key={item.k}
               onClick={() => { setActive(item.k); setOpen(false); }}
+              aria-current={on ? "page" : undefined}
               style={{
-                width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "10px 12px",
-                marginBottom: 3, borderRadius: 10, border: "none", cursor: "pointer", textAlign: "left",
-                background: on ? p.accent + "1f" : "transparent",
-                color: on ? p.accent : p.textSoft, fontWeight: on ? 700 : 500, fontSize: 13.5,
-                transition: "all .15s", position: "relative",
+                width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "8px 10px",
+                marginBottom: 1, borderRadius: 4, border: "none", cursor: "pointer", textAlign: "left",
+                background: on ? p.surface2 : "transparent", fontFamily: SANS,
+                color: on ? p.text : p.textSoft, fontWeight: on ? 600 : 500, fontSize: 14,
+                transition: "color .15s, background-color .15s", position: "relative",
               }}
-              onMouseEnter={(e) => { if (!on) { e.currentTarget.style.background = p.surface2; e.currentTarget.style.color = p.text; } }}
-              onMouseLeave={(e) => { if (!on) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = p.textSoft; } }}
+              onMouseEnter={(e) => { if (!on) e.currentTarget.style.color = p.text; }}
+              onMouseLeave={(e) => { if (!on) e.currentTarget.style.color = p.textSoft; }}
             >
-              {on && <div style={{ position: "absolute", left: 0, top: 8, bottom: 8, width: 3, borderRadius: 99, background: p.accent }} />}
-              <item.icon size={18} style={{ flexShrink: 0 }} />
+              {on && <span style={{ position: "absolute", left: -12, top: 7, bottom: 7, width: 2, background: p.accent }} />}
+              <item.icon size={16} style={{ flexShrink: 0, color: on ? p.accent : p.textFaint }} />
               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.label}</span>
             </button>
           );
         })}
       </nav>
 
-      <div style={{ padding: "12px 12px 16px", borderTop: "1px solid " + p.border }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", marginBottom: 6 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 9, background: p.accent + "22", display: "flex", alignItems: "center", justifyContent: "center", color: p.accent, fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
+      <div style={{ padding: "14px 16px 18px", borderTop: "1px solid " + p.border }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "4px 6px 10px" }}>
+          <div style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid " + p.borderStrong, display: "flex", alignItems: "center", justifyContent: "center", color: p.text, fontFamily: SERIF, fontSize: 17, flexShrink: 0 }}>
             {user.name.charAt(0)}
           </div>
           <div style={{ overflow: "hidden" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: p.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.name}</div>
-            <div style={{ fontSize: 11, color: p.textFaint, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.email}</div>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: p.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.name}</div>
+            <div style={{ fontSize: 12, color: p.textFaint, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.email}</div>
           </div>
         </div>
-        <button onClick={onLogout} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 10, border: "none", background: "transparent", color: p.textSoft, cursor: "pointer", fontSize: 13, fontWeight: 600 }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = p.danger + "18"; e.currentTarget.style.color = p.danger; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = p.textSoft; }}>
-          <LogOut size={17} /> Sair
+        <button onClick={onLogout} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "7px 8px", borderRadius: 4, border: "none", background: "transparent", color: p.textSoft, cursor: "pointer", fontSize: 13.5, fontWeight: 500, fontFamily: SANS }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = p.danger; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = p.textSoft; }}>
+          <LogOut size={15} /> Sair
         </button>
       </div>
     </>
   );
 
   const activeItem = menu.find((m) => m.k === active);
+  const hoje = new Date().toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" });
+
+  // rola para o topo ao trocar de tela
+  useEffect(() => { try { window.scrollTo({ top: 0 }); } catch (e) { /* ignora */ } }, [active]);
 
   return (
     <div style={{ minHeight: "100vh", background: p.bg, display: "flex" }}>
-      {/* sidebar desktop */}
-      <aside style={{ width: 232, borderRight: "1px solid " + p.border, background: p.surface, display: "flex", flexDirection: "column", position: "sticky", top: 0, height: "100vh" }} className="sidebar-desktop">
+      <aside style={{ width: 244, borderRight: "1px solid " + p.border, background: p.bg, display: "flex", flexDirection: "column", position: "sticky", top: 0, height: "100vh" }} className="sidebar-desktop">
         {SidebarInner}
       </aside>
 
-      {/* sidebar mobile */}
       {open && (
         <>
           <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, background: p.overlay, zIndex: 40 }} className="sidebar-overlay" />
-          <aside style={{ width: 232, borderRight: "1px solid " + p.border, background: p.surface, display: "flex", flexDirection: "column", position: "fixed", top: 0, left: 0, height: "100vh", zIndex: 50, animation: "slideIn .2s ease" }} className="sidebar-mobile">
+          <aside style={{ width: 260, borderRight: "1px solid " + p.border, background: p.bg, display: "flex", flexDirection: "column", position: "fixed", top: 0, left: 0, height: "100vh", zIndex: 50, animation: "slideIn .22s cubic-bezier(.16,1,.3,1)" }} className="sidebar-mobile">
             {SidebarInner}
           </aside>
         </>
       )}
 
-      {/* conteúdo */}
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-        <header style={{ height: 60, borderBottom: "1px solid " + p.border, background: p.surface + "cc", backdropFilter: "blur(8px)", position: "sticky", top: 0, zIndex: 30, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 22px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <button onClick={() => setOpen(true)} className="menu-btn" style={{ display: "none", background: "none", border: "none", color: p.text, cursor: "pointer" }}><Menu size={22} /></button>
-            <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-              {activeItem && <activeItem.icon size={18} color={p.accent} />}
-              <span style={{ fontSize: 15, fontWeight: 700, color: p.text }}>{activeItem?.label}</span>
-            </div>
+        <header style={{ height: 56, borderBottom: "1px solid " + p.border, background: p.bg + "e8", backdropFilter: "blur(10px)", position: "sticky", top: 0, zIndex: 30, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 clamp(16px, 3vw, 36px)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+            <button onClick={() => setOpen(true)} className="menu-btn" aria-label="Abrir menu" style={{ display: "none", background: "none", border: "none", color: p.text, cursor: "pointer", padding: 4 }}><Menu size={20} /></button>
+            <span style={{ fontFamily: MONO, fontSize: 11, letterSpacing: ".12em", textTransform: "uppercase", color: p.textFaint, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{activeItem?.label}</span>
           </div>
-          <button onClick={toggle} style={{ background: p.surface2, border: "1px solid " + p.border, borderRadius: 10, padding: 9, cursor: "pointer", color: p.text, display: "flex", transition: "all .2s" }} title="Alternar tema">
-            {dark ? <Sun size={17} /> : <Moon size={17} />}
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <span className="cab-data" style={{ fontFamily: MONO, fontSize: 11, letterSpacing: ".08em", textTransform: "uppercase", color: p.textFaint }}>{hoje}</span>
+            <button onClick={toggle} aria-label="Alternar tema" title="Alternar tema" style={{ background: "none", border: "1px solid " + p.border, borderRadius: 4, padding: 7, cursor: "pointer", color: p.textSoft, display: "flex" }}>
+              {dark ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
+          </div>
         </header>
-        <main style={{ flex: 1, padding: "26px 26px 60px", maxWidth: 1180, width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
+        <main ref={mainRef} key={active} style={{ flex: 1, padding: "clamp(22px, 3.2vw, 44px) clamp(16px, 3.2vw, 44px) 96px", maxWidth: 1140, width: "100%", margin: "0 auto", boxSizing: "border-box", animation: "entraTela .45s cubic-bezier(.16,1,.3,1)" }}>
           {children}
         </main>
       </div>
     </div>
   );
 }
+
+// Uma meta do dia: a bolha é a caneta azul do aluno marcando a folha de respostas
 
 /* ============================================================================
    PAINEL DO ALUNO
@@ -1240,11 +1233,10 @@ function AlunoDashboard({ store, setStore, vestibular, disp, semana, setSemana, 
     <div style={{ animation: "fadeIn .3s ease" }}>
       {/* recado do moderador */}
       {recadoAtual && !recadoVisto && (
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 11, padding: "13px 16px", marginBottom: 18, borderRadius: 13, background: p.accent + "14", border: "1px solid " + p.accent + "44" }}>
-          <div style={{ width: 30, height: 30, borderRadius: 9, background: p.accent + "26", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Mail size={15} color={p.accent} /></div>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 11, padding: "2px 0 2px 14px", marginBottom: 30, borderLeft: "2px solid " + p.accent }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: p.accent, marginBottom: 2 }}>Recado do instrutor</div>
-            <div style={{ fontSize: 13.5, color: p.text, lineHeight: 1.5 }}>{recadoAtual.texto}</div>
+            <Eyebrow color={p.accent} style={{ marginBottom: 4 }}>Recado do instrutor</Eyebrow>
+            <div style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: 18, color: p.text, lineHeight: 1.45, maxWidth: "62ch" }}>{recadoAtual.texto}</div>
           </div>
           <button onClick={() => setRecadoVisto(true)} style={{ background: "none", border: "none", color: p.textFaint, cursor: "pointer", padding: 2 }}><X size={16} /></button>
         </div>
@@ -1262,27 +1254,20 @@ function AlunoDashboard({ store, setStore, vestibular, disp, semana, setSemana, 
         </div>} />
 
       {/* faixa compacta: streak + meta de questões — numa linha só, mais clean */}
-      <div style={{ display: "flex", alignItems: "center", gap: 18, padding: "12px 16px", marginBottom: 22, borderRadius: 13, background: p.surface, border: "1px solid " + p.border, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-          <Flame size={17} color={p.accent} />
-          <span style={{ fontSize: 14, fontWeight: 800, color: p.text }}>{store.streak || 0}</span>
-          <span style={{ fontSize: 12.5, color: p.textSoft }}>dias seguidos</span>
-        </div>
-        <div style={{ width: 1, height: 22, background: p.border }} />
-        <div style={{ display: "flex", alignItems: "center", gap: 9, flex: 1, minWidth: 200 }}>
-          <FileQuestion size={16} color="#3b82f6" />
-          <span style={{ fontSize: 12.5, color: p.textSoft }}>Questões hoje</span>
-          <div style={{ flex: 1, minWidth: 80, maxWidth: 220 }}>
-            <ProgressBar value={metaQuestoesHoje ? (store.questoesHoje || 0) / metaQuestoesHoje * 100 : 0} color="#3b82f6" height={6} />
+      <div style={{ display: "flex", alignItems: "center", gap: "10px 28px", padding: "0 0 22px", marginBottom: 8, flexWrap: "wrap", fontFamily: MONO, fontSize: 12.5, color: p.textSoft }}>
+        <span><b style={{ fontWeight: 500, color: p.text }}>{store.streak || 0}</b> dias seguidos</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 220 }}>
+          <span>Questões hoje</span>
+          <div style={{ flex: 1, minWidth: 80, maxWidth: 240 }}>
+            <ProgressBar value={metaQuestoesHoje ? (store.questoesHoje || 0) / metaQuestoesHoje * 100 : 0} height={3} />
           </div>
-          <span style={{ fontSize: 13, fontWeight: 700, color: p.text }}>{store.questoesHoje || 0}<span style={{ color: p.textFaint, fontWeight: 500 }}>/{metaQuestoesHoje}</span></span>
+          <span style={{ fontVariantNumeric: "tabular-nums" }}><b style={{ fontWeight: 500, color: p.text }}>{store.questoesHoje || 0}</b>/{metaQuestoesHoje}</span>
         </div>
       </div>
       {atrasadas.length > 0 && (
         <div style={{ marginBottom: 22 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-            <AlertTriangle size={17} color={p.danger} />
-            <span style={{ fontSize: 13.5, fontWeight: 800, color: p.danger, textTransform: "uppercase", letterSpacing: ".04em" }}>Metas atrasadas</span>
+            <span style={{ fontSize: 11, fontWeight: 500, fontFamily: MONO, color: p.danger, textTransform: "uppercase", letterSpacing: ".12em" }}>Metas atrasadas</span>
           </div>
           {atrasadas.map((m) => <MetaRow key={m.id} meta={m} onDone={() => concluir(m, "atrasadas")} atrasada />)}
         </div>
@@ -1296,7 +1281,7 @@ function AlunoDashboard({ store, setStore, vestibular, disp, semana, setSemana, 
 
       {/* resumo rodapé */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 20 }} className="stat-grid">
-        <StatCard icon={FileQuestion} label="Questões hoje" value={store.questoesHoje} color="#3b82f6" />
+        <StatCard icon={FileQuestion} label="Questões hoje" value={store.questoesHoje} color="#1F6FA0" />
         <StatCard icon={Clock4} label="Horas estudadas hoje" value={(minutosEstudados / 60).toFixed(1) + "h"} color={p.green} />
         <StatCard icon={Target} label="Progresso do plano" value={store.progressoGeral + "%"} color={p.accent} />
       </div>
@@ -1306,18 +1291,18 @@ function AlunoDashboard({ store, setStore, vestibular, disp, semana, setSemana, 
 
       {/* botão flutuante redistribuir */}
       <button onClick={() => setRedistOpen(true)} title="Redistribuir metas atrasadas"
-        style={{ position: "fixed", right: 24, bottom: 24, width: 50, height: 50, borderRadius: 16, background: p.accent, border: "none", color: "#fff", cursor: "pointer", boxShadow: "0 8px 24px " + p.accent + "66", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 35, transition: "transform .2s" }}
-        onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.08) rotate(90deg)"}
+        style={{ position: "fixed", right: 24, bottom: 24, width: 50, height: 50, borderRadius: 6, background: p.ink, border: "none", color: p.inkFg, cursor: "pointer", boxShadow: "0 10px 30px rgba(10,14,18,.22)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 35, transition: "transform .2s" }}
+        onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-2px)"}
         onMouseLeave={(e) => e.currentTarget.style.transform = "none"}>
-        <RefreshCw size={22} />
+        <RefreshCw size={19} />
       </button>
 
       {/* POP-UP conclusão de tópico */}
       <Modal open={!!popup} onClose={() => setPopup(null)} title={null} width={430}>
         {popup && (
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 44, marginBottom: 8 }}>🎉</div>
-            <h3 style={{ margin: "0 0 8px", fontSize: 19, fontWeight: 800, color: p.text }}>Tempo planejado concluído!</h3>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}><Selo semente={popup.topicoId || "topico"} size={72} /></div>
+            <h3 style={{ margin: "0 0 8px", fontSize: 19, fontWeight: 500, fontFamily: SERIF, color: p.text }}>Tempo planejado concluído!</h3>
             <p style={{ fontSize: 14, color: p.textSoft, margin: "0 0 22px", lineHeight: 1.6 }}>
               Você concluiu o tempo planejado para <strong style={{ color: p.accent }}>{popup.topico}</strong>! Como você se sente sobre o conteúdo?
             </p>
@@ -1326,7 +1311,7 @@ function AlunoDashboard({ store, setStore, vestibular, disp, semana, setSemana, 
               <Btn onClick={() => { setPopup({ ...popup, needTime: true }); }} variant="outline" size="lg" icon={Clock4}>Preciso de mais tempo</Btn>
             </div>
             {popup.needTime && (
-              <div style={{ marginTop: 18, padding: 16, background: p.surface2, borderRadius: 12, textAlign: "left" }}>
+              <div style={{ marginTop: 18, padding: 16, background: p.surface2, borderRadius: 6, textAlign: "left" }}>
                 <Field label="Minutos adicionais necessários">
                   <Input type="number" value={extra} onChange={(e) => setExtra(+e.target.value)} />
                 </Field>
@@ -1348,22 +1333,22 @@ function AlunoDashboard({ store, setStore, vestibular, disp, semana, setSemana, 
 
         {/* resumo do recálculo */}
         <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
-          <div style={{ flex: 1, padding: "11px 13px", borderRadius: 11, background: p.surface2, textAlign: "center" }}>
-            <div style={{ fontSize: 20, fontWeight: 900, color: p.accent }}>{fmtMin(resumoRecalc.totalRealocado)}</div>
+          <div style={{ flex: 1, padding: "11px 13px", borderRadius: 5, background: p.surface2, textAlign: "center" }}>
+            <div style={{ fontSize: 20, fontWeight: 500, fontFamily: SERIF, color: p.accent }}>{fmtMin(resumoRecalc.totalRealocado)}</div>
             <div style={{ fontSize: 11, color: p.textSoft, marginTop: 2 }}>tempo replanejado</div>
           </div>
-          <div style={{ flex: 1, padding: "11px 13px", borderRadius: 11, background: p.surface2, textAlign: "center" }}>
-            <div style={{ fontSize: 20, fontWeight: 900, color: p.text }}>{resumoRecalc.materiasFundidas}</div>
+          <div style={{ flex: 1, padding: "11px 13px", borderRadius: 5, background: p.surface2, textAlign: "center" }}>
+            <div style={{ fontSize: 20, fontWeight: 500, fontFamily: SERIF, color: p.text }}>{resumoRecalc.materiasFundidas}</div>
             <div style={{ fontSize: 11, color: p.textSoft, marginTop: 2 }}>blocos fundidos</div>
           </div>
         </div>
 
-        <div style={{ background: p.surface2, borderRadius: 12, padding: 14, marginBottom: 14, maxHeight: 280, overflowY: "auto" }}>
-          {recalcPorDia.length === 0 && <span style={{ color: p.textFaint, fontSize: 13 }}>Nada novo a alocar — você está em dia! 🎉</span>}
+        <div style={{ background: p.surface2, borderRadius: 6, padding: 14, marginBottom: 14, maxHeight: 280, overflowY: "auto" }}>
+          {recalcPorDia.length === 0 && <span style={{ color: p.textFaint, fontSize: 13 }}>Nada novo a alocar: você está em dia.</span>}
           {recalcPorDia.map((dia, i) => (
             <div key={i} style={{ paddingBottom: 10, marginBottom: 10, borderBottom: i < recalcPorDia.length - 1 ? "1px solid " + p.border : "none" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 800, color: p.text }}>{dia.nome}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: p.text }}>{dia.nome}</span>
                 <span style={{ fontSize: 11.5, color: dia.totalDia <= dia.teto ? p.green : p.danger, fontWeight: 700 }}>{fmtMin(dia.totalDia)} / {fmtMin(dia.teto)}</span>
               </div>
               {dia.novas.map((m, j) => (
@@ -1391,48 +1376,48 @@ function AlunoDashboard({ store, setStore, vestibular, disp, semana, setSemana, 
 function MetaRow({ meta, onDone, atrasada }) {
   const p = usePalette();
   const isRev = meta.tipo === "revisao";
-  const corRev = "#a855f7";
   return (
     <div style={{
-      display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", marginBottom: 9, borderRadius: 13,
-      background: atrasada ? p.danger + "0f" : isRev ? corRev + "0c" : p.surface,
-      border: "1px solid " + (atrasada ? p.danger + "44" : isRev ? corRev + "40" : p.border),
-      opacity: meta.done ? 0.55 : 1, transition: "all .25s",
+      display: "grid", gridTemplateColumns: "26px minmax(0, 1fr) auto", alignItems: "center", gap: 14,
+      padding: "14px 0 14px " + (atrasada ? "12px" : "0"), borderBottom: "1px solid " + p.border,
+      borderLeft: atrasada ? "2px solid " + p.danger : "none", transition: "opacity .25s",
     }}>
-      <div style={{ width: 40, height: 40, borderRadius: 10, background: isRev ? corRev + "1f" : p.surface2, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 12, fontWeight: 800, color: isRev ? corRev : p.accent }}>
-        {meta.minutos}'
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 14.5, fontWeight: 700, color: p.text, textDecoration: meta.done ? "line-through" : "none" }}>{meta.materia}</span>
-          {isRev && <Badge color={corRev} soft><RefreshCw size={10} /> REVISÃO</Badge>}
-          {atrasada && <Badge color={p.danger}><AlertTriangle size={11} /> Atrasada · {meta.origem || "ontem"}</Badge>}
+      <button
+        onClick={meta.done ? undefined : onDone} disabled={meta.done} aria-label={meta.done ? "Meta concluída" : "Marcar meta como concluída"} title={meta.done ? "Concluída" : "Marcar como concluída"}
+        className="bolha"
+        style={{ width: 22, height: 22, borderRadius: "50%", padding: 0, cursor: meta.done ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+          border: "1.5px solid " + (meta.done ? p.accent : p.textFaint), background: meta.done ? p.accent : "transparent", color: p.bg, transition: "background-color .2s, border-color .2s" }}
+        onMouseEnter={(e) => { if (!meta.done) e.currentTarget.style.borderColor = p.accent; }}
+        onMouseLeave={(e) => { if (!meta.done) e.currentTarget.style.borderColor = p.textFaint; }}
+      >
+        {meta.done && <Check size={13} strokeWidth={3} />}
+      </button>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 15.5, fontWeight: 600, color: meta.done ? p.textFaint : p.text, textDecoration: meta.done ? "line-through" : "none", textDecorationColor: p.accent, textDecorationThickness: "1.5px" }}>{meta.materia}</span>
+          {isRev && <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: ".1em", textTransform: "uppercase", color: p.rev }}>Revisão</span>}
+          {atrasada && <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: ".1em", textTransform: "uppercase", color: p.danger }}>Atrasada · {meta.origem || "ontem"}</span>}
         </div>
-        <div style={{ fontSize: 13, color: p.textSoft, marginTop: 2, textDecoration: meta.done ? "line-through" : "none" }}>{meta.topico}</div>
+        <div style={{ fontSize: 13.5, color: p.textSoft, marginTop: 2 }}>{meta.topico}</div>
       </div>
-      {meta.done
-        ? <div style={{ display: "flex", alignItems: "center", gap: 6, color: p.green, fontSize: 13, fontWeight: 700 }}><CheckCircle2 size={18} /> Feita</div>
-        : <Btn onClick={onDone} size="sm" icon={Check}>Meta concluída</Btn>}
+      <span style={{ fontFamily: MONO, fontSize: 13, color: meta.done ? p.textFaint : p.textSoft, fontVariantNumeric: "tabular-nums" }}>{fmtMin(meta.minutos)}</span>
     </div>
   );
 }
 
+// Número editorial: serifa grande, rótulo em mono
+
 function StatCard({ icon: Icon, label, value, color }) {
   const p = usePalette();
   return (
-    <Card pad={18}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 40, height: 40, borderRadius: 11, background: (color || p.accent) + "1f", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <Icon size={20} color={color || p.accent} />
-        </div>
-        <div>
-          <div style={{ fontSize: 21, fontWeight: 800, color: p.text, lineHeight: 1 }}>{value}</div>
-          <div style={{ fontSize: 12, color: p.textSoft, marginTop: 3 }}>{label}</div>
-        </div>
-      </div>
-    </Card>
+    <div style={{ padding: "16px 0 6px", borderTop: "1px solid " + p.borderStrong }}>
+      <div style={{ fontFamily: SERIF, fontSize: "clamp(34px, 3.6vw, 46px)", fontWeight: 400, color: p.text, lineHeight: 1, letterSpacing: "-.02em", fontVariantNumeric: "tabular-nums" }}>{value}</div>
+      <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: ".1em", textTransform: "uppercase", color: p.textFaint, marginTop: 9 }}>{label}</div>
+    </div>
   );
 }
+
+// Consistência do mês como folha de respostas: cada dia é uma bolha preenchida a caneta
 
 function ProgressoModal({ open, onClose }) {
   const p = usePalette();
@@ -1445,10 +1430,10 @@ function ProgressoModal({ open, onClose }) {
   const [form, setForm] = useState({ materia: "", topico: "", min: 30 });
   return (
     <Modal open={open} onClose={onClose} title="Registrar progresso" width={500}>
-      <div style={{ display: "flex", gap: 6, marginBottom: 18, background: p.surface2, padding: 4, borderRadius: 11 }}>
+      <div style={{ display: "flex", gap: 6, marginBottom: 18, background: p.surface2, padding: 4, borderRadius: 5 }}>
         {tabs.map((t) => (
           <button key={t.k} onClick={() => setAba(t.k)} style={{
-            flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "10px 6px", borderRadius: 8,
+            flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "10px 6px", borderRadius: 4,
             border: "none", cursor: "pointer", background: aba === t.k ? p.surface : "transparent",
             color: aba === t.k ? p.accent : p.textSoft, fontWeight: 600, fontSize: 11.5, transition: "all .15s",
           }}>
@@ -1525,7 +1510,7 @@ function AlunoSemana({ semana, semanaEditada, setSemanaEditada }) {
       />
 
       {editada && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 13px", marginBottom: 16, borderRadius: 11, background: p.accent + "12", border: "1px solid " + p.accent + "33", fontSize: 12.5, color: p.textSoft }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 13px", marginBottom: 16, borderRadius: 5, background: p.accent + "12", border: "1px solid " + p.accent + "33", fontSize: 12.5, color: p.textSoft }}>
           <Sparkles size={13} color={p.accent} />
           Semana reorganizada manualmente. As próximas semanas continuam sendo geradas automaticamente pelo ciclo.
         </div>
@@ -1542,14 +1527,14 @@ function AlunoSemana({ semana, semanaEditada, setSemanaEditada }) {
               onDragOver={(e) => { e.preventDefault(); setOverDia(d.k); }}
               onDragLeave={() => setOverDia(null)}
               onDrop={() => moverMeta(d.k)}
-              style={{ minHeight: 180, borderRadius: 16, padding: 12, background: isOver ? p.accent + "10" : p.surface, border: "1px solid " + (isOver ? p.accent + "77" : p.border), transition: "all .15s" }}>
+              style={{ minHeight: 180, borderRadius: 6, padding: 12, background: isOver ? p.accent + "10" : p.surface, border: "1px solid " + (isOver ? p.accent + "77" : p.border), transition: "all .15s" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                <span style={{ fontSize: 13, fontWeight: 800, color: p.text }}>{d.nome.slice(0, 3)}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: p.text }}>{d.nome.slice(0, 3)}</span>
                 <span style={{ fontSize: 10, color: p.textFaint }}>{feitas}/{metas.length} · {fmtMin(totalDia)}</span>
               </div>
               {metas.map((m) => {
                 const isRev = m.tipo === "revisao";
-                const corRev = "#a855f7";
+                const corRev = "#6A4C93";
                 const mat = MATERIAS_FLAT.find((x) => x.id === m.materiaId);
                 const corMat = mat?.areaCor || p.accent;
                 const isDraggingThis = dragging?.metaId === m.id;
@@ -1557,7 +1542,7 @@ function AlunoSemana({ semana, semanaEditada, setSemanaEditada }) {
                   <div key={m.id} draggable={!m.done}
                     onDragStart={() => !m.done && setDragging({ metaId: m.id, diaOrigem: d.k })}
                     onDragEnd={() => { setDragging(null); setOverDia(null); }}
-                    style={{ fontSize: 11, padding: "6px 8px", marginBottom: 5, borderRadius: 8,
+                    style={{ fontSize: 11, padding: "6px 8px", marginBottom: 5, borderRadius: 4,
                       background: isRev ? corRev + "14" : corMat + "14",
                       borderLeft: "2px solid " + (isRev ? corRev : corMat),
                       color: m.done ? p.textFaint : p.textSoft,
@@ -1567,7 +1552,7 @@ function AlunoSemana({ semana, semanaEditada, setSemanaEditada }) {
                       transition: "opacity .15s",
                     }}>
                     <span style={{ fontWeight: 700, color: m.done ? p.textFaint : p.text }}>{m.materia}</span>
-                    {isRev && <span style={{ marginLeft: 4, fontSize: 9, fontWeight: 800, color: corRev }}>REVISÃO</span>}
+                    {isRev && <span style={{ marginLeft: 4, fontSize: 9, fontWeight: 600, color: corRev }}>REVISÃO</span>}
                     <br />{fmtMin(m.minutos)}
                   </div>
                 );
@@ -1625,7 +1610,7 @@ function AlunoQuestoes({ store, setStore }) {
 
       {/* resumo */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 18 }} className="stat-grid">
-        <StatCard icon={FileQuestion} label="Total de questões" value={totalFeitas} color="#3b82f6" />
+        <StatCard icon={FileQuestion} label="Total de questões" value={totalFeitas} color="#1F6FA0" />
         <StatCard icon={CheckCircle2} label="Acertos" value={totalAcertos} color={p.green} />
         <StatCard icon={TrendingUp} label="Taxa de acerto" value={taxa + "%"} color={p.accent} />
       </div>
@@ -1641,8 +1626,8 @@ function AlunoQuestoes({ store, setStore }) {
           const tx = q.feitas ? Math.round((q.acertos / q.feitas) * 100) : 0;
           return (
             <div key={q.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 18px", borderBottom: i < filtradas.length - 1 ? "1px solid " + p.border : "none" }}>
-              <div style={{ width: 46, height: 46, borderRadius: 11, background: (tx >= 70 ? p.green : tx >= 50 ? p.accent : p.danger) + "1f", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <span style={{ fontSize: 14, fontWeight: 800, color: tx >= 70 ? p.green : tx >= 50 ? p.accent : p.danger, lineHeight: 1 }}>{tx}%</span>
+              <div style={{ width: 46, height: 46, borderRadius: 5, background: (tx >= 70 ? p.green : tx >= 50 ? p.accent : p.danger) + "1f", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <span style={{ fontSize: 14, fontWeight: 600, color: tx >= 70 ? p.green : tx >= 50 ? p.accent : p.danger, lineHeight: 1 }}>{tx}%</span>
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: p.text }}>{q.materia} <span style={{ color: p.textFaint, fontWeight: 400 }}>· {q.topico || "—"}</span></div>
@@ -1665,9 +1650,9 @@ function AlunoQuestoes({ store, setStore }) {
         </div>
         {/* prévia do cálculo automático de erros */}
         {feitasNum > 0 && (
-          <div style={{ display: "flex", gap: 10, padding: "10px 13px", borderRadius: 10, background: p.surface2, marginBottom: 14, fontSize: 13 }}>
-            <span style={{ color: p.green, fontWeight: 700 }}>✅ {acertosNum} acertos</span>
-            <span style={{ color: p.danger, fontWeight: 700 }}>❌ {errosNum} erros</span>
+          <div style={{ display: "flex", gap: 10, padding: "10px 13px", borderRadius: 5, background: p.surface2, marginBottom: 14, fontSize: 13 }}>
+            <span style={{ color: p.green, fontWeight: 700 }}>{acertosNum} acertos</span>
+            <span style={{ color: p.danger, fontWeight: 700 }}>{errosNum} erros</span>
             <span style={{ color: p.textSoft, marginLeft: "auto" }}>taxa <strong style={{ color: p.text }}>{Math.round((acertosNum / feitasNum) * 100)}%</strong></span>
           </div>
         )}
@@ -1711,13 +1696,14 @@ function AlunoDesempenho({ store }) {
       <SectionTitle icon={TrendingUp} title="Desempenho" subtitle="Questões, simulados e consistência" />
 
       {/* sub-abas internas */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 22, padding: "4px 4px", background: p.surface, border: "1px solid " + p.border, borderRadius: 13, width: "fit-content" }}>
+      <div role="tablist" style={{ display: "flex", gap: 22, marginBottom: 26, borderBottom: "1px solid " + p.border, overflowX: "auto" }}>
         {abas.map((a) => (
-          <button key={a.k} onClick={() => setAba(a.k)} style={{
-            display: "inline-flex", alignItems: "center", gap: 7, padding: "8px 14px", borderRadius: 10, cursor: "pointer", transition: "all .15s", border: "none",
-            background: aba === a.k ? p.accent : "transparent", color: aba === a.k ? "#fff" : p.textSoft, fontWeight: aba === a.k ? 700 : 500, fontSize: 13,
+          <button key={a.k} role="tab" aria-selected={aba === a.k} onClick={() => setAba(a.k)} style={{
+            display: "inline-flex", alignItems: "center", gap: 7, padding: "10px 0 11px", cursor: "pointer", transition: "color .15s, border-color .15s", border: "none",
+            borderBottom: "2px solid " + (aba === a.k ? p.accent : "transparent"), marginBottom: -1, background: "transparent", whiteSpace: "nowrap",
+            color: aba === a.k ? p.text : p.textSoft, fontWeight: aba === a.k ? 600 : 500, fontSize: 14, fontFamily: SANS,
           }}>
-            <a.icon size={14} />{a.label}
+            <a.icon size={14} style={{ color: aba === a.k ? p.accent : p.textFaint }} />{a.label}
           </button>
         ))}
       </div>
@@ -1726,40 +1712,40 @@ function AlunoDesempenho({ store }) {
         <>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 16, marginBottom: 16 }} className="chart-grid">
             <Card>
-              <h3 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 700, color: p.text }}>Acertos × Erros</h3>
+              <h3 style={{ margin: "0 0 14px", fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Acertos × Erros</h3>
               <ResponsiveContainer width="100%" height={210}>
                 <PieChart>
                   <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3}>
                     <Cell fill={p.green} /><Cell fill={p.danger} />
                   </Pie>
-                  <Tooltip contentStyle={{ background: p.surface, border: "1px solid " + p.border, borderRadius: 10, color: p.text }} />
+                  <Tooltip contentStyle={{ background: p.surface, border: "1px solid " + p.border, borderRadius: 5, color: p.text }} />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
               <div style={{ textAlign: "center", fontSize: 13, color: p.textSoft }}>Taxa de acerto: <strong style={{ color: p.green }}>{totalQ ? Math.round(acertos / totalQ * 100) : 0}%</strong></div>
             </Card>
             <Card>
-              <h3 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 700, color: p.text }}>Evolução ao longo do tempo</h3>
+              <h3 style={{ margin: "0 0 14px", fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Evolução ao longo do tempo</h3>
               <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={evolucao}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={p.chartGrid} />
+                <LineChart data={evolucao} margin={{ top: 8, right: 18, left: -8, bottom: 0 }}>
+                  <CartesianGrid stroke={p.chartGrid} vertical={false} />
                   <XAxis dataKey="dia" stroke={p.textSoft} fontSize={12} />
                   <YAxis stroke={p.textSoft} fontSize={12} domain={[0, 100]} />
-                  <Tooltip contentStyle={{ background: p.surface, border: "1px solid " + p.border, borderRadius: 10, color: p.text }} />
-                  <Line type="monotone" dataKey="taxa" stroke={p.accent} strokeWidth={3} dot={{ fill: p.accent, r: 4 }} />
+                  <Tooltip contentStyle={{ background: p.surface, border: "1px solid " + p.border, borderRadius: 5, color: p.text }} />
+                  <Line type="monotone" dataKey="taxa" stroke={p.accent} strokeWidth={2} dot={{ fill: p.accent, r: 4, stroke: p.surface, strokeWidth: 2 }} />
                 </LineChart>
               </ResponsiveContainer>
             </Card>
           </div>
           <Card>
-            <h3 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 700, color: p.text }}>Comparativo entre matérias</h3>
+            <h3 style={{ margin: "0 0 14px", fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Comparativo entre matérias</h3>
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={porMateria}>
-                <CartesianGrid strokeDasharray="3 3" stroke={p.chartGrid} />
+                <CartesianGrid stroke={p.chartGrid} vertical={false} />
                 <XAxis dataKey="materia" stroke={p.textSoft} fontSize={12} />
                 <YAxis stroke={p.textSoft} fontSize={12} domain={[0, 100]} />
-                <Tooltip contentStyle={{ background: p.surface, border: "1px solid " + p.border, borderRadius: 10, color: p.text }} cursor={{ fill: p.accent + "11" }} />
-                <Bar dataKey="taxa" fill={p.accent} radius={[8, 8, 0, 0]} />
+                <Tooltip contentStyle={{ background: p.surface, border: "1px solid " + p.border, borderRadius: 5, color: p.text }} cursor={{ fill: p.accent + "11" }} />
+                <Bar dataKey="taxa" fill={p.accent} radius={[3, 3, 0, 0]} maxBarSize={34} />
               </BarChart>
             </ResponsiveContainer>
           </Card>
@@ -1768,14 +1754,14 @@ function AlunoDesempenho({ store }) {
 
       {aba === "simulados" && (
         <Card>
-          <h3 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 700, color: p.text }}>Desempenho nos simulados</h3>
+          <h3 style={{ margin: "0 0 14px", fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Desempenho nos simulados</h3>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={simData}>
-              <CartesianGrid strokeDasharray="3 3" stroke={p.chartGrid} />
+              <CartesianGrid stroke={p.chartGrid} vertical={false} />
               <XAxis dataKey="nome" stroke={p.textSoft} fontSize={12} />
               <YAxis stroke={p.textSoft} fontSize={12} domain={[0, 100]} />
-              <Tooltip contentStyle={{ background: p.surface, border: "1px solid " + p.border, borderRadius: 10, color: p.text }} cursor={{ fill: p.accent + "11" }} />
-              <Bar dataKey="taxa" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+              <Tooltip contentStyle={{ background: p.surface, border: "1px solid " + p.border, borderRadius: 5, color: p.text }} cursor={{ fill: p.accent + "11" }} />
+              <Bar dataKey="taxa" fill="#1F6FA0" radius={[3, 3, 0, 0]} maxBarSize={34} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
@@ -1801,32 +1787,42 @@ function GridConsistencia({ seed = 0 }) {
   const perdidos = dados.filter((d) => d.status === "perdido").length;
   const totalAteHoje = cumpridos + perdidos;
   const aderencia = totalAteHoje ? Math.round((cumpridos / totalAteHoje) * 100) : 0;
-  const mes = new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  const hoje = new Date();
+  const mes = hoje.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  // posiciona o dia 1 na coluna do dia da semana (S T Q Q S S D)
+  const offset = (new Date(hoje.getFullYear(), hoje.getMonth(), 1).getDay() + 6) % 7;
+  const celulas = [...Array(offset).fill(null), ...dados];
+  const semanas = Math.ceil(celulas.length / 7);
 
   return (
     <Card>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
         <div>
-          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: p.text }}>Consistência mensal</h3>
-          <p style={{ margin: "3px 0 0", fontSize: 12, color: p.textFaint, textTransform: "capitalize" }}>{mes}</p>
+          <h3 style={{ margin: 0, fontFamily: SERIF, fontSize: 22, fontWeight: 500, color: p.text, textTransform: "capitalize" }}>{mes}</h3>
+          <Eyebrow style={{ marginTop: 4 }}>Consistência</Eyebrow>
         </div>
-        <div style={{ fontSize: 13, color: p.textSoft }}>Aderência: <strong style={{ color: p.green, fontSize: 15 }}>{aderencia}%</strong></div>
+        <div style={{ fontFamily: MONO, fontSize: 12, color: p.textSoft, fontVariantNumeric: "tabular-nums" }}>{cumpridos} de {totalAteHoje} dias · {aderencia}%</div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(28px, 1fr))", gap: 4 }}>
-        {dados.map((d) => {
-          const cor = d.status === "cumprido" ? p.green : d.status === "perdido" ? p.surface2 : p.surface2;
-          const corBorder = d.status === "cumprido" ? p.green : d.status === "perdido" ? p.border : p.border + "44";
-          return (
-            <div key={d.dia} title={`Dia ${d.dia} · ${d.status}`} style={{ aspectRatio: "1 / 1", borderRadius: 5, background: cor, border: "1px solid " + corBorder, opacity: d.status === "futuro" ? 0.35 : 1, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9.5, fontWeight: 700, color: d.status === "cumprido" ? "#fff" : p.textFaint }}>
-              {d.dia}
-            </div>
-          );
-        })}
+      <div style={{ display: "grid", gridTemplateColumns: "24px repeat(7, minmax(0, 1fr))", gap: "8px 4px", alignItems: "center", maxWidth: 380 }}>
+        <span />
+        {["S", "T", "Q", "Q", "S", "S", "D"].map((d, i) => <span key={i} style={{ fontFamily: MONO, fontSize: 10.5, color: p.danger, textAlign: "center", opacity: .85 }}>{d}</span>)}
+        {Array.from({ length: semanas }).map((_, s) => (
+          <React.Fragment key={s}>
+            <span style={{ fontFamily: MONO, fontSize: 10.5, color: p.danger, opacity: .85 }}>{String(s + 1).padStart(2, "0")}</span>
+            {celulas.slice(s * 7, s * 7 + 7).concat(Array(Math.max(0, 7 - celulas.slice(s * 7, s * 7 + 7).length)).fill(null)).map((d, i) => d ? (
+              <span key={i} title={`Dia ${d.dia} · ${d.status}`} style={{ justifySelf: "center", width: 22, height: 22, borderRadius: "50%", position: "relative",
+                border: "1.3px solid " + (d.status === "cumprido" ? p.accent : d.status === "perdido" ? p.danger + "aa" : p.border),
+                background: d.status === "cumprido" ? p.accent : "transparent" }}>
+                {d.status === "perdido" && <span style={{ position: "absolute", left: -2, right: -2, top: "50%", borderTop: "1.5px solid " + p.danger, transform: "rotate(-35deg)" }} />}
+              </span>
+            ) : <span key={i} />)}
+          </React.Fragment>
+        ))}
       </div>
-      <div style={{ display: "flex", gap: 14, marginTop: 12, fontSize: 11.5, color: p.textSoft }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 5 }}><span style={{ width: 10, height: 10, background: p.green, borderRadius: 3 }} /> Cumprido</span>
-        <span style={{ display: "flex", alignItems: "center", gap: 5 }}><span style={{ width: 10, height: 10, background: p.surface2, border: "1px solid " + p.border, borderRadius: 3 }} /> Perdido</span>
-        <span style={{ display: "flex", alignItems: "center", gap: 5, opacity: 0.5 }}><span style={{ width: 10, height: 10, background: p.surface2, borderRadius: 3 }} /> Futuro</span>
+      <div style={{ display: "flex", gap: 16, marginTop: 16, fontSize: 12, color: p.textSoft, flexWrap: "wrap" }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 11, height: 11, background: p.accent, borderRadius: "50%" }} /> Cumprido</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 11, height: 11, border: "1.3px solid " + p.danger, borderRadius: "50%" }} /> Perdido</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 11, height: 11, border: "1.3px solid " + p.border, borderRadius: "50%" }} /> A seguir</span>
       </div>
     </Card>
   );
@@ -1846,9 +1842,9 @@ function PrevisaoConclusao({ progresso = 0 }) {
     <Card>
       <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
         <Target size={17} color={p.accent} />
-        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: p.text }}>Previsão de conclusão</h3>
+        <h3 style={{ margin: 0, fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Previsão de conclusão</h3>
       </div>
-      <div style={{ fontSize: 26, fontWeight: 900, color: p.text, lineHeight: 1, textTransform: "capitalize" }}>{dataPrev}</div>
+      <div style={{ fontSize: 26, fontWeight: 500, fontFamily: SERIF, color: p.text, lineHeight: 1, textTransform: "capitalize" }}>{dataPrev}</div>
       <p style={{ margin: "8px 0 0", fontSize: 12.5, color: p.textSoft, lineHeight: 1.55 }}>
         Estimativa baseada no ritmo atual de ~{ritmoSemanal}% por semana. Você está em <strong style={{ color: p.text }}>{progresso}%</strong> e faltam aproximadamente <strong style={{ color: p.text }}>{semanas} semanas</strong>.
       </p>
@@ -1865,16 +1861,16 @@ function MateriasEmRisco() {
     { materia: "Física", topico: "Eletricidade", atraso: 3, severidade: "media" },
     { materia: "Redação", topico: "Tese", atraso: 2, severidade: "baixa" },
   ];
-  const corSev = (s) => s === "alta" ? p.danger : s === "media" ? p.accent : "#eab308";
+  const corSev = (s) => s === "alta" ? p.danger : s === "media" ? p.accent : "#A07C1C";
 
   return (
     <Card>
       <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
         <AlertTriangle size={17} color={p.danger} />
-        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: p.text }}>Matérias em risco</h3>
+        <h3 style={{ margin: 0, fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Matérias em risco</h3>
       </div>
       {risco.length === 0 ? (
-        <p style={{ fontSize: 13, color: p.textFaint, margin: 0 }}>Nada em risco no momento. ✓</p>
+        <p style={{ fontSize: 13, color: p.textFaint, margin: 0 }}>Nada em risco no momento.</p>
       ) : (
         risco.map((r, i) => (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: i < risco.length - 1 ? "1px solid " + p.border : "none" }}>
@@ -1919,7 +1915,7 @@ function AlunoPlano({ ordemSubs, setOrdemSubs }) {
         <div key={area.id} style={{ marginBottom: 24 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
             <div style={{ width: 10, height: 10, borderRadius: 3, background: area.cor }} />
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: p.text }}>{area.nome}</h3>
+            <h3 style={{ margin: 0, fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>{area.nome}</h3>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }} className="plano-grid">
             {area.materias.flatMap((m) => m.topicos.map((t) => {
@@ -1928,10 +1924,10 @@ function AlunoPlano({ ordemSubs, setOrdemSubs }) {
               return (
                 <Card key={t.id} pad={16}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: area.cor, textTransform: "uppercase", letterSpacing: ".04em" }}>{m.nome}</span>
+                    <span style={{ fontSize: 11, fontWeight: 500, fontFamily: MONO, color: area.cor, textTransform: "uppercase", letterSpacing: ".1em" }}>{m.nome}</span>
                     <span style={{ fontSize: 11, color: p.textFaint }}>{Math.round(t.carga / 60)}h</span>
                   </div>
-                  <h4 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 700, color: p.text }}>{t.nome}</h4>
+                  <h4 style={{ margin: "0 0 10px", fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: p.text }}>{t.nome}</h4>
                   <div style={{ marginBottom: 12 }}><ProgressBar value={prog} color={area.cor} /><div style={{ fontSize: 11, color: p.textFaint, marginTop: 4 }}>{prog}% concluído</div></div>
                   {subs.map((s, idx) => (
                     <div key={s} draggable
@@ -1939,7 +1935,7 @@ function AlunoPlano({ ordemSubs, setOrdemSubs }) {
                       onDragEnter={() => (dragOver.current = idx)}
                       onDragEnd={() => onDrop(t.id)}
                       onDragOver={(e) => e.preventDefault()}
-                      style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", marginBottom: 5, borderRadius: 9, background: p.surface2, cursor: "grab", fontSize: 13, color: p.text, border: "1px solid transparent", transition: "all .15s" }}
+                      style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", marginBottom: 5, borderRadius: 4, background: p.surface2, cursor: "grab", fontSize: 13, color: p.text, border: "1px solid transparent", transition: "all .15s" }}
                       onMouseEnter={(e) => e.currentTarget.style.borderColor = area.cor + "55"}
                       onMouseLeave={(e) => e.currentTarget.style.borderColor = "transparent"}>
                       <GripVertical size={15} color={p.textFaint} />
@@ -1977,13 +1973,13 @@ function AlunoOrganizacao({ disp, setDisp, onRecalc, recesso, setRecesso }) {
             return (
               <div key={d.k} style={{ textAlign: "center" }}>
                 <div style={{ fontSize: 12.5, fontWeight: 700, color: p.textSoft, marginBottom: 8 }}>{d.nome.slice(0, 3)}</div>
-                <div style={{ background: p.surface2, border: "1px solid " + p.border, borderRadius: 12, padding: "10px 8px" }}>
+                <div style={{ background: p.surface2, border: "1px solid " + p.border, borderRadius: 6, padding: "10px 8px" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 2 }}>
                     <input type="number" min={0} max={24} value={h} onChange={(e) => setDia(d.k, e.target.value, m)}
-                      style={{ width: 34, textAlign: "center", fontSize: 19, fontWeight: 800, color: p.accent, background: "transparent", border: "none", outline: "none" }} />
+                      className="num-dia" style={{ width: 30, textAlign: "center", fontSize: 21, fontWeight: 400, fontFamily: SERIF, color: p.text, padding: 0, background: "transparent", border: "none", outline: "none" }} />
                     <span style={{ fontSize: 12, color: p.textFaint, fontWeight: 700 }}>h</span>
                     <input type="number" min={0} max={59} step={5} value={m} onChange={(e) => setDia(d.k, h, e.target.value)}
-                      style={{ width: 34, textAlign: "center", fontSize: 19, fontWeight: 800, color: p.text, background: "transparent", border: "none", outline: "none" }} />
+                      className="num-dia" style={{ width: 30, textAlign: "center", fontSize: 21, fontWeight: 400, fontFamily: SERIF, color: p.text, padding: 0, background: "transparent", border: "none", outline: "none" }} />
                     <span style={{ fontSize: 12, color: p.textFaint, fontWeight: 700 }}>m</span>
                   </div>
                 </div>
@@ -1998,7 +1994,7 @@ function AlunoOrganizacao({ disp, setDisp, onRecalc, recesso, setRecesso }) {
           <Btn icon={RefreshCw} onClick={onRecalc}>Salvar e recalcular metas</Btn>
         </div>
       </Card>
-      <div style={{ marginTop: 14, padding: 14, background: p.accent + "12", border: "1px solid " + p.accent + "33", borderRadius: 12, fontSize: 13, color: p.textSoft, lineHeight: 1.6 }}>
+      <div style={{ marginTop: 14, padding: 14, background: p.accent + "12", border: "1px solid " + p.accent + "33", borderRadius: 6, fontSize: 13, color: p.textSoft, lineHeight: 1.6 }}>
         <Sparkles size={15} color={p.accent} style={{ verticalAlign: "-2px", marginRight: 6 }} />
         As metas de cada dia somam exatamente o tempo disponível informado. Ao alterar, as metas futuras são recalculadas automaticamente respeitando seus ciclos.
       </div>
@@ -2007,13 +2003,13 @@ function AlunoOrganizacao({ disp, setDisp, onRecalc, recesso, setRecesso }) {
       <Card style={{ marginTop: 18 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
           <Sun size={18} color={p.accent} />
-          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: p.text }}>Modo Férias / Pausa</h3>
+          <h3 style={{ margin: 0, fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Modo Férias / Pausa</h3>
         </div>
         <p style={{ fontSize: 13, color: p.textSoft, margin: "0 0 14px", lineHeight: 1.6 }}>
           Defina um período em que você estará ausente. O sistema pausa as metas e reagenda automaticamente após o término, <strong style={{ color: p.text }}>sem gerar atrasos</strong>.
         </p>
         {recesso?.ativo ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 14, borderRadius: 11, background: p.accent + "12", border: "1px solid " + p.accent + "44" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 14, borderRadius: 5, background: p.accent + "12", border: "1px solid " + p.accent + "44" }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13.5, fontWeight: 700, color: p.text }}>Recesso ativo</div>
               <div style={{ fontSize: 12.5, color: p.textSoft, marginTop: 2 }}>
@@ -2054,43 +2050,28 @@ function AlunoConquistas({ store }) {
   const desbloqueadas = CONQUISTAS_CATALOGO.filter((c) => c.regra(stats));
   const bloqueadas = CONQUISTAS_CATALOGO.filter((c) => !c.regra(stats));
 
+  const grade = (lista, ok) => (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(168px, 1fr))", gap: "28px 18px", marginBottom: 40 }}>
+      {lista.map((c) => (
+        <div key={c.id} style={{ display: "grid", justifyItems: "start", gap: 10 }}>
+          <Selo semente={c.id} size={92} apagado={!ok} />
+          <div>
+            <div style={{ fontFamily: SERIF, fontSize: 19, fontWeight: 500, color: ok ? p.text : p.textSoft, lineHeight: 1.2 }}>{c.titulo}</div>
+            <div style={{ fontSize: 13, color: p.textFaint, marginTop: 4, lineHeight: 1.45 }}>{c.desc}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div style={{ animation: "fadeIn .3s ease" }}>
-      <SectionTitle icon={Trophy} title="Conquistas" subtitle={`${desbloqueadas.length} de ${CONQUISTAS_CATALOGO.length} badges desbloqueadas`} />
-
-      {desbloqueadas.length > 0 && (
-        <>
-          <div style={{ fontSize: 12, fontWeight: 800, color: p.green, textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 12 }}>Desbloqueadas</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 14, marginBottom: 28 }}>
-            {desbloqueadas.map((c) => (
-              <Card key={c.id} pad={18} style={{ textAlign: "center", borderColor: p.green + "55", background: `linear-gradient(135deg, ${p.green}10, transparent)` }}>
-                <div style={{ fontSize: 38, marginBottom: 6, lineHeight: 1 }}>{c.icon}</div>
-                <div style={{ fontSize: 14, fontWeight: 800, color: p.text }}>{c.titulo}</div>
-                <div style={{ fontSize: 11.5, color: p.textSoft, marginTop: 5, lineHeight: 1.4 }}>{c.desc}</div>
-              </Card>
-            ))}
-          </div>
-        </>
-      )}
-
-      {bloqueadas.length > 0 && (
-        <>
-          <div style={{ fontSize: 12, fontWeight: 800, color: p.textFaint, textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 12 }}>A conquistar</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 14 }}>
-            {bloqueadas.map((c) => (
-              <Card key={c.id} pad={18} style={{ textAlign: "center", opacity: 0.55 }}>
-                <div style={{ fontSize: 38, marginBottom: 6, lineHeight: 1, filter: "grayscale(1)" }}>{c.icon}</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: p.textSoft }}>{c.titulo}</div>
-                <div style={{ fontSize: 11.5, color: p.textFaint, marginTop: 5, lineHeight: 1.4 }}>{c.desc}</div>
-              </Card>
-            ))}
-          </div>
-        </>
-      )}
+      <SectionTitle icon={Trophy} title="Conquistas" subtitle={`${desbloqueadas.length} de ${CONQUISTAS_CATALOGO.length} selos conquistados`} />
+      {desbloqueadas.length > 0 && <><Eyebrow color={p.accent} style={{ marginBottom: 18 }}>Conquistados</Eyebrow>{grade(desbloqueadas, true)}</>}
+      {bloqueadas.length > 0 && <><Eyebrow style={{ marginBottom: 18 }}>A conquistar</Eyebrow>{grade(bloqueadas, false)}</>}
     </div>
   );
 }
-
 
 /* ---- 7. ANOTAÇÕES RÁPIDAS ------------------------------------------------ */
 function AlunoAnotacoes({ notas, setNotas }) {
@@ -2115,7 +2096,7 @@ function AlunoAnotacoes({ notas, setNotas }) {
       <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
         {AREAS.map((a) => (
           <button key={a.id} onClick={() => { setAreaSel(a.id); setMatSel(a.materias[0].id); }}
-            style={{ padding: "8px 16px", borderRadius: 10, border: "1px solid " + (areaSel === a.id ? a.cor : p.border), background: areaSel === a.id ? a.cor + "1f" : "transparent", color: areaSel === a.id ? a.cor : p.textSoft, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+            style={{ padding: "8px 16px", borderRadius: 5, border: "1px solid " + (areaSel === a.id ? a.cor : p.border), background: areaSel === a.id ? a.cor + "1f" : "transparent", color: areaSel === a.id ? a.cor : p.textSoft, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
             {a.nome}
           </button>
         ))}
@@ -2124,7 +2105,7 @@ function AlunoAnotacoes({ notas, setNotas }) {
       <div style={{ display: "flex", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
         {area.materias.map((m) => (
           <button key={m.id} onClick={() => setMatSel(m.id)}
-            style={{ padding: "6px 13px", borderRadius: 8, border: "none", background: matSel === m.id ? p.surface2 : "transparent", color: matSel === m.id ? p.text : p.textFaint, fontWeight: 600, fontSize: 12.5, cursor: "pointer", borderBottom: "2px solid " + (matSel === m.id ? area.cor : "transparent") }}>
+            style={{ padding: "6px 13px", borderRadius: 4, border: "none", background: matSel === m.id ? p.surface2 : "transparent", color: matSel === m.id ? p.text : p.textFaint, fontWeight: 600, fontSize: 12.5, cursor: "pointer", borderBottom: "2px solid " + (matSel === m.id ? area.cor : "transparent") }}>
             {m.nome}
           </button>
         ))}
@@ -2132,7 +2113,7 @@ function AlunoAnotacoes({ notas, setNotas }) {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1.3fr", gap: 16 }} className="chart-grid">
         <Card>
-          <h4 style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 700, color: p.text }}>Nova anotação</h4>
+          <h4 style={{ margin: "0 0 12px", fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: p.text }}>Nova anotação</h4>
           <Field label="Título"><Input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Ex: Resumo de Leis de Newton" /></Field>
           <Field label="Conteúdo"><Textarea rows={6} value={conteudo} onChange={(e) => setConteudo(e.target.value)} placeholder="Escreva livremente..." /></Field>
           <Btn onClick={addNota} icon={Plus} style={{ width: "100%" }}>Adicionar</Btn>
@@ -2142,7 +2123,7 @@ function AlunoAnotacoes({ notas, setNotas }) {
           {lista.map((n) => (
             <Card key={n.id} pad={16} style={{ marginBottom: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: p.text }}>{n.titulo}</h4>
+                <h4 style={{ margin: 0, fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: p.text }}>{n.titulo}</h4>
                 <span style={{ fontSize: 11, color: p.textFaint }}>{n.data}</span>
               </div>
               <p style={{ margin: "8px 0 0", fontSize: 13.5, color: p.textSoft, lineHeight: 1.65, whiteSpace: "pre-wrap" }}>{n.conteudo}</p>
@@ -2188,29 +2169,29 @@ function AlunoSimulados({ simulados, user, envios = [], setEnvios }) {
           <Card style={{ minHeight: 460, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", color: p.textFaint, background: p.surface2 }}>
             <FileText size={48} style={{ opacity: .4, marginBottom: 12 }} />
             <p style={{ fontSize: 14, fontWeight: 600, color: p.textSoft }}>Visualizador de PDF da prova</p>
-            <p style={{ fontSize: 12 }}>🔥 Embed do PDF do Firebase Storage aqui</p>
+            <p style={{ fontSize: 12 }}>Pré-visualização do PDF</p>
           </Card>
           {/* cartão-resposta */}
           <Card>
-            <h4 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 700, color: p.text }}>Cartão-resposta</h4>
+            <h4 style={{ margin: "0 0 14px", fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: p.text }}>Cartão-resposta</h4>
             {ativo.questoes.map((q) => (
               <div key={q.num} style={{ marginBottom: 12 }}>
                 <div style={{ fontSize: 12.5, color: p.textSoft, marginBottom: 5 }}>Q{q.num} · {q.materia}</div>
                 <div style={{ display: "flex", gap: 6 }}>
                   {["A", "B", "C", "D", "E"].map((alt) => (
                     <button key={alt} onClick={() => setRespostas({ ...respostas, [q.num]: alt })}
-                      style={{ flex: 1, padding: "8px 0", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: "pointer",
+                      style={{ flex: 1, padding: "8px 0", borderRadius: 4, fontWeight: 700, fontSize: 13, cursor: "pointer",
                         border: "1px solid " + (respostas[q.num] === alt ? p.accent : p.border),
                         background: respostas[q.num] === alt ? p.accent : "transparent",
-                        color: respostas[q.num] === alt ? "#fff" : p.textSoft }}>{alt}</button>
+                        color: respostas[q.num] === alt ? p.bg : p.textSoft }}>{alt}</button>
                   ))}
                 </div>
               </div>
             ))}
             {!resultado
               ? <Btn onClick={finalizar} style={{ width: "100%", marginTop: 8 }} icon={Check}>Finalizar e corrigir</Btn>
-              : <div style={{ marginTop: 14, padding: 16, background: p.green + "15", border: "1px solid " + p.green + "44", borderRadius: 12, textAlign: "center" }}>
-                  <div style={{ fontSize: 28, fontWeight: 900, color: p.green }}>{resultado.acertos}/{resultado.total}</div>
+              : <div style={{ marginTop: 14, padding: 16, background: p.green + "15", border: "1px solid " + p.green + "44", borderRadius: 6, textAlign: "center" }}>
+                  <div style={{ fontSize: 28, fontWeight: 500, fontFamily: SERIF, color: p.green }}>{resultado.acertos}/{resultado.total}</div>
                   <div style={{ fontSize: 13, color: p.textSoft }}>{Math.round(resultado.acertos / resultado.total * 100)}% de acerto · adicionado ao Desempenho</div>
                 </div>}
           </Card>
@@ -2224,7 +2205,7 @@ function AlunoSimulados({ simulados, user, envios = [], setEnvios }) {
       <SectionTitle icon={FileText} title="Simulados" subtitle="Provas disponibilizadas pelo instrutor"
         right={
           <button onClick={() => setEnviar(true)} title="Anexar seu simulado para classificação"
-            style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "8px 13px", borderRadius: 9, cursor: "pointer",
+            style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "8px 13px", borderRadius: 4, cursor: "pointer",
               background: "transparent", border: "1px dashed " + p.border, color: p.textSoft, fontSize: 12.5, fontWeight: 600, transition: "all .15s" }}
             onMouseEnter={(e) => { e.currentTarget.style.borderColor = p.accent; e.currentTarget.style.color = p.accent; }}
             onMouseLeave={(e) => { e.currentTarget.style.borderColor = p.border; e.currentTarget.style.color = p.textSoft; }}>
@@ -2250,7 +2231,7 @@ function AlunoSimulados({ simulados, user, envios = [], setEnvios }) {
         <div style={{ marginTop: 28 }}>
           <h3 style={{ fontSize: 14, fontWeight: 700, color: p.textSoft, marginBottom: 12 }}>Seus envios</h3>
           {meusEnvios.map((e) => (
-            <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", marginBottom: 8, borderRadius: 11, background: p.surface, border: "1px solid " + p.border }}>
+            <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", marginBottom: 8, borderRadius: 5, background: p.surface, border: "1px solid " + p.border }}>
               <FileText size={18} color={p.textFaint} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: p.text }}>{e.nome}</div>
@@ -2270,11 +2251,11 @@ function AlunoSimulados({ simulados, user, envios = [], setEnvios }) {
         <p style={{ fontSize: 13, color: p.textSoft, marginTop: 0, lineHeight: 1.6 }}>
           Envie o PDF de um simulado que você fez. O instrutor classifica as questões e ele fica disponível para você resolver na plataforma.
         </p>
-        <div style={{ border: "2px dashed " + p.border, borderRadius: 14, padding: 22, textAlign: "center", marginBottom: 16, cursor: "pointer" }}
+        <div style={{ border: "2px dashed " + p.border, borderRadius: 6, padding: 22, textAlign: "center", marginBottom: 16, cursor: "pointer" }}
           onClick={() => setEnvForm({ ...envForm, arquivo: "simulado_anexado.pdf" })}>
           <UploadCloud size={28} color={p.accent} style={{ marginBottom: 6 }} />
           <div style={{ fontSize: 13, fontWeight: 600, color: p.text }}>{envForm.arquivo || "Clique para anexar o PDF"}</div>
-          <div style={{ fontSize: 11.5, color: p.textFaint, marginTop: 2 }}>🔥 Upload para Firebase Storage</div>
+          <div style={{ fontSize: 11.5, color: p.textFaint, marginTop: 2 }}>Selecione o arquivo em PDF</div>
         </div>
         <Field label="Nome da prova"><Input value={envForm.nome} onChange={(e) => setEnvForm({ ...envForm, nome: e.target.value })} placeholder="Ex: Simulado ProENEM 04" /></Field>
         <Field label="Modelo / vestibular">
@@ -2302,11 +2283,11 @@ function AlunoMateriais({ materiais, user }) {
         right={<Select value={vest} onChange={(e) => setVest(e.target.value)} style={{ width: 160 }}><option value="">Todos</option>{vestaveis.map((vname) => <option key={vname}>{vname}</option>)}</Select>} />      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 14 }}>
         {filtrados.map((m) => (
           <Card key={m.id} hover pad={16}>
-            <div style={{ height: 90, borderRadius: 10, background: `linear-gradient(135deg, ${m.cor}33, ${m.cor}11)`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
-              <BookMarked size={32} color={m.cor} />
+            <div style={{ height: 90, borderRadius: 3, background: m.cor + "12", borderTop: "3px solid " + m.cor, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
+              <BookMarked size={26} color={m.cor} />
             </div>
             <Badge soft color={m.cor}>{m.materia}</Badge>
-            <h4 style={{ margin: "8px 0 4px", fontSize: 14.5, fontWeight: 700, color: p.text }}>{m.titulo}</h4>
+            <h4 style={{ margin: "8px 0 4px", fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: p.text }}>{m.titulo}</h4>
             <p style={{ margin: 0, fontSize: 12, color: p.textFaint }}>{m.vestibular} · {m.area}</p>
             {/* 🔥 FIREBASE Storage: visualizar PDF via getDownloadURL */}
             <Btn size="sm" variant="soft" icon={Eye} style={{ marginTop: 12, width: "100%" }}>Abrir PDF</Btn>
@@ -2345,15 +2326,15 @@ function VisaoComparativa({ alunos, envios }) {
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10 }}>
         <Icon size={14} color={cor} />
-        <span style={{ fontSize: 11, fontWeight: 800, color: p.textSoft, textTransform: "uppercase", letterSpacing: ".06em" }}>{titulo}</span>
+        <span style={{ fontSize: 11, fontWeight: 500, fontFamily: MONO, color: p.textSoft, textTransform: "uppercase", letterSpacing: ".1em" }}>{titulo}</span>
       </div>
       {dados.map((a, i) => (
         <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 9, padding: "6px 0", borderBottom: i < dados.length - 1 ? "1px solid " + p.border : "none" }}>
-          <span style={{ fontSize: 11, fontWeight: 800, color: p.textFaint, width: 14 }}>{i + 1}</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: p.textFaint, width: 14 }}>{i + 1}</span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: p.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.nome}</div>
           </div>
-          <span style={{ fontSize: 13, fontWeight: 800, color: cor }}>{getValor(a)}{suffix}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: cor }}>{getValor(a)}{suffix}</span>
         </div>
       ))}
     </div>
@@ -2415,7 +2396,7 @@ function ModAlunos({ alunos, setAlunos, envios, setEnvios, materiais, setMateria
 
       {/* contador de envios pendentes (visão geral) */}
       {envios.filter((e) => e.status === "pendente").length > 0 && (
-        <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "11px 15px", marginBottom: 16, borderRadius: 11, background: p.accent + "12", border: "1px solid " + p.accent + "33" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "11px 15px", marginBottom: 16, borderRadius: 5, background: p.accent + "12", border: "1px solid " + p.accent + "33" }}>
           <UploadCloud size={17} color={p.accent} />
           <span style={{ fontSize: 13, color: p.text }}>
             <strong>{envios.filter((e) => e.status === "pendente").length}</strong> simulado(s) enviado(s) por alunos aguardando classificação.
@@ -2432,7 +2413,7 @@ function ModAlunos({ alunos, setAlunos, envios, setEnvios, materiais, setMateria
           return (
             <Card key={a.id} hover onClick={() => setSel(a)} pad={18}>
               <div style={{ display: "flex", alignItems: "center", gap: 13, marginBottom: 14 }}>
-                <div style={{ width: 46, height: 46, borderRadius: 13, background: vestInfo(a.vestibular).cor + "22", display: "flex", alignItems: "center", justifyContent: "center", color: vestInfo(a.vestibular).cor, fontWeight: 800, fontSize: 18, flexShrink: 0 }}>{a.nome.charAt(0)}</div>
+                <div style={{ width: 46, height: 46, borderRadius: 6, background: vestInfo(a.vestibular).cor + "22", display: "flex", alignItems: "center", justifyContent: "center", color: vestInfo(a.vestibular).cor, fontWeight: 600, fontSize: 18, flexShrink: 0 }}>{a.nome.charAt(0)}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: p.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.nome}</div>
                   <div style={{ marginTop: 4 }}><VestBadge id={a.vestibular} size="sm" /></div>
@@ -2533,10 +2514,10 @@ function ModAlunoPerfil({ aluno, onBack, alunos, setAlunos, envios, setEnvios, m
       {/* header do perfil com acento da cor do vestibular */}
       <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 4 }}>
         <Btn variant="ghost" size="sm" icon={ChevronRight} onClick={onBack} style={{ transform: "rotate(180deg)", padding: 8 }} />
-        <div style={{ width: 52, height: 52, borderRadius: 14, background: v.cor + "22", display: "flex", alignItems: "center", justifyContent: "center", color: v.cor, fontWeight: 800, fontSize: 21, flexShrink: 0 }}>{aluno.nome.charAt(0)}</div>
+        <div style={{ width: 52, height: 52, borderRadius: 6, background: v.cor + "22", display: "flex", alignItems: "center", justifyContent: "center", color: v.cor, fontWeight: 600, fontSize: 21, flexShrink: 0 }}>{aluno.nome.charAt(0)}</div>
         <div style={{ flex: 1 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: p.text, letterSpacing: "-.02em" }}>{aluno.nome}</h2>
+            <h2 style={{ margin: 0, fontSize: 22, fontWeight: 500, fontFamily: SERIF, color: p.text, letterSpacing: "-.02em" }}>{aluno.nome}</h2>
             <VestBadge id={aluno.vestibular} />
           </div>
           <p style={{ margin: "2px 0 0", fontSize: 13, color: p.textSoft }}>{aluno.email}</p>
@@ -2551,20 +2532,20 @@ function ModAlunoPerfil({ aluno, onBack, alunos, setAlunos, envios, setEnvios, m
       </div>
 
       {/* faixa de acento do vestibular */}
-      <div style={{ height: 3, borderRadius: 99, background: `linear-gradient(90deg, ${v.cor}, transparent)`, margin: "16px 0 20px" }} />
+      <div style={{ height: 2, background: v.cor, opacity: .85, margin: "16px 0 20px" }} />
 
       {/* abas internas — rolam horizontalmente em telas pequenas */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 22, overflowX: "auto", paddingBottom: 4 }}>
+      <div role="tablist" style={{ display: "flex", gap: 22, marginBottom: 26, overflowX: "auto", borderBottom: "1px solid " + p.border }}>
         {abas.map((t) => {
           const badge = t.k === "simulados" ? meusEnvios.filter((e) => e.status === "pendente").length : 0;
           return (
-            <button key={t.k} onClick={() => setAba(t.k)} style={{
-              display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 14px", borderRadius: 10, cursor: "pointer", flexShrink: 0,
-              border: "1px solid " + (aba === t.k ? p.accent : p.border), background: aba === t.k ? p.accent + "1a" : "transparent",
-              color: aba === t.k ? p.accent : p.textSoft, fontWeight: 600, fontSize: 12.5, transition: "all .15s", whiteSpace: "nowrap",
+            <button key={t.k} role="tab" aria-selected={aba === t.k} onClick={() => setAba(t.k)} style={{
+              display: "inline-flex", alignItems: "center", gap: 7, padding: "10px 0 11px", cursor: "pointer", flexShrink: 0, fontFamily: SANS,
+              border: "none", borderBottom: "2px solid " + (aba === t.k ? p.accent : "transparent"), marginBottom: -1, background: "transparent",
+              color: aba === t.k ? p.text : p.textSoft, fontWeight: aba === t.k ? 600 : 500, fontSize: 13.5, transition: "color .15s, border-color .15s", whiteSpace: "nowrap",
             }}>
-              <t.icon size={14} />{t.label}
-              {badge > 0 && <span style={{ background: p.accent, color: "#fff", borderRadius: 99, fontSize: 10.5, fontWeight: 800, padding: "1px 6px" }}>{badge}</span>}
+              <t.icon size={14} style={{ color: aba === t.k ? p.accent : p.textFaint }} />{t.label}
+              {badge > 0 && <span style={{ background: p.accent, color: p.bg, borderRadius: 99, fontSize: 10.5, fontWeight: 600, padding: "1px 6px" }}>{badge}</span>}
             </button>
           );
         })}
@@ -2624,16 +2605,16 @@ function PerfilDesempenhoQuestoes({ aluno }) {
       {/* cards-resumo */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 18 }} className="stat-grid">
         <StatCard icon={Target} label="Metas concluídas" value={aluno.metas} color={p.accent} />
-        <StatCard icon={FileQuestion} label="Questões" value={aluno.questoes} color="#3b82f6" />
+        <StatCard icon={FileQuestion} label="Questões" value={aluno.questoes} color="#1F6FA0" />
         <StatCard icon={Clock4} label="Horas" value={aluno.horas + "h"} color={p.green} />
-        <StatCard icon={TrendingUp} label="Progresso" value={aluno.progresso + "%"} color="#a855f7" />
+        <StatCard icon={TrendingUp} label="Progresso" value={aluno.progresso + "%"} color="#6A4C93" />
       </div>
 
       {/* filtros — matéria + tópico (cascata) + período (presets) */}
       <Card pad={16} style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 11 }}>
           <Filter size={15} color={p.accent} />
-          <span style={{ fontSize: 12.5, fontWeight: 700, color: p.text, textTransform: "uppercase", letterSpacing: ".04em" }}>Filtros</span>
+          <span style={{ fontSize: 12.5, fontWeight: 500, fontFamily: MONO, color: p.text, textTransform: "uppercase", letterSpacing: ".1em" }}>Filtros</span>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }} className="stat-grid">
           <Select value={fMat} onChange={(e) => { setFMat(e.target.value); setFTop(""); }}>
@@ -2648,7 +2629,7 @@ function PerfilDesempenhoQuestoes({ aluno }) {
           <div style={{ position: "relative" }}>
             <button onClick={() => setOpenPer(!openPer)} style={{
               width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
-              padding: "11px 13px", borderRadius: 10, background: p.inputBg, border: "1px solid " + p.border,
+              padding: "11px 13px", borderRadius: 5, background: p.inputBg, border: "1px solid " + p.border,
               color: p.text, fontSize: 14, fontWeight: 500, cursor: "pointer", textAlign: "left",
             }}>
               <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
@@ -2660,7 +2641,7 @@ function PerfilDesempenhoQuestoes({ aluno }) {
             {openPer && (
               <>
                 <div onClick={() => setOpenPer(false)} style={{ position: "fixed", inset: 0, zIndex: 20 }} />
-                <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, left: 0, background: p.surface, border: "1px solid " + p.border, borderRadius: 11, boxShadow: "0 12px 28px rgba(0,0,0,.18)", zIndex: 21, overflow: "hidden" }}>
+                <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, left: 0, background: p.surface, border: "1px solid " + p.border, borderRadius: 5, boxShadow: "0 12px 28px rgba(0,0,0,.18)", zIndex: 21, overflow: "hidden" }}>
                   {PERIODOS.map((per) => (
                     <button key={per.k} onClick={() => { setPeriodo(per.k); if (per.k !== "custom") setOpenPer(false); }} style={{
                       display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%",
@@ -2690,24 +2671,24 @@ function PerfilDesempenhoQuestoes({ aluno }) {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }} className="chart-grid">
         <Card>
-          <h3 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 700, color: p.text }}>Evolução da taxa de acerto</h3>
+          <h3 style={{ margin: "0 0 14px", fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Evolução da taxa de acerto</h3>
           <ResponsiveContainer width="100%" height={230}>
-            <LineChart data={evolucao}>
-              <CartesianGrid strokeDasharray="3 3" stroke={p.chartGrid} />
+            <LineChart data={evolucao} margin={{ top: 8, right: 18, left: -8, bottom: 0 }}>
+              <CartesianGrid stroke={p.chartGrid} vertical={false} />
               <XAxis dataKey="dia" stroke={p.textSoft} fontSize={12} /><YAxis stroke={p.textSoft} fontSize={12} domain={[0, 100]} />
-              <Tooltip contentStyle={{ background: p.surface, border: "1px solid " + p.border, borderRadius: 10, color: p.text }} />
-              <Line type="monotone" dataKey="taxa" stroke={p.accent} strokeWidth={3} dot={{ fill: p.accent, r: 4 }} />
+              <Tooltip contentStyle={{ background: p.surface, border: "1px solid " + p.border, borderRadius: 5, color: p.text }} />
+              <Line type="monotone" dataKey="taxa" stroke={p.accent} strokeWidth={2} dot={{ fill: p.accent, r: 4, stroke: p.surface, strokeWidth: 2 }} />
             </LineChart>
           </ResponsiveContainer>
         </Card>
         <Card>
-          <h3 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 700, color: p.text }}>Acertos por matéria</h3>
+          <h3 style={{ margin: "0 0 14px", fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Acertos por matéria</h3>
           <ResponsiveContainer width="100%" height={230}>
             <BarChart data={porMateria}>
-              <CartesianGrid strokeDasharray="3 3" stroke={p.chartGrid} />
+              <CartesianGrid stroke={p.chartGrid} vertical={false} />
               <XAxis dataKey="materia" stroke={p.textSoft} fontSize={12} /><YAxis stroke={p.textSoft} fontSize={12} domain={[0, 100]} />
-              <Tooltip contentStyle={{ background: p.surface, border: "1px solid " + p.border, borderRadius: 10, color: p.text }} cursor={{ fill: p.accent + "11" }} />
-              <Bar dataKey="taxa" fill={p.accent} radius={[8, 8, 0, 0]} />
+              <Tooltip contentStyle={{ background: p.surface, border: "1px solid " + p.border, borderRadius: 5, color: p.text }} cursor={{ fill: p.accent + "11" }} />
+              <Bar dataKey="taxa" fill={p.accent} radius={[3, 3, 0, 0]} maxBarSize={34} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
@@ -2759,11 +2740,11 @@ function PerfilSimulados({ aluno, envios, setEnvios, todosEnvios }) {
 
       {/* 🔥 FIREBASE Storage: visualizar o PDF enviado ao lado do classificador */}
       <Modal open={!!classificando} onClose={() => setClassificando(null)} title={"Classificar · " + (classificando?.nome || "")} width={560}>
-        <div style={{ border: "2px dashed " + p.border, borderRadius: 12, padding: 18, textAlign: "center", marginBottom: 16, color: p.textFaint }}>
+        <div style={{ border: "2px dashed " + p.border, borderRadius: 6, padding: 18, textAlign: "center", marginBottom: 16, color: p.textFaint }}>
           <FileText size={26} style={{ opacity: .5, marginBottom: 6 }} />
           <div style={{ fontSize: 12.5 }}>Pré-visualização do PDF enviado pelo aluno</div>
         </div>
-        <h4 style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 700, color: p.text }}>Classificar questões</h4>
+        <h4 style={{ margin: "0 0 12px", fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: p.text }}>Classificar questões</h4>
         <div style={{ display: "grid", gridTemplateColumns: "54px 1fr 1fr 62px auto", gap: 8, alignItems: "end" }}>
           <Field label="Nº"><Input value={questao.num} onChange={(ev) => setQuestao({ ...questao, num: ev.target.value })} /></Field>
           <Field label="Matéria"><Select value={questao.materiaId} onChange={(ev) => setQuestao({ ...questao, materiaId: ev.target.value, topicoId: "" })}><option value="">—</option>{MATERIAS_FLAT.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}</Select></Field>
@@ -2772,7 +2753,7 @@ function PerfilSimulados({ aluno, envios, setEnvios, todosEnvios }) {
           <Btn size="sm" icon={Plus} onClick={addQ} style={{ marginBottom: 14 }}>Add</Btn>
         </div>
         {tmp.length > 0 && (
-          <div style={{ background: p.surface2, borderRadius: 10, padding: 10, marginBottom: 14, maxHeight: 140, overflowY: "auto" }}>
+          <div style={{ background: p.surface2, borderRadius: 5, padding: 10, marginBottom: 14, maxHeight: 140, overflowY: "auto" }}>
             {tmp.map((q, i) => (
               <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, padding: "4px 0", color: p.text }}>
                 <span>Q{q.num} · {q.materia || "—"} · {q.topico || "—"}</span><span style={{ color: p.accent, fontWeight: 700 }}>Gab: {q.gabarito}</span>
@@ -2837,7 +2818,7 @@ function PerfilCiclo({ aluno, ciclosPorAluno, setCiclosPorAluno, dispPorAluno })
   return (
     <div>
       {/* aviso de como o sistema funciona */}
-      <div style={{ display: "flex", gap: 10, padding: "11px 14px", marginBottom: 18, borderRadius: 11, background: p.accent + "0e", border: "1px solid " + p.accent + "33", fontSize: 13, color: p.textSoft, lineHeight: 1.5 }}>
+      <div style={{ display: "flex", gap: 10, padding: "11px 14px", marginBottom: 18, borderRadius: 5, background: p.accent + "0e", border: "1px solid " + p.accent + "33", fontSize: 13, color: p.textSoft, lineHeight: 1.5 }}>
         <Sparkles size={15} color={p.accent} style={{ flexShrink: 0, marginTop: 1 }} />
         <span>Defina <strong style={{ color: p.text }}>quantos minutos por semana</strong> {aluno.nome.split(" ")[0]} dedica a cada matéria. A engine distribui automaticamente esses minutos nos dias da semana, respeitando a disponibilidade diária. O ciclo se repete sozinho toda semana.</span>
       </div>
@@ -2850,18 +2831,18 @@ function PerfilCiclo({ aluno, ciclosPorAluno, setCiclosPorAluno, dispPorAluno })
             <p style={{ fontSize: 13, color: p.textSoft, margin: "0 0 14px", lineHeight: 1.6 }}>
               Ciclo de <strong style={{ color: p.text }}>{aluno.nome}</strong> <VestBadge id={aluno.vestibular} size="sm" />
             </p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, padding: 14, background: p.surface2, borderRadius: 12, marginBottom: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, padding: 14, background: p.surface2, borderRadius: 6, marginBottom: 14 }}>
               <div>
                 <div style={{ fontSize: 11, color: p.textFaint, marginBottom: 3 }}>Total alocado/semana</div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: overflow ? p.danger : p.accent }}>{fmtMin(totalAloc)}</div>
+                <div style={{ fontSize: 20, fontWeight: 500, fontFamily: SERIF, color: overflow ? p.danger : p.accent }}>{fmtMin(totalAloc)}</div>
               </div>
               <div>
                 <div style={{ fontSize: 11, color: p.textFaint, marginBottom: 3 }}>Disponível/semana</div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: p.text }}>{fmtMin(totalDisp)}</div>
+                <div style={{ fontSize: 20, fontWeight: 500, fontFamily: SERIF, color: p.text }}>{fmtMin(totalDisp)}</div>
               </div>
             </div>
             {overflow && (
-              <div style={{ display: "flex", gap: 8, padding: "9px 12px", borderRadius: 9, background: p.danger + "14", border: "1px solid " + p.danger + "33", fontSize: 12, color: p.textSoft, marginBottom: 14 }}>
+              <div style={{ display: "flex", gap: 8, padding: "9px 12px", borderRadius: 4, background: p.danger + "14", border: "1px solid " + p.danger + "33", fontSize: 12, color: p.textSoft, marginBottom: 14 }}>
                 <AlertTriangle size={14} color={p.danger} style={{ flexShrink: 0, marginTop: 1 }} />
                 O ciclo excede a disponibilidade em {fmtMin(totalAloc - totalDisp)}. A engine vai priorizar as matérias com mais horas.
               </div>
@@ -2875,11 +2856,11 @@ function PerfilCiclo({ aluno, ciclosPorAluno, setCiclosPorAluno, dispPorAluno })
 
           {/* Templates */}
           <Card>
-            <div style={{ fontSize: 12, fontWeight: 800, color: p.textSoft, textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 12 }}>Templates</div>
+            <div style={{ fontSize: 12, fontWeight: 500, fontFamily: MONO, color: p.textSoft, textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 12 }}>Templates</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {Object.entries(CICLO_TEMPLATES).map(([k, t]) => (
                 <button key={k} onClick={() => aplicarTemplate(k)} style={{
-                  display: "flex", alignItems: "center", gap: 10, padding: "8px 11px", borderRadius: 9,
+                  display: "flex", alignItems: "center", gap: 10, padding: "8px 11px", borderRadius: 4,
                   background: "transparent", border: "1px solid " + p.border, cursor: "pointer", width: "100%", transition: "all .15s",
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.borderColor = t.cor; e.currentTarget.style.background = t.cor + "0e"; }}
@@ -2900,7 +2881,7 @@ function PerfilCiclo({ aluno, ciclosPorAluno, setCiclosPorAluno, dispPorAluno })
         {/* --- editor de alocações --- */}
         <Card>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: p.text }}>Horas semanais por matéria</h4>
+            <h4 style={{ margin: 0, fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: p.text }}>Horas semanais por matéria</h4>
             <Btn size="sm" variant="outline" icon={Plus} onClick={addAloc}>Matéria</Btn>
           </div>
 
@@ -2911,7 +2892,7 @@ function PerfilCiclo({ aluno, ciclosPorAluno, setCiclosPorAluno, dispPorAluno })
               const pct = totalAloc ? Math.round((a.minutosSemanais / totalAloc) * 100) : 0;
               return (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
-                  <div style={{ width: 24, height: 24, borderRadius: 7, background: areaCor + "22", color: areaCor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>{i + 1}</div>
+                  <div style={{ width: 24, height: 24, borderRadius: 4, background: areaCor + "22", color: areaCor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 600, flexShrink: 0 }}>{i + 1}</div>
                   <Select value={a.materiaId} onChange={(e) => updMat(i, e.target.value)} style={{ flex: 1.5 }}>
                     {MATERIAS_FLAT.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
                   </Select>
@@ -2960,14 +2941,14 @@ function PerfilCiclo({ aluno, ciclosPorAluno, setCiclosPorAluno, dispPorAluno })
       {/* Pré-visualização da semana gerada */}
       {preview && previewSemana && (
         <Card style={{ marginTop: 16 }}>
-          <h4 style={{ margin: "0 0 14px", fontSize: 14, fontWeight: 700, color: p.text }}>Como ficará a semana gerada automaticamente</h4>
+          <h4 style={{ margin: "0 0 14px", fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: p.text }}>Como ficará a semana gerada automaticamente</h4>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8 }} className="week-grid">
             {DIAS.map((d) => {
               const metas = previewSemana[d.k] || [];
               const total = metas.reduce((s, m) => s + m.minutos, 0);
               const teto = disp[d.k] || 0;
               return (
-                <div key={d.k} style={{ padding: 9, borderRadius: 10, background: p.surface2, border: "1px solid " + p.border }}>
+                <div key={d.k} style={{ padding: 9, borderRadius: 5, background: p.surface2, border: "1px solid " + p.border }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: p.textSoft }}>{d.nome.slice(0, 3)}</span>
                     <span style={{ fontSize: 9.5, color: total > teto ? p.danger : p.textFaint }}>{fmtMin(total)}/{fmtMin(teto)}</span>
@@ -3019,16 +3000,16 @@ function PerfilMaterial({ aluno, materiais, setMateriais }) {
                   <Badge soft color={m.cor}>{m.materia}</Badge>
                   <button onClick={() => setMateriais(materiais.filter((x) => x.id !== m.id))} style={{ background: "none", border: "none", color: p.danger, cursor: "pointer" }}><Trash2 size={15} /></button>
                 </div>
-                <h4 style={{ margin: "4px 0", fontSize: 14, fontWeight: 700, color: p.text }}>{m.titulo}</h4>
+                <h4 style={{ margin: "4px 0", fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: p.text }}>{m.titulo}</h4>
                 <p style={{ margin: 0, fontSize: 12, color: p.textFaint }}>{m.area}</p>
               </Card>
             ))}
           </div>}
       <Modal open={up} onClose={() => setUp(false)} title={"Enviar material · " + aluno.nome}>
-        <div style={{ border: "2px dashed " + p.border, borderRadius: 14, padding: 22, textAlign: "center", marginBottom: 16, cursor: "pointer" }}>
+        <div style={{ border: "2px dashed " + p.border, borderRadius: 6, padding: 22, textAlign: "center", marginBottom: 16, cursor: "pointer" }}>
           <UploadCloud size={30} color={p.accent} style={{ marginBottom: 6 }} />
           <div style={{ fontSize: 13, fontWeight: 600, color: p.text }}>Upload do PDF</div>
-          <div style={{ fontSize: 11.5, color: p.textFaint }}>🔥 Firebase Storage</div>
+          <div style={{ fontSize: 11.5, color: p.textFaint }}>Arquivo em PDF</div>
         </div>
         <Field label="Título"><Input value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} placeholder="Lista de exercícios personalizada" /></Field>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -3056,7 +3037,7 @@ function PerfilDesempenhoSimulados({ aluno }) {
       {/* resumo geral */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 18 }} className="stat-grid">
         <StatCard icon={Trophy} label="Taxa média" value={taxaMedia + "%"} color={p.accent} />
-        <StatCard icon={FileText} label="Simulados feitos" value={dados.geral.length} color="#3b82f6" />
+        <StatCard icon={FileText} label="Simulados feitos" value={dados.geral.length} color="#1F6FA0" />
         <StatCard icon={CheckCircle2} label="Total de acertos" value={`${totalA}/${totalQ}`} color={p.green} />
       </div>
 
@@ -3065,14 +3046,14 @@ function PerfilDesempenhoSimulados({ aluno }) {
       ) : (
         <>
           <Card style={{ marginBottom: 16 }}>
-            <h3 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 700, color: p.text }}>Desempenho geral nos simulados</h3>
+            <h3 style={{ margin: "0 0 14px", fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Desempenho geral nos simulados</h3>
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={dados.geral}>
-                <CartesianGrid strokeDasharray="3 3" stroke={p.chartGrid} />
+                <CartesianGrid stroke={p.chartGrid} vertical={false} />
                 <XAxis dataKey="nome" stroke={p.textSoft} fontSize={12} />
                 <YAxis stroke={p.textSoft} fontSize={12} domain={[0, 100]} />
-                <Tooltip contentStyle={{ background: p.surface, border: "1px solid " + p.border, borderRadius: 10, color: p.text }} cursor={{ fill: p.accent + "11" }} />
-                <Bar dataKey="taxa" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+                <Tooltip contentStyle={{ background: p.surface, border: "1px solid " + p.border, borderRadius: 5, color: p.text }} cursor={{ fill: p.accent + "11" }} />
+                <Bar dataKey="taxa" fill="#1F6FA0" radius={[3, 3, 0, 0]} maxBarSize={34} />
               </BarChart>
             </ResponsiveContainer>
           </Card>
@@ -3080,7 +3061,7 @@ function PerfilDesempenhoSimulados({ aluno }) {
           {/* lista de simulados clicável para abrir o por matéria */}
           <Card pad={0} style={{ marginBottom: 16 }}>
             <div style={{ padding: "14px 18px", borderBottom: "1px solid " + p.border }}>
-              <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: p.text }}>Histórico de simulados</h3>
+              <h3 style={{ margin: 0, fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Histórico de simulados</h3>
               <p style={{ margin: "3px 0 0", fontSize: 12, color: p.textFaint }}>Clique para ver o detalhamento por matéria</p>
             </div>
             {dados.geral.map((e, i) => (
@@ -3088,7 +3069,7 @@ function PerfilDesempenhoSimulados({ aluno }) {
                 style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 18px", width: "100%", background: "transparent", border: "none", borderBottom: i < dados.geral.length - 1 ? "1px solid " + p.border : "none", cursor: "pointer", textAlign: "left", color: "inherit" }}
                 onMouseEnter={(ev) => ev.currentTarget.style.background = p.surface2}
                 onMouseLeave={(ev) => ev.currentTarget.style.background = "transparent"}>
-                <div style={{ width: 46, height: 46, borderRadius: 11, background: (e.taxa >= 70 ? p.green : e.taxa >= 50 ? p.accent : p.danger) + "1f", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: e.taxa >= 70 ? p.green : e.taxa >= 50 ? p.accent : p.danger, fontWeight: 800, fontSize: 14 }}>{e.taxa}%</div>
+                <div style={{ width: 46, height: 46, borderRadius: 5, background: (e.taxa >= 70 ? p.green : e.taxa >= 50 ? p.accent : p.danger) + "1f", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: e.taxa >= 70 ? p.green : e.taxa >= 50 ? p.accent : p.danger, fontWeight: 600, fontSize: 14 }}>{e.taxa}%</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: p.text }}>{e.nome}</div>
                   <div style={{ fontSize: 12.5, color: p.textSoft, marginTop: 2 }}>{e.acertos} acertos de {e.total} · {e.data}</div>
@@ -3101,14 +3082,14 @@ function PerfilDesempenhoSimulados({ aluno }) {
           {/* detalhamento por matéria — abre quando clica em um simulado */}
           {verMaterias && porMatArr.length > 0 && (
             <Card>
-              <h3 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 700, color: p.text }}>Desempenho por matéria (consolidado)</h3>
+              <h3 style={{ margin: "0 0 14px", fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Desempenho por matéria (consolidado)</h3>
               <ResponsiveContainer width="100%" height={Math.max(240, porMatArr.length * 32)}>
                 <BarChart data={porMatArr} layout="vertical" margin={{ left: 70 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={p.chartGrid} />
+                  <CartesianGrid stroke={p.chartGrid} horizontal={false} />
                   <XAxis type="number" stroke={p.textSoft} fontSize={12} domain={[0, 100]} />
                   <YAxis type="category" dataKey="materia" stroke={p.textSoft} fontSize={12} width={70} />
-                  <Tooltip contentStyle={{ background: p.surface, border: "1px solid " + p.border, borderRadius: 10, color: p.text }} cursor={{ fill: p.accent + "11" }} />
-                  <Bar dataKey="taxa" fill={p.accent} radius={[0, 8, 8, 0]} />
+                  <Tooltip contentStyle={{ background: p.surface, border: "1px solid " + p.border, borderRadius: 5, color: p.text }} cursor={{ fill: p.accent + "11" }} />
+                  <Bar dataKey="taxa" fill={p.accent} radius={[0, 3, 3, 0]} maxBarSize={22} />
                 </BarChart>
               </ResponsiveContainer>
             </Card>
@@ -3143,7 +3124,7 @@ function PerfilProgresso({ aluno, progressoAlunos }) {
           <Card key={area.id} style={{ marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
               <div style={{ width: 10, height: 10, borderRadius: 3, background: area.cor }} />
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: p.text, flex: 1 }}>{area.nome}</h3>
+              <h3 style={{ margin: 0, fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text, flex: 1 }}>{area.nome}</h3>
               <span style={{ fontSize: 13, fontWeight: 700, color: area.cor }}>{pctArea}%</span>
             </div>
             <div style={{ marginBottom: 14 }}><ProgressBar value={pctArea} color={area.cor} /></div>
@@ -3151,7 +3132,7 @@ function PerfilProgresso({ aluno, progressoAlunos }) {
               {area.materias.map((m) => {
                 const pctM = calcMateria(m);
                 return (
-                  <div key={m.id} style={{ padding: 13, borderRadius: 11, background: p.surface2 }}>
+                  <div key={m.id} style={{ padding: 13, borderRadius: 5, background: p.surface2 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 7 }}>
                       <span style={{ fontSize: 13.5, fontWeight: 700, color: p.text }}>{m.nome}</span>
                       <span style={{ fontSize: 12, color: p.textSoft, fontWeight: 600 }}>{pctM}%</span>
@@ -3216,7 +3197,7 @@ function PerfilRevisoes({ aluno, revisoes, setRevisoes }) {
         minhas.map((r) => (
           <Card key={r.id} pad={16} style={{ marginBottom: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 42, height: 42, borderRadius: 11, background: p.accent + "1f", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <div style={{ width: 42, height: 42, borderRadius: 5, background: p.accent + "1f", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 <RefreshCw size={19} color={p.accent} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -3229,7 +3210,7 @@ function PerfilRevisoes({ aluno, revisoes, setRevisoes }) {
             </div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 12, paddingTop: 12, borderTop: "1px solid " + p.border }}>
               {r.sessoes.map((s, i) => (
-                <span key={i} style={{ fontSize: 11.5, padding: "3px 9px", borderRadius: 7, background: s.status === "concluida" ? p.green + "1f" : p.surface2, color: s.status === "concluida" ? p.green : p.textSoft, border: "1px solid " + (s.status === "concluida" ? p.green + "44" : p.border), fontWeight: 600 }}>
+                <span key={i} style={{ fontSize: 11.5, padding: "3px 9px", borderRadius: 4, background: s.status === "concluida" ? p.green + "1f" : p.surface2, color: s.status === "concluida" ? p.green : p.textSoft, border: "1px solid " + (s.status === "concluida" ? p.green + "44" : p.border), fontWeight: 600 }}>
                   {s.dia.split("-").reverse().slice(0, 2).join("/")} {s.status === "concluida" ? "✓" : ""}
                 </span>
               ))}
@@ -3260,7 +3241,7 @@ function PerfilHistorico({ aluno, historicoReplan }) {
   // No mock o histórico é global; na versão real virá filtrado por aluno.
   // 🔥 FIREBASE: /students/{uid}/replanLog
   if (!historicoReplan || historicoReplan.length === 0) {
-    return <Empty icon={Clock4} title="Sem replanejamentos" sub="Quando o aluno usar o botão 🔄, os recálculos aparecem aqui." />;
+    return <Empty icon={Clock4} title="Sem replanejamentos" sub="Quando o aluno replanejar as metas, os recálculos aparecem aqui." />;
   }
   return (
     <>
@@ -3268,7 +3249,7 @@ function PerfilHistorico({ aluno, historicoReplan }) {
       <Card pad={0}>
         {historicoReplan.map((h, i) => (
           <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 18px", borderBottom: i < historicoReplan.length - 1 ? "1px solid " + p.border : "none" }}>
-            <div style={{ width: 40, height: 40, borderRadius: 11, background: p.accent + "1f", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 5, background: p.accent + "1f", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <RefreshCw size={18} color={p.accent} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -3302,7 +3283,7 @@ function PerfilAnotacoes({ aluno, anotacoesMod, setAnotacoesMod }) {
 
   return (
     <>
-      <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 13px", marginBottom: 16, borderRadius: 11, background: p.accent + "12", border: "1px solid " + p.accent + "33" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 13px", marginBottom: 16, borderRadius: 5, background: p.accent + "12", border: "1px solid " + p.accent + "33" }}>
         <Lock size={14} color={p.accent} />
         <span style={{ fontSize: 12.5, color: p.textSoft }}>Estas anotações são <strong style={{ color: p.text }}>visíveis apenas para você</strong>. {aluno.nome.split(" ")[0]} não tem acesso.</span>
       </div>
@@ -3348,8 +3329,8 @@ function PerfilRecados({ aluno, recadosPorAluno, setRecadosPorAluno }) {
 
   return (
     <>
-      <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 13px", marginBottom: 16, borderRadius: 11, background: "#3b82f6" + "12", border: "1px solid " + "#3b82f6" + "33" }}>
-        <Mail size={14} color="#3b82f6" />
+      <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 13px", marginBottom: 16, borderRadius: 5, background: "#1F6FA0" + "12", border: "1px solid " + "#1F6FA0" + "33" }}>
+        <Mail size={14} color="#1F6FA0" />
         <span style={{ fontSize: 12.5, color: p.textSoft }}>Os recados aparecem como notificação no Dashboard de {aluno.nome.split(" ")[0]}.</span>
       </div>
       <Card style={{ marginBottom: 16 }}>
@@ -3377,8 +3358,15 @@ function PerfilRecados({ aluno, recadosPorAluno, setRecadosPorAluno }) {
 
 function MiniStat({ label, value }) {
   const p = usePalette();
-  return <div style={{ textAlign: "center" }} className="mini-stat"><div style={{ fontSize: 16, fontWeight: 800, color: p.text }}>{value}</div><div style={{ fontSize: 10.5, color: p.textFaint }}>{label}</div></div>;
+  return (
+    <div className="mini-stat" style={{ textAlign: "center" }}>
+      <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 500, color: p.text, fontVariantNumeric: "tabular-nums", lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: ".1em", textTransform: "uppercase", color: p.textFaint, marginTop: 4 }}>{label}</div>
+    </div>
+  );
 }
+
+// Tela de boas-vindas em tela cheia (gate pós-login): hero com a arte das Arcadas e narrativa por rolagem
 
 /* ---- 2. PLANO DE ESTUDOS (estrutura universal) --------------------------- */
 function ModPlano({ plano, setPlano }) {
@@ -3421,7 +3409,7 @@ function ModPlano({ plano, setPlano }) {
           <Card key={area.id} pad={0} style={{ marginBottom: 12, overflow: "hidden" }}>
             <button onClick={() => setOpenArea(aberto ? null : area.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "16px 18px", background: "transparent", border: "none", cursor: "pointer" }}>
               <div style={{ width: 10, height: 10, borderRadius: 3, background: area.cor }} />
-              <span style={{ flex: 1, textAlign: "left", fontSize: 16, fontWeight: 800, color: p.text }}>{area.nome}</span>
+              <span style={{ flex: 1, textAlign: "left", fontSize: 16, fontWeight: 600, color: p.text }}>{area.nome}</span>
               <span style={{ fontSize: 12, color: p.textFaint }}>{area.materias.length} matérias</span>
               {aberto ? <ChevronDown size={18} color={p.textSoft} /> : <ChevronRight size={18} color={p.textSoft} />}
             </button>
@@ -3431,7 +3419,7 @@ function ModPlano({ plano, setPlano }) {
                   <div key={m.id} style={{ marginBottom: 14, paddingLeft: 22, borderLeft: "2px solid " + area.cor + "44" }}>
                     <div style={{ fontSize: 14.5, fontWeight: 700, color: p.text, marginBottom: 8 }}>{m.nome}</div>
                     {m.topicos.map((t) => (
-                      <div key={t.id} style={{ background: p.surface2, borderRadius: 10, padding: "10px 13px", marginBottom: 7 }}>
+                      <div key={t.id} style={{ background: p.surface2, borderRadius: 5, padding: "10px 13px", marginBottom: 7 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                           <span style={{ fontSize: 13.5, fontWeight: 600, color: p.text }}>{t.nome}</span>
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -3451,12 +3439,12 @@ function ModPlano({ plano, setPlano }) {
                           </div>
                         </div>
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
-                          {t.subs.map((s) => <span key={s} style={{ fontSize: 11.5, padding: "3px 9px", borderRadius: 7, background: p.surface, border: "1px solid " + p.border, color: p.textSoft }}>{s}</span>)}
+                          {t.subs.map((s) => <span key={s} style={{ fontSize: 11.5, padding: "3px 9px", borderRadius: 4, background: p.surface, border: "1px solid " + p.border, color: p.textSoft }}>{s}</span>)}
                           {t.subs.length === 0 && <span style={{ fontSize: 11.5, color: p.textFaint, fontStyle: "italic" }}>sem subtópicos</span>}
                         </div>
                       </div>
                     ))}
-                    <button onClick={() => addTopico(area.id, m.id)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 9, background: "transparent", border: "1px dashed " + p.border, color: p.textSoft, fontSize: 12.5, fontWeight: 600, cursor: "pointer", marginTop: 2 }}
+                    <button onClick={() => addTopico(area.id, m.id)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 4, background: "transparent", border: "1px dashed " + p.border, color: p.textSoft, fontSize: 12.5, fontWeight: 600, cursor: "pointer", marginTop: 2 }}
                       onMouseEnter={(e) => { e.currentTarget.style.borderColor = area.cor; e.currentTarget.style.color = area.cor; }}
                       onMouseLeave={(e) => { e.currentTarget.style.borderColor = p.border; e.currentTarget.style.color = p.textSoft; }}>
                       <Plus size={13} /> Adicionar tópico em {m.nome}
@@ -3579,10 +3567,10 @@ function ModSimulados({ simulados, setSimulados }) {
       </div>
 
       <Modal open={up} onClose={() => setUp(false)} title="Novo simulado" width={560}>
-        <div style={{ border: "2px dashed " + p.border, borderRadius: 14, padding: 24, textAlign: "center", marginBottom: 18, cursor: "pointer" }}>
+        <div style={{ border: "2px dashed " + p.border, borderRadius: 6, padding: 24, textAlign: "center", marginBottom: 18, cursor: "pointer" }}>
           <UploadCloud size={32} color={p.accent} style={{ marginBottom: 8 }} />
           <div style={{ fontSize: 13.5, fontWeight: 600, color: p.text }}>Arraste o PDF da prova ou clique</div>
-          <div style={{ fontSize: 12, color: p.textFaint, marginTop: 3 }}>🔥 Upload para Firebase Storage</div>
+          <div style={{ fontSize: 12, color: p.textFaint, marginTop: 3 }}>Selecione o arquivo em PDF</div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 10 }}>
           <Field label="Nome"><Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="ENEM 2024 - Dia 1" /></Field>
@@ -3591,7 +3579,7 @@ function ModSimulados({ simulados, setSimulados }) {
         </div>
 
         <div style={{ borderTop: "1px solid " + p.border, paddingTop: 16, marginTop: 6 }}>
-          <h4 style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 700, color: p.text }}>Classificar questões</h4>
+          <h4 style={{ margin: "0 0 12px", fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: p.text }}>Classificar questões</h4>
           <div style={{ display: "grid", gridTemplateColumns: "54px 1fr 1fr 62px auto", gap: 8, alignItems: "end" }}>
             <Field label="Nº"><Input value={questao.num} onChange={(e) => setQuestao({ ...questao, num: e.target.value })} /></Field>
             <Field label="Matéria"><Select value={questao.materiaId} onChange={(e) => setQuestao({ ...questao, materiaId: e.target.value, topicoId: "" })}><option value="">—</option>{MATERIAS_FLAT.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}</Select></Field>
@@ -3600,7 +3588,7 @@ function ModSimulados({ simulados, setSimulados }) {
             <Btn size="sm" icon={Plus} onClick={addQ} style={{ marginBottom: 14 }}>Add</Btn>
           </div>
           {questoesTmp.length > 0 && (
-            <div style={{ background: p.surface2, borderRadius: 10, padding: 10, marginBottom: 14, maxHeight: 140, overflowY: "auto" }}>
+            <div style={{ background: p.surface2, borderRadius: 5, padding: 10, marginBottom: 14, maxHeight: 140, overflowY: "auto" }}>
               {questoesTmp.map((q, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, padding: "4px 0", color: p.text }}>
                   <span>Q{q.num} · {q.materia || "—"} · {q.topico || "—"}</span>
@@ -3640,18 +3628,18 @@ function ModMateriais({ materiais, setMateriais, alunos }) {
               <Badge soft color={m.cor}>{m.materia}</Badge>
               <button onClick={() => setMateriais(materiais.filter((x) => x.id !== m.id))} style={{ background: "none", border: "none", color: p.danger, cursor: "pointer" }}><Trash2 size={15} /></button>
             </div>
-            <h4 style={{ margin: "4px 0", fontSize: 14.5, fontWeight: 700, color: p.text }}>{m.titulo}</h4>
+            <h4 style={{ margin: "4px 0", fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: p.text }}>{m.titulo}</h4>
             <p style={{ margin: 0, fontSize: 12, color: p.textFaint }}>{m.vestibular} · {m.area}</p>
-            <div style={{ marginTop: 8, fontSize: 11.5, color: p.textSoft }}>{m.para === "todos" ? "👥 Todos os alunos" : "👤 Alunos específicos"}</div>
+            <div style={{ marginTop: 8, fontSize: 11.5, color: p.textSoft }}>{m.para === "todos" ? "Todos os alunos" : "Alunos específicos"}</div>
           </Card>
         ))}
       </div>
 
       <Modal open={up} onClose={() => setUp(false)} title="Novo material">
-        <div style={{ border: "2px dashed " + p.border, borderRadius: 14, padding: 22, textAlign: "center", marginBottom: 16, cursor: "pointer" }}>
+        <div style={{ border: "2px dashed " + p.border, borderRadius: 6, padding: 22, textAlign: "center", marginBottom: 16, cursor: "pointer" }}>
           <UploadCloud size={30} color={p.accent} style={{ marginBottom: 6 }} />
           <div style={{ fontSize: 13, fontWeight: 600, color: p.text }}>Upload do PDF</div>
-          <div style={{ fontSize: 11.5, color: p.textFaint }}>🔥 Firebase Storage</div>
+          <div style={{ fontSize: 11.5, color: p.textFaint }}>Arquivo em PDF</div>
         </div>
         <Field label="Título"><Input value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} placeholder="Apostila de Funções" /></Field>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -3661,12 +3649,12 @@ function ModMateriais({ materiais, setMateriais, alunos }) {
         <Field label="Matéria"><Input value={form.materia} onChange={(e) => setForm({ ...form, materia: e.target.value })} /></Field>
         <Field label="Disponibilizar para">
           <div style={{ display: "flex", gap: 10 }}>
-            <button onClick={() => setForm({ ...form, para: "todos" })} style={{ flex: 1, padding: 11, borderRadius: 10, cursor: "pointer", fontWeight: 600, fontSize: 13, border: "1px solid " + (form.para === "todos" ? p.accent : p.border), background: form.para === "todos" ? p.accent + "1f" : "transparent", color: form.para === "todos" ? p.accent : p.textSoft }}>Todos os alunos</button>
-            <button onClick={() => setForm({ ...form, para: "especificos" })} style={{ flex: 1, padding: 11, borderRadius: 10, cursor: "pointer", fontWeight: 600, fontSize: 13, border: "1px solid " + (form.para === "especificos" ? p.accent : p.border), background: form.para === "especificos" ? p.accent + "1f" : "transparent", color: form.para === "especificos" ? p.accent : p.textSoft }}>Específicos</button>
+            <button onClick={() => setForm({ ...form, para: "todos" })} style={{ flex: 1, padding: 11, borderRadius: 5, cursor: "pointer", fontWeight: 600, fontSize: 13, border: "1px solid " + (form.para === "todos" ? p.accent : p.border), background: form.para === "todos" ? p.accent + "1f" : "transparent", color: form.para === "todos" ? p.accent : p.textSoft }}>Todos os alunos</button>
+            <button onClick={() => setForm({ ...form, para: "especificos" })} style={{ flex: 1, padding: 11, borderRadius: 5, cursor: "pointer", fontWeight: 600, fontSize: 13, border: "1px solid " + (form.para === "especificos" ? p.accent : p.border), background: form.para === "especificos" ? p.accent + "1f" : "transparent", color: form.para === "especificos" ? p.accent : p.textSoft }}>Específicos</button>
           </div>
         </Field>
         {form.para === "especificos" && (
-          <div style={{ background: p.surface2, borderRadius: 10, padding: 10, marginBottom: 14 }}>
+          <div style={{ background: p.surface2, borderRadius: 5, padding: 10, marginBottom: 14 }}>
             {alunos.map((a) => <label key={a.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", fontSize: 13, color: p.text, cursor: "pointer" }}><input type="checkbox" /> {a.nome}</label>)}
           </div>
         )}
@@ -3743,14 +3731,14 @@ function ModBoasVindas({ welcome, setWelcome }) {
         <div>
           {/* editor do hero */}
           <Card style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: p.textSoft, textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 14 }}>Cabeçalho</div>
+            <div style={{ fontSize: 12, fontWeight: 500, fontFamily: MONO, color: p.textSoft, textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 14 }}>Cabeçalho</div>
             <div style={{ display: "flex", gap: 14, marginBottom: 14, alignItems: "center" }}>
-              <div style={{ width: 72, height: 72, borderRadius: 16, background: (draft.hero.cor || p.accent) + "22", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+              <div style={{ width: 72, height: 72, borderRadius: 6, background: (draft.hero.cor || p.accent) + "22", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
                 {draft.hero.foto ? <img src={draft.hero.foto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <User size={32} color={draft.hero.cor || p.accent} />}
               </div>
               <div style={{ flex: 1 }}>
                 <Field label="Foto (cole uma URL)"><Input value={typeof draft.hero.foto === "string" && draft.hero.foto?.startsWith("http") ? draft.hero.foto : ""} onChange={(e) => setHero("foto", e.target.value)} placeholder="https://..." /></Field>
-                <label style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 12px", borderRadius: 9, background: p.surface2, border: "1px solid " + p.border, color: p.text, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 12px", borderRadius: 4, background: p.surface2, border: "1px solid " + p.border, color: p.text, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
                   <UploadCloud size={14} /> Enviar do computador
                   <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => e.target.files[0] && lerArquivo(e.target.files[0], (d) => setHero("foto", d))} />
                 </label>
@@ -3760,22 +3748,22 @@ function ModBoasVindas({ welcome, setWelcome }) {
             <Field label="Subtítulo"><Textarea rows={2} value={draft.hero.subtitulo} onChange={(e) => setHero("subtitulo", e.target.value)} /></Field>
             <Field label="Cor de destaque">
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {["#f97316", "#ef4444", "#3b82f6", "#22c55e", "#a855f7", "#14b8a6", "#eab308"].map((c) => (
-                  <button key={c} onClick={() => setHero("cor", c)} style={{ width: 30, height: 30, borderRadius: 8, background: c, border: draft.hero.cor === c ? "3px solid " + p.text : "2px solid " + p.border, cursor: "pointer" }} />
+                {["#B0601E", "#C1342A", "#1F6FA0", "#3E8A3A", "#6A4C93", "#2E7D74", "#A07C1C"].map((c) => (
+                  <button key={c} onClick={() => setHero("cor", c)} style={{ width: 30, height: 30, borderRadius: 4, background: c, border: draft.hero.cor === c ? "3px solid " + p.text : "2px solid " + p.border, cursor: "pointer" }} />
                 ))}
               </div>
             </Field>
           </Card>
 
           {/* blocos */}
-          <div style={{ fontSize: 12, fontWeight: 700, color: p.textSoft, textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 10 }}>Blocos de conteúdo</div>
+          <div style={{ fontSize: 12, fontWeight: 500, fontFamily: MONO, color: p.textSoft, textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 10 }}>Blocos de conteúdo</div>
           {draft.blocos.map((b, idx) => (
             <div key={b.id} draggable
               onDragStart={() => (dragItem.current = idx)}
               onDragEnter={() => (dragOver.current = idx)}
               onDragEnd={onDrop}
               onDragOver={(e) => e.preventDefault()}
-              style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: 12, marginBottom: 10, borderRadius: 12, background: p.surface, border: "1px solid " + p.border }}>
+              style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: 12, marginBottom: 10, borderRadius: 6, background: p.surface, border: "1px solid " + p.border }}>
               <div style={{ cursor: "grab", color: p.textFaint, paddingTop: 4 }} title="Arraste para reordenar"><GripVertical size={16} /></div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <BlocoEditor bloco={b} setBloco={setBloco} lerArquivo={lerArquivo} />
@@ -3785,10 +3773,10 @@ function ModBoasVindas({ welcome, setWelcome }) {
           ))}
 
           {/* paleta adicionar bloco */}
-          <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 6, padding: 12, borderRadius: 12, border: "1px dashed " + p.border }}>
+          <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 6, padding: 12, borderRadius: 6, border: "1px dashed " + p.border }}>
             <span style={{ fontSize: 12.5, color: p.textFaint, alignSelf: "center", marginRight: 4 }}>Adicionar:</span>
             {tiposBloco.map((t) => (
-              <button key={t.tipo} onClick={() => addBloco(t.tipo)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 9, background: p.surface2, border: "1px solid " + p.border, color: p.text, fontSize: 12.5, fontWeight: 600, cursor: "pointer", transition: "all .15s" }}
+              <button key={t.tipo} onClick={() => addBloco(t.tipo)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 4, background: p.surface2, border: "1px solid " + p.border, color: p.text, fontSize: 12.5, fontWeight: 600, cursor: "pointer", transition: "all .15s" }}
                 onMouseEnter={(e) => { e.currentTarget.style.borderColor = p.accent; e.currentTarget.style.color = p.accent; }}
                 onMouseLeave={(e) => { e.currentTarget.style.borderColor = p.border; e.currentTarget.style.color = p.text; }}>
                 <t.icon size={14} /> {t.label}
@@ -3812,7 +3800,7 @@ function ModBoasVindas({ welcome, setWelcome }) {
 /* Editor inline de um bloco, conforme o tipo */
 function BlocoEditor({ bloco, setBloco, lerArquivo }) {
   const p = usePalette();
-  const tag = (txt) => <div style={{ fontSize: 10.5, fontWeight: 700, color: p.textFaint, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>{txt}</div>;
+  const tag = (txt) => <div style={{ fontSize: 10.5, fontWeight: 500, fontFamily: MONO, color: p.textFaint, textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 6 }}>{txt}</div>;
 
   if (bloco.tipo === "titulo") return (<>{tag("Título")}<Input value={bloco.texto} onChange={(e) => setBloco(bloco.id, { texto: e.target.value })} /></>);
   if (bloco.tipo === "texto") return (<>{tag("Texto")}<Textarea rows={3} value={bloco.texto} onChange={(e) => setBloco(bloco.id, { texto: e.target.value })} /></>);
@@ -3821,7 +3809,7 @@ function BlocoEditor({ bloco, setBloco, lerArquivo }) {
     <>
       {tag("Foto")}
       <Input value={bloco.url?.startsWith("http") ? bloco.url : ""} onChange={(e) => setBloco(bloco.id, { url: e.target.value })} placeholder="Cole a URL da imagem..." style={{ marginBottom: 8 }} />
-      <label style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 11px", borderRadius: 8, background: p.surface2, border: "1px solid " + p.border, color: p.text, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+      <label style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 11px", borderRadius: 4, background: p.surface2, border: "1px solid " + p.border, color: p.text, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
         <UploadCloud size={13} /> Enviar do computador
         <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => e.target.files[0] && lerArquivo(e.target.files[0], (d) => setBloco(bloco.id, { url: d }))} />
       </label>
@@ -3855,7 +3843,7 @@ const WELCOME_INICIAL = {
     foto: null,
     nome: "Joca & Rossini",
     subtitulo: "Texto de exemplo: edite em Boas-Vindas, no painel do moderador.",
-    cor: "#f97316",
+    cor: "#B0601E",
   },
   blocos: [
     { id: "b1", tipo: "destaque", itens: [
@@ -3893,10 +3881,10 @@ const SIMULADOS_INICIAIS = [
 ];
 
 const MATERIAIS_INICIAIS = [
-  { id: "m1", titulo: "Apostila de Funções", vestibular: "FUVEST", area: "Matemática", materia: "Álgebra", para: "todos", cor: "#f97316" },
-  { id: "m2", titulo: "Resumo de Mecânica", vestibular: "UNICAMP", area: "Naturais", materia: "Física", para: "todos", cor: "#22c55e" },
-  { id: "m3", titulo: "Modernismo Brasileiro", vestibular: "FUVEST", area: "Linguagens", materia: "Literatura", para: "especificos", cor: "#3b82f6" },
-  { id: "m4", titulo: "Era Vargas Completa", vestibular: "UNICAMP", area: "Humanas", materia: "História", para: "todos", cor: "#a855f7" },
+  { id: "m1", titulo: "Apostila de Funções", vestibular: "FUVEST", area: "Matemática", materia: "Álgebra", para: "todos", cor: "#B0601E" },
+  { id: "m2", titulo: "Resumo de Mecânica", vestibular: "UNICAMP", area: "Naturais", materia: "Física", para: "todos", cor: "#3E8A3A" },
+  { id: "m3", titulo: "Modernismo Brasileiro", vestibular: "FUVEST", area: "Linguagens", materia: "Literatura", para: "especificos", cor: "#1F6FA0" },
+  { id: "m4", titulo: "Era Vargas Completa", vestibular: "UNICAMP", area: "Humanas", materia: "História", para: "todos", cor: "#6A4C93" },
 ];
 
 const QUESTOES_INICIAIS = [
@@ -4034,29 +4022,29 @@ const CATEGORIAS_PLAYLIST = [
   { id: "redacao", nome: "Redação" },
   { id: "outro", nome: "Outros cursos" },
 ];
-const CORES_PLAYLIST = ["#f97316", "#3b82f6", "#a855f7", "#22c55e", "#ef4444", "#14b8a6", "#eab308"];
+const CORES_PLAYLIST = ["#B0601E", "#1F6FA0", "#6A4C93", "#3E8A3A", "#C1342A", "#2E7D74", "#A07C1C"];
 
 const PLAYLISTS_INICIAIS = [
-  { id: "pl1", titulo: "Introdução ao curso", categoria: "introducao", cor: "#f97316", publicada: true, para: "todos",
+  { id: "pl1", titulo: "Introdução ao curso", categoria: "introducao", cor: "#B0601E", publicada: true, para: "todos",
     descricao: "Comece por aqui: como o método funciona, como usar a plataforma e como montar o seu plano.",
     videos: [
       { id: "v1", titulo: "Boas-vindas: como o curso funciona", descricao: "Visão geral do método: ciclos de estudo, metas diárias e revisão espaçada.", duracao: "08:30", fonte: "exemplo" },
       { id: "v2", titulo: "Montando o seu plano de estudos", descricao: "Como escolher o vestibular-foco, os horários e a incidência de cada matéria.", duracao: "12:10", fonte: "exemplo" },
       { id: "v3", titulo: "Revisão espaçada na prática", descricao: "Por que revisar em 1, 7, 15 e 30 dias e como a plataforma agenda isso.", duracao: "09:45", fonte: "exemplo" },
     ] },
-  { id: "pl2", titulo: "Atualidades · Outubro/2026", categoria: "atualidades", cor: "#3b82f6", publicada: true, para: "todos",
+  { id: "pl2", titulo: "Atualidades · Outubro/2026", categoria: "atualidades", cor: "#1F6FA0", publicada: true, para: "todos",
     descricao: "Os temas do mês com o gancho para a prova e para a redação.",
     videos: [
       { id: "v4", titulo: "Transição energética e o Brasil", descricao: "Como o tema aparece em Geografia e em propostas de redação.", duracao: "15:20", fonte: "exemplo" },
       { id: "v5", titulo: "Inteligência artificial e trabalho", descricao: "Repertórios e dados para usar na argumentação.", duracao: "11:05", fonte: "exemplo" },
     ] },
-  { id: "pl3", titulo: "Redação · dissecando textos nota 1000", categoria: "redacao", cor: "#a855f7", publicada: true, para: "todos",
+  { id: "pl3", titulo: "Redação · dissecando textos nota 1000", categoria: "redacao", cor: "#6A4C93", publicada: true, para: "todos",
     descricao: "Leitura comentada de redações nota máxima, parágrafo por parágrafo.",
     videos: [
       { id: "v6", titulo: "Introdução: tese e repertório", descricao: "Como a tese é apresentada já no primeiro parágrafo.", duracao: "13:40", fonte: "exemplo" },
       { id: "v7", titulo: "Desenvolvimento: argumentação em camadas", descricao: "Tópico frasal, fundamentação e fechamento de cada parágrafo.", duracao: "16:25", fonte: "exemplo" },
     ] },
-  { id: "pl4", titulo: "Aulão de véspera FUVEST", categoria: "outro", cor: "#ef4444", publicada: false, para: "fuvest",
+  { id: "pl4", titulo: "Aulão de véspera FUVEST", categoria: "outro", cor: "#C1342A", publicada: false, para: "fuvest",
     descricao: "Revisão final dos temas de maior incidência.",
     videos: [
       { id: "v8", titulo: "Os 10 temas que mais caem", descricao: "", duracao: "45:00", fonte: "exemplo" },
@@ -4077,7 +4065,7 @@ function provedorDoLink(url = "") {
 function VideoPlayer({ video, cor }) {
   const p = usePalette();
   const caixa = {
-    width: "100%", aspectRatio: "16 / 9", maxWidth: "100%", borderRadius: 14, overflow: "hidden",
+    width: "100%", aspectRatio: "16 / 9", maxWidth: "100%", borderRadius: 6, overflow: "hidden",
     background: "#07080a", border: "1px solid " + p.border, display: "flex", alignItems: "center",
     justifyContent: "center", flexDirection: "column", gap: 10, textAlign: "center", padding: 20, boxSizing: "border-box",
   };
@@ -4096,7 +4084,7 @@ function VideoPlayer({ video, cor }) {
     );
   }
   return (
-    <div style={{ ...caixa, background: `linear-gradient(135deg, ${(cor || p.accent)}33, #07080a 70%)` }}>
+    <div style={{ ...caixa, background: "#0B1116" }}>
       <PlayCircle size={52} color={cor || p.accent} />
       <div style={{ color: "#e7e9ee", fontWeight: 700, fontSize: 15 }}>{video.titulo}</div>
       <div style={{ color: "#9aa0ac", fontSize: 12 }}>Vídeo de exemplo. Anexe um arquivo ou link no painel do moderador para ver o player funcionando.</div>
@@ -4128,7 +4116,7 @@ function AlunoCursos({ playlists, vestibular, assistidos, setAssistidos, aberta,
           <Badge soft color={pl.cor}>{categoriaNome(pl.categoria)}</Badge>
           <span style={{ fontSize: 12.5, color: p.textFaint }}>{pl.videos.length} aulas · {pct(pl)}% concluído</span>
         </div>
-        <h2 style={{ margin: "6px 0 18px", fontSize: 22, fontWeight: 800, color: p.text, letterSpacing: "-.02em" }}>{pl.titulo}</h2>
+        <h2 style={{ margin: "6px 0 18px", fontSize: 22, fontWeight: 500, fontFamily: SERIF, color: p.text, letterSpacing: "-.02em" }}>{pl.titulo}</h2>
         <div className="curso-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 320px", gap: 18, alignItems: "start" }}>
           <div>
             <VideoPlayer video={atual} cor={pl.cor} />
@@ -4152,7 +4140,7 @@ function AlunoCursos({ playlists, vestibular, assistidos, setAssistidos, aberta,
             {pl.videos.map((v, i) => {
               const ativo = atual && v.id === atual.id;
               return (
-                <button key={v.id} onClick={() => setVideoId(v.id)} style={{ width: "100%", textAlign: "left", display: "flex", gap: 10, alignItems: "center", padding: "10px", borderRadius: 10, border: "none", cursor: "pointer", background: ativo ? pl.cor + "1f" : "transparent", color: p.text }}>
+                <button key={v.id} onClick={() => setVideoId(v.id)} style={{ width: "100%", textAlign: "left", display: "flex", gap: 10, alignItems: "center", padding: "10px", borderRadius: 5, border: "none", cursor: "pointer", background: ativo ? pl.cor + "1f" : "transparent", color: p.text }}>
                   <span style={{ width: 24, height: 24, borderRadius: 999, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11.5, fontWeight: 700, background: assistidos[v.id] ? p.green : p.surface2, color: assistidos[v.id] ? "#fff" : p.textSoft }}>
                     {assistidos[v.id] ? <Check size={13} /> : i + 1}
                   </span>
@@ -4178,15 +4166,15 @@ function AlunoCursos({ playlists, vestibular, assistidos, setAssistidos, aberta,
         if (!lista.length) return null;
         return (
           <div key={cat.id} style={{ marginBottom: 26 }}>
-            <h3 style={{ margin: "0 0 12px", fontSize: 12, fontWeight: 700, color: p.textFaint, textTransform: "uppercase", letterSpacing: ".08em" }}>{cat.nome}</h3>
+            <h3 style={{ margin: "0 0 12px", fontSize: 12, fontWeight: 500, fontFamily: MONO, color: p.textFaint, textTransform: "uppercase", letterSpacing: ".1em" }}>{cat.nome}</h3>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 14 }}>
               {lista.map((x) => (
                 <Card key={x.id} pad={0} hover onClick={() => setAberta(x.id)} style={{ overflow: "hidden" }}>
-                  <div style={{ height: 88, background: `linear-gradient(135deg, ${x.cor}, ${x.cor}55)`, display: "flex", alignItems: "flex-end", padding: 12 }}>
+                  <div style={{ height: 88, background: x.cor, backgroundImage: "repeating-linear-gradient(0deg, rgba(255,255,255,.07) 0 1px, transparent 1px 9px)", display: "flex", alignItems: "flex-end", padding: 12 }}>
                     <PlayCircle size={28} color="#fff" />
                   </div>
                   <div style={{ padding: 14 }}>
-                    <h4 style={{ margin: 0, fontSize: 14.5, fontWeight: 700, color: p.text }}>{x.titulo}</h4>
+                    <h4 style={{ margin: 0, fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: p.text }}>{x.titulo}</h4>
                     <p style={{ margin: "4px 0 10px", fontSize: 12, color: p.textFaint }}>{x.videos.length} aulas · {pct(x)}% concluído</p>
                     <ProgressBar value={pct(x)} color={x.cor} height={5} />
                   </div>
@@ -4229,12 +4217,12 @@ function ModCursos({ playlists, setPlaylists }) {
         const lista = playlists.filter((x) => x.categoria === cat.id);
         return (
           <div key={cat.id} style={{ marginBottom: 24 }}>
-            <h3 style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 700, color: p.textFaint, textTransform: "uppercase", letterSpacing: ".08em" }}>{cat.nome}</h3>
+            <h3 style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 500, fontFamily: MONO, color: p.textFaint, textTransform: "uppercase", letterSpacing: ".1em" }}>{cat.nome}</h3>
             {lista.length === 0 && <div style={{ fontSize: 13, color: p.textFaint, padding: "4px 0 8px" }}>Nenhuma playlist nesta categoria.</div>}
             <div style={{ display: "grid", gap: 10 }}>
               {lista.map((x) => (
                 <Card key={x.id} pad={14} style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 12, background: x.cor, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><PlayCircle size={22} color="#fff" /></div>
+                  <div style={{ width: 44, height: 44, borderRadius: 6, background: x.cor, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><PlayCircle size={22} color="#fff" /></div>
                   <div style={{ flex: 1, minWidth: 180 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 14.5, fontWeight: 700, color: p.text }}>{x.titulo}</span>
@@ -4328,9 +4316,9 @@ function ModPlaylistEditor({ playlist, onChange, onBack }) {
       </button>
       <Card pad={18} style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-          <div style={{ width: 48, height: 48, borderRadius: 12, background: playlist.cor, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><PlayCircle size={24} color="#fff" /></div>
+          <div style={{ width: 48, height: 48, borderRadius: 6, background: playlist.cor, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><PlayCircle size={24} color="#fff" /></div>
           <div style={{ flex: 1, minWidth: 200 }}>
-            <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: p.text }}>{playlist.titulo}</h2>
+            <h2 style={{ margin: 0, fontSize: 19, fontWeight: 500, fontFamily: SERIF, color: p.text }}>{playlist.titulo}</h2>
             <div style={{ fontSize: 12.5, color: p.textFaint, marginTop: 3 }}>{categoriaNome(playlist.categoria)} · {playlist.para === "todos" ? "todos os alunos" : "só " + vestInfo(playlist.para).nome}</div>
           </div>
           <Btn size="sm" variant="soft" icon={Settings2} onClick={() => { setForm(playlist); setDados(true); }}>Dados da playlist</Btn>
@@ -4342,7 +4330,7 @@ function ModPlaylistEditor({ playlist, onChange, onBack }) {
       </Card>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 10, flexWrap: "wrap" }}>
-        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: p.text }}>Vídeos ({videos.length})</h3>
+        <h3 style={{ margin: 0, fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Vídeos ({videos.length})</h3>
         <Btn size="sm" icon={Plus} onClick={() => setVideoModal("novo")}>Adicionar vídeo</Btn>
       </div>
       {videos.length === 0 && <Card><Empty icon={Video} title="Nenhum vídeo ainda" sub="Adicione o primeiro vídeo desta playlist." /></Card>}
@@ -4400,7 +4388,7 @@ function VideoForm({ inicial, onClose, onSave }) {
   const valido = v.titulo.trim() && ((v.fonte === "arquivo" && v.url) || (v.fonte === "link" && /^https?:\/\//.test(v.url)) || v.fonte === "exemplo");
   const abaBtn = (k, label, Icon) => (
     <button type="button" onClick={() => setV({ ...v, fonte: k, url: k === v.fonte ? v.url : "", arquivoNome: k === v.fonte ? v.arquivoNome : "" })}
-      style={{ flex: 1, padding: 10, borderRadius: 10, cursor: "pointer", fontWeight: 600, fontSize: 13, display: "flex", gap: 6, alignItems: "center", justifyContent: "center",
+      style={{ flex: 1, padding: 10, borderRadius: 5, cursor: "pointer", fontWeight: 600, fontSize: 13, display: "flex", gap: 6, alignItems: "center", justifyContent: "center",
         border: "1px solid " + (aba === k ? p.accent : p.border), background: aba === k ? p.accent + "1f" : "transparent", color: aba === k ? p.accent : p.textSoft }}>
       <Icon size={15} /> {label}
     </button>
@@ -4412,7 +4400,7 @@ function VideoForm({ inicial, onClose, onSave }) {
         {abaBtn("link", "Colar link", Link2)}
       </div>
       {aba === "arquivo" ? (
-        <label htmlFor="video-arquivo" style={{ display: "block", border: "2px dashed " + p.border, borderRadius: 14, padding: 20, textAlign: "center", marginBottom: 14, cursor: "pointer" }}>
+        <label htmlFor="video-arquivo" style={{ display: "block", border: "2px dashed " + p.border, borderRadius: 6, padding: 20, textAlign: "center", marginBottom: 14, cursor: "pointer" }}>
           <UploadCloud size={28} color={p.accent} style={{ marginBottom: 6 }} />
           <div style={{ fontSize: 13, fontWeight: 600, color: p.text }}>{v.arquivoNome || "Escolher arquivo de vídeo (.mp4, .mov, .webm)"}</div>
           <div style={{ fontSize: 11.5, color: p.textFaint, marginTop: 3 }}>No teste o vídeo fica só neste navegador e some ao recarregar.</div>
@@ -4483,7 +4471,7 @@ const DEVOLUTIVAS_INICIAIS = [
 function ArquivoCorrigido({ arquivo }) {
   const p = usePalette();
   if (!arquivo) return <div style={{ fontSize: 13, color: p.textFaint }}>Nenhum arquivo corrigido anexado.</div>;
-  if (arquivo.tipo.startsWith("image/")) return <img src={arquivo.url} alt={"Redação corrigida: " + arquivo.nome} style={{ maxWidth: "100%", borderRadius: 12, border: "1px solid " + p.border }} />;
+  if (arquivo.tipo.startsWith("image/")) return <img src={arquivo.url} alt={"Redação corrigida: " + arquivo.nome} style={{ maxWidth: "100%", borderRadius: 6, border: "1px solid " + p.border }} />;
   return (
     <a href={arquivo.url} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, color: p.accent, fontWeight: 700, fontSize: 14 }}>
       <FileText size={18} /> {arquivo.nome}
@@ -4518,11 +4506,11 @@ function AlunoRedacao({ user, devolutivas, setDevolutivas, instrucoes, playlists
           <VestBadge id={det.vestibular} size="sm" />
           <span style={{ fontSize: 12.5, color: p.textFaint }}>Enviada em {fmtData(det.recebidaEm)} · devolutiva em {fmtData(det.enviadaEm)}</span>
         </div>
-        <h2 style={{ margin: "8px 0 18px", fontSize: 20, fontWeight: 800, color: p.text, textWrap: "balance" }}>{det.tema}</h2>
+        <h2 style={{ margin: "8px 0 18px", fontSize: 20, fontWeight: 500, fontFamily: SERIF, color: p.text, textWrap: "balance" }}>{det.tema}</h2>
         <div className="curso-grid" style={{ display: "grid", gridTemplateColumns: "280px minmax(0,1fr)", gap: 16, alignItems: "start" }}>
           <Card>
-            <div style={{ fontSize: 12, fontWeight: 700, color: p.textFaint, textTransform: "uppercase", letterSpacing: ".08em" }}>Nota</div>
-            <div style={{ fontSize: 40, fontWeight: 900, color: p.accent, letterSpacing: "-.03em", fontVariantNumeric: "tabular-nums" }}>{n.texto}</div>
+            <div style={{ fontSize: 12, fontWeight: 500, fontFamily: MONO, color: p.textFaint, textTransform: "uppercase", letterSpacing: ".1em" }}>Nota</div>
+            <div style={{ fontSize: 40, fontWeight: 500, fontFamily: SERIF, color: p.accent, letterSpacing: "-.03em", fontVariantNumeric: "tabular-nums" }}>{n.texto}</div>
             {det.rubrica === "enem" && (
               <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
                 {COMPETENCIAS_ENEM.map((c) => (
@@ -4539,12 +4527,12 @@ function AlunoRedacao({ user, devolutivas, setDevolutivas, instrucoes, playlists
           <div style={{ display: "grid", gap: 14 }}>
             {[["Comentário do professor", det.comentario], ["Pontos fortes", det.pontosFortes], ["O que melhorar", det.aMelhorar]].filter(([, t]) => t).map(([t, txt]) => (
               <Card key={t}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: p.textFaint, textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 6 }}>{t}</div>
+                <div style={{ fontSize: 12, fontWeight: 500, fontFamily: MONO, color: p.textFaint, textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 6 }}>{t}</div>
                 <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: p.text, whiteSpace: "pre-wrap", maxWidth: "65ch" }}>{txt}</p>
               </Card>
             ))}
             <Card>
-              <div style={{ fontSize: 12, fontWeight: 700, color: p.textFaint, textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 8 }}>Redação corrigida</div>
+              <div style={{ fontSize: 12, fontWeight: 500, fontFamily: MONO, color: p.textFaint, textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 8 }}>Redação corrigida</div>
               <ArquivoCorrigido arquivo={det.arquivo} />
             </Card>
           </div>
@@ -4567,7 +4555,7 @@ function AlunoRedacao({ user, devolutivas, setDevolutivas, instrucoes, playlists
       <div className="stat-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 16 }}>
         <StatCard icon={FileText} label="Redações corrigidas" value={minhas.length} color={p.accent} />
         <StatCard icon={Target} label="Última nota" value={ultima ? notaDevolutiva(ultima).texto : "—"} color={p.green} />
-        <StatCard icon={TrendingUp} label="Média (% da nota máx.)" value={minhas.length ? media + "%" : "—"} color="#3b82f6" />
+        <StatCard icon={TrendingUp} label="Média (% da nota máx.)" value={minhas.length ? media + "%" : "—"} color="#1F6FA0" />
       </div>
 
       {serie.length >= 2 && (
@@ -4579,15 +4567,15 @@ function AlunoRedacao({ user, devolutivas, setDevolutivas, instrucoes, playlists
                 <CartesianGrid stroke={p.chartGrid} vertical={false} />
                 <XAxis dataKey="data" tick={{ fill: p.textFaint, fontSize: 12 }} axisLine={false} tickLine={false} />
                 <YAxis domain={[0, 100]} tick={{ fill: p.textFaint, fontSize: 12 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ background: p.surface, border: "1px solid " + p.border, borderRadius: 10, color: p.text }} formatter={(v, k, item) => [item.payload.nota, "Nota"]} />
-                <Line type="monotone" dataKey="pct" stroke={p.accent} strokeWidth={2.5} dot={{ r: 4, fill: p.accent }} />
+                <Tooltip contentStyle={{ background: p.surface, border: "1px solid " + p.border, borderRadius: 5, color: p.text }} formatter={(v, k, item) => [item.payload.nota, "Nota"]} />
+                <Line type="monotone" dataKey="pct" stroke={p.accent} strokeWidth={2} dot={{ r: 4, fill: p.accent, stroke: p.surface, strokeWidth: 2 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </Card>
       )}
 
-      <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 700, color: p.text }}>Minhas redações</h3>
+      <h3 style={{ margin: "0 0 10px", fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Minhas redações</h3>
       {minhas.length === 0 && <Card><Empty icon={PenLine} title="Nenhuma devolutiva ainda" sub="Quando o professor corrigir uma redação sua, ela aparece aqui." /></Card>}
       <div style={{ display: "grid", gap: 8, marginBottom: 24 }}>
         {minhas.map((d) => (
@@ -4599,7 +4587,7 @@ function AlunoRedacao({ user, devolutivas, setDevolutivas, instrucoes, playlists
               </div>
               <div style={{ fontSize: 12, color: p.textFaint, marginTop: 3 }}>{vestInfo(d.vestibular).nome} · devolutiva em {fmtData(d.enviadaEm)}</div>
             </div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: p.accent, fontVariantNumeric: "tabular-nums" }}>{notaDevolutiva(d).texto}</div>
+            <div style={{ fontSize: 20, fontWeight: 500, fontFamily: SERIF, color: p.accent, fontVariantNumeric: "tabular-nums" }}>{notaDevolutiva(d).texto}</div>
             <ChevronRight size={18} color={p.textFaint} />
           </Card>
         ))}
@@ -4607,11 +4595,11 @@ function AlunoRedacao({ user, devolutivas, setDevolutivas, instrucoes, playlists
 
       {aulas.length > 0 && (
         <>
-          <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 700, color: p.text }}>Aulas de redação</h3>
+          <h3 style={{ margin: "0 0 10px", fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: p.text }}>Aulas de redação</h3>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 12 }}>
             {aulas.map((x) => (
               <Card key={x.id} pad={14} hover onClick={() => abrirPlaylist(x.id)} style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: x.cor, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><PlayCircle size={20} color="#fff" /></div>
+                <div style={{ width: 40, height: 40, borderRadius: 5, background: x.cor, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><PlayCircle size={20} color="#fff" /></div>
                 <div>
                   <div style={{ fontSize: 13.5, fontWeight: 700, color: p.text }}>{x.titulo}</div>
                   <div style={{ fontSize: 12, color: p.textFaint }}>{x.videos.length} aulas</div>
@@ -4669,7 +4657,7 @@ function ModRedacao({ alunos, devolutivas, setDevolutivas, instrucoes, setInstru
       <div className="stat-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 16 }}>
         <StatCard icon={Send} label="Devolutivas enviadas" value={devolutivas.filter((d) => d.status === "enviada").length} color={p.green} />
         <StatCard icon={Pencil} label="Rascunhos" value={rascunhos} color={p.accent} />
-        <StatCard icon={EyeOff} label="Ainda não lidas pelo aluno" value={naoLidas} color="#3b82f6" />
+        <StatCard icon={EyeOff} label="Ainda não lidas pelo aluno" value={naoLidas} color="#1F6FA0" />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10, marginBottom: 12 }}>
@@ -4692,12 +4680,12 @@ function ModRedacao({ alunos, devolutivas, setDevolutivas, instrucoes, setInstru
               <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                 <span style={{ fontSize: 14, fontWeight: 700, color: p.text }}>{nomeAluno(d.alunoId)}</span>
                 <Badge soft color={d.status === "enviada" ? p.green : p.accent}>{d.status === "enviada" ? "Enviada" : "Rascunho"}</Badge>
-                {d.status === "enviada" && <Badge soft color={d.lida ? p.textFaint : "#3b82f6"}>{d.lida ? "Lida" : "Não lida"}</Badge>}
+                {d.status === "enviada" && <Badge soft color={d.lida ? p.textFaint : "#1F6FA0"}>{d.lida ? "Lida" : "Não lida"}</Badge>}
               </div>
               <div style={{ fontSize: 12.5, color: p.textSoft, marginTop: 3 }}>{d.tema || "Sem tema"}</div>
               <div style={{ fontSize: 11.5, color: p.textFaint, marginTop: 2 }}>{vestInfo(d.vestibular).nome} · recebida em {fmtData(d.recebidaEm)} por {(CANAIS_ENVIO.find((c) => c.id === d.canal) || {}).nome}</div>
             </div>
-            <div style={{ fontSize: 19, fontWeight: 800, color: p.text, fontVariantNumeric: "tabular-nums" }}>{notaDevolutiva(d).texto}</div>
+            <div style={{ fontSize: 19, fontWeight: 500, fontFamily: SERIF, color: p.text, fontVariantNumeric: "tabular-nums" }}>{notaDevolutiva(d).texto}</div>
             <ChevronRight size={18} color={p.textFaint} />
           </Card>
         ))}
@@ -4733,7 +4721,7 @@ function DevolutivaEditor({ inicial, alunos, onCancel, onSave, onDelete }) {
         <ChevronRight size={15} style={{ transform: "rotate(180deg)" }} /> Todas as devolutivas
       </button>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
-        <h2 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: p.text }}>{inicial._nova ? "Nova devolutiva" : "Editar devolutiva"}</h2>
+        <h2 style={{ margin: 0, fontSize: 21, fontWeight: 500, fontFamily: SERIF, color: p.text }}>{inicial._nova ? "Nova devolutiva" : "Editar devolutiva"}</h2>
         {!inicial._nova && <Badge soft color={d.status === "enviada" ? p.green : p.accent}>{d.status === "enviada" ? "Já enviada ao aluno" : "Rascunho"}</Badge>}
       </div>
 
@@ -4785,8 +4773,8 @@ function DevolutivaEditor({ inicial, alunos, onCancel, onSave, onDelete }) {
                     <div style={{ display: "flex", gap: 4 }}>
                       {[0, 40, 80, 120, 160, 200].map((v) => (
                         <button key={v} type="button" onClick={() => set("notas", { ...d.notas, [c.id]: v })}
-                          style={{ width: 42, padding: "6px 0", borderRadius: 8, cursor: "pointer", fontSize: 12.5, fontWeight: 700, fontVariantNumeric: "tabular-nums",
-                            border: "1px solid " + (d.notas[c.id] === v ? p.accent : p.border), background: d.notas[c.id] === v ? p.accent : "transparent", color: d.notas[c.id] === v ? "#fff" : p.textSoft }}>{v}</button>
+                          style={{ width: 42, padding: "6px 0", borderRadius: 4, cursor: "pointer", fontSize: 12.5, fontWeight: 700, fontVariantNumeric: "tabular-nums",
+                            border: "1px solid " + (d.notas[c.id] === v ? p.accent : p.border), background: d.notas[c.id] === v ? p.accent : "transparent", color: d.notas[c.id] === v ? p.bg : p.textSoft }}>{v}</button>
                       ))}
                     </div>
                   </div>
@@ -4810,13 +4798,13 @@ function DevolutivaEditor({ inicial, alunos, onCancel, onSave, onDelete }) {
 
         <div style={{ display: "grid", gap: 14 }}>
           <Card>
-            <div style={{ fontSize: 12, fontWeight: 700, color: p.textFaint, textTransform: "uppercase", letterSpacing: ".08em" }}>Nota final</div>
-            <div style={{ fontSize: 38, fontWeight: 900, color: p.accent, fontVariantNumeric: "tabular-nums", letterSpacing: "-.03em" }}>{n.texto}</div>
+            <div style={{ fontSize: 12, fontWeight: 500, fontFamily: MONO, color: p.textFaint, textTransform: "uppercase", letterSpacing: ".1em" }}>Nota final</div>
+            <div style={{ fontSize: 38, fontWeight: 500, fontFamily: SERIF, color: p.accent, fontVariantNumeric: "tabular-nums", letterSpacing: "-.03em" }}>{n.texto}</div>
             {d.rubrica === "enem" && <div style={{ fontSize: 12, color: p.textFaint }}>de 1000</div>}
           </Card>
           <Card>
             <div style={{ fontSize: 13.5, fontWeight: 700, color: p.text, marginBottom: 8 }}>Redação corrigida</div>
-            <label htmlFor="dv-arquivo" style={{ display: "block", border: "2px dashed " + p.border, borderRadius: 12, padding: 14, textAlign: "center", cursor: "pointer", marginBottom: 10 }}>
+            <label htmlFor="dv-arquivo" style={{ display: "block", border: "2px dashed " + p.border, borderRadius: 6, padding: 14, textAlign: "center", cursor: "pointer", marginBottom: 10 }}>
               <Paperclip size={20} color={p.accent} />
               <div style={{ fontSize: 12.5, fontWeight: 600, color: p.text, marginTop: 4 }}>{d.arquivo ? "Trocar arquivo" : "Anexar PDF ou foto"}</div>
               <input id="dv-arquivo" type="file" accept="application/pdf,image/*" onChange={escolherArquivo} style={{ display: "none" }} />
@@ -4838,6 +4826,102 @@ function DevolutivaEditor({ inicial, alunos, onCancel, onSave, onDelete }) {
             </div>
           ) : <Btn size="sm" variant="ghost" icon={Trash2} onClick={() => setConfirmaExcluir(true)}>Excluir devolutiva</Btn>)}
         </div>
+      </div>
+    </div>
+  );
+}
+
+const SERIF = "'Newsreader', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif";
+
+const SANS = "'Schibsted Grotesk', 'Helvetica Neue', Arial, sans-serif";
+
+const MONO = "'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace";
+
+function Eyebrow({ children, color, style }) {
+  const p = usePalette();
+  return <span style={{ display: "block", fontFamily: MONO, fontSize: 11, letterSpacing: ".12em", textTransform: "uppercase", color: color || p.textFaint, ...style }}>{children}</span>;
+}
+
+// Selo guilhochê (o desenho de diplomas e cédulas), gerado por fórmula a partir de uma semente
+
+function Selo({ semente = "a", size = 88, apagado = false }) {
+  const p = usePalette();
+  const svg = useMemo(() => {
+    let h = 0;
+    for (const ch of String(semente)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const R = 27 + (h % 6), r = 7 + ((h >> 3) % 7), d = 11 + ((h >> 6) % 7);
+    const curva = (R, r, d, esc) => {
+      const pts = [];
+      const voltas = r;
+      for (let i = 0; i <= 900; i++) {
+        const t = (i / 900) * Math.PI * 2 * voltas;
+        const x = ((R - r) * Math.cos(t) + d * Math.cos(((R - r) / r) * t)) * esc;
+        const y = ((R - r) * Math.sin(t) - d * Math.sin(((R - r) / r) * t)) * esc;
+        pts.push((50 + x).toFixed(2) + " " + (50 + y).toFixed(2));
+      }
+      return "M" + pts.join("L");
+    };
+    return { a: curva(R, r, d, 1), b: curva(R, r, d * 0.6, 0.6) };
+  }, [semente]);
+  return (
+    <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden="true" style={{ opacity: apagado ? 0.28 : 1, flexShrink: 0 }}>
+      <circle cx="50" cy="50" r="47" fill="none" stroke={p.brass} strokeWidth=".8" />
+      <circle cx="50" cy="50" r="44" fill="none" stroke={p.brass} strokeWidth=".4" />
+      <path d={svg.a} fill="none" stroke={p.brass} strokeWidth=".45" />
+      <path d={svg.b} fill="none" stroke={p.accent} strokeWidth=".4" />
+    </svg>
+  );
+}
+
+// Revela a seção ao entrar na tela (parte de um estado visível, nunca de opacidade zero)
+
+function Revelar({ children, style, atraso = 0 }) {
+  const ref = useRef(null);
+  const [visto, setVisto] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") { setVisto(true); return; }
+    const io = new IntersectionObserver((ents) => { if (ents[0].isIntersecting) { setVisto(true); io.disconnect(); } }, { threshold: 0.12 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return (
+    <div ref={ref} className={"revelar" + (visto ? " visivel" : "")} style={{ transitionDelay: atraso + "ms", ...style }}>
+      {children}
+    </div>
+  );
+}
+
+function Wordmark({ claro, tamanho = 24 }) {
+  const p = usePalette();
+  return (
+    <span style={{ fontFamily: SERIF, fontSize: tamanho, fontWeight: 500, letterSpacing: "-.02em", color: claro ? "#F2EEE5" : p.text, lineHeight: 1 }}>
+      Aprova<span style={{ fontStyle: "italic", color: claro ? "#E4B868" : p.accent }}>+</span>
+    </span>
+  );
+}
+
+function WelcomeConteudo({ welcome, alunoStats }) {
+  const p = usePalette();
+  const hero = welcome.hero || {};
+  return (
+    <div style={{ display: "grid", gap: 64 }}>
+      {alunoStats && <Revelar><WelcomePainelResumo stats={alunoStats} /></Revelar>}
+      <Revelar>
+        <div style={{ display: "flex", gap: 22, alignItems: "center", flexWrap: "wrap", paddingTop: 20, borderTop: "1px solid " + p.borderStrong }}>
+          <div style={{ width: 84, height: 84, borderRadius: "50%", overflow: "hidden", background: p.surface2, border: "2px solid " + (hero.cor || p.border), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            {/* 🔥 FIREBASE Storage: foto de perfil do instrutor */}
+            {hero.foto ? <img src={hero.foto} alt={hero.nome || ""} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontFamily: SERIF, fontSize: 34, color: p.textSoft }}>{(hero.nome || "?").charAt(0)}</span>}
+          </div>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <Eyebrow>Seus professores</Eyebrow>
+            <div style={{ fontFamily: SERIF, fontSize: 30, fontWeight: 500, color: p.text, letterSpacing: "-.015em", marginTop: 4 }}>{hero.nome}</div>
+            {hero.subtitulo && <p style={{ margin: "4px 0 0", fontSize: 15, color: p.textSoft, maxWidth: "60ch" }}>{hero.subtitulo}</p>}
+          </div>
+        </div>
+      </Revelar>
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        {(welcome.blocos || []).map((b, i) => <Revelar key={b.id} atraso={Math.min(i, 3) * 40}><BlocoView bloco={b} /></Revelar>)}
       </div>
     </div>
   );
@@ -4967,7 +5051,7 @@ function App() {
     }
     return (
       <ThemeShell>
-        <BoasVindasGate welcome={welcome} onEnter={() => setVerBoasVindas(false)} onLogout={logout} alunoStats={alunoStats} />
+        <BoasVindasGate welcome={welcome} user={user} onEnter={() => setVerBoasVindas(false)} onLogout={logout} alunoStats={alunoStats} />
       </ThemeShell>
     );
   }
@@ -5035,16 +5119,64 @@ function App() {
 }
 
 // Tela de boas-vindas em tela cheia (gate pós-login), com seu próprio fundo
-function BoasVindasGate({ welcome, onEnter, onLogout, alunoStats }) {
+function BoasVindasGate({ welcome, onEnter, onLogout, alunoStats, user }) {
   const p = usePalette();
   const { dark, toggle } = useTheme();
+  const hero = welcome.hero || {};
+  const primeiro = ((user && user.name) || "").split(" ")[0];
+  const hora = new Date().getHours();
+  const saudacao = hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite";
+  const hoje = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
+  const conteudoRef = useRef(null);
+  const botaoClaro = { background: "rgba(11,17,22,.5)", border: "1px solid rgba(236,232,223,.28)", borderRadius: 4, padding: "8px 12px", cursor: "pointer", color: "#ECE8DF", display: "flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 500, fontFamily: SANS, backdropFilter: "blur(6px)" };
+
   return (
-    <div style={{ minHeight: "100vh", background: p.bg, padding: "40px 24px" }}>
-      <div style={{ position: "fixed", top: 20, right: 20, display: "flex", gap: 10, zIndex: 5 }}>
-        <button onClick={toggle} style={{ background: p.surface, border: "1px solid " + p.border, borderRadius: 10, padding: 9, cursor: "pointer", color: p.text }}>{dark ? <Sun size={17} /> : <Moon size={17} />}</button>
-        <button onClick={onLogout} style={{ background: p.surface, border: "1px solid " + p.border, borderRadius: 10, padding: "9px 14px", cursor: "pointer", color: p.textSoft, fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}><LogOut size={15} /> Sair</button>
+    <div style={{ background: p.bg, minHeight: "100vh" }}>
+      <section style={{ position: "relative", height: "100svh", minHeight: 580, maxHeight: 1000, background: "#0B1116", overflow: "hidden" }}>
+        <HeroArcadas style={{ position: "absolute", inset: 0 }} rolagem />
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(7,10,13,.9) 0%, rgba(7,10,13,.55) 32%, rgba(7,10,13,0) 62%), linear-gradient(to bottom, rgba(7,10,13,.55), rgba(7,10,13,0) 22%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "22px clamp(18px, 4vw, 56px)", zIndex: 3 }}>
+          <Wordmark claro />
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={toggle} aria-label="Alternar tema" style={botaoClaro}>{dark ? <Sun size={15} /> : <Moon size={15} />}</button>
+            <button onClick={onLogout} style={botaoClaro}><LogOut size={15} /> Sair</button>
+          </div>
+        </div>
+        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 3, padding: "0 clamp(18px, 4vw, 56px) clamp(28px, 6vh, 64px)" }}>
+          <div style={{ maxWidth: 1180, display: "grid", gap: 18 }}>
+            <Eyebrow color="#B9B3A5" style={{ animation: "sobe .9s cubic-bezier(.16,1,.3,1) both" }}>{hoje}</Eyebrow>
+            <h1 style={{ margin: 0, fontFamily: SERIF, fontWeight: 400, fontSize: "clamp(46px, 8vw, 118px)", lineHeight: .94, letterSpacing: "-.03em", color: "#F2EEE5", maxWidth: "11ch", textWrap: "balance", animation: "sobe 1s .08s cubic-bezier(.16,1,.3,1) both" }}>
+              {alunoStats ? <>{saudacao}, <em style={{ color: "#E4B868" }}>{primeiro}.</em></> : <>{hero.nome}</>}
+            </h1>
+            <p style={{ margin: 0, fontSize: "clamp(15px, 1.4vw, 18px)", color: "#CFC9BC", maxWidth: "48ch", lineHeight: 1.55, animation: "sobe 1s .16s cubic-bezier(.16,1,.3,1) both" }}>
+              {alunoStats ? "Seu plano de hoje já está montado. Cada meta cumprida é um passo a mais pelas Arcadas." : hero.subtitulo}
+            </p>
+            {alunoStats && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 24px", fontFamily: MONO, fontSize: 12.5, color: "#CFC9BC", animation: "sobe 1s .22s cubic-bezier(.16,1,.3,1) both" }}>
+                <span><b style={{ color: "#F2EEE5", fontWeight: 500 }}>{alunoStats.streak}</b> dias seguidos</span>
+                <span><b style={{ color: "#F2EEE5", fontWeight: 500 }}>{alunoStats.progresso}%</b> do programa</span>
+                <span><b style={{ color: "#F2EEE5", fontWeight: 500 }}>{alunoStats.aderencia}%</b> de aderência</span>
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", marginTop: 6, animation: "sobe 1s .3s cubic-bezier(.16,1,.3,1) both" }}>
+              <button onClick={onEnter} className="btn-ui" style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "13px 22px", borderRadius: 4, border: "1px solid #F2EEE5", background: "#F2EEE5", color: "#0B1116", fontFamily: SANS, fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
+                Acessar a plataforma <ArrowRight size={16} />
+              </button>
+              <button onClick={() => conteudoRef.current && conteudoRef.current.scrollIntoView({ behavior: "smooth" })} style={{ background: "none", border: "none", color: "#CFC9BC", fontFamily: SANS, fontSize: 14, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, padding: "10px 4px" }}>
+                Conheça o curso <ChevronDown size={15} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div ref={conteudoRef} style={{ maxWidth: 980, margin: "0 auto", padding: "clamp(56px, 9vw, 112px) clamp(18px, 4vw, 40px) 96px" }}>
+        <WelcomeConteudo welcome={welcome} alunoStats={alunoStats} />
+        <Revelar style={{ marginTop: 64, paddingTop: 28, borderTop: "1px solid " + p.borderStrong, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
+          <div style={{ fontFamily: SERIF, fontSize: "clamp(26px, 3vw, 36px)", color: p.text, letterSpacing: "-.015em" }}>Pronto para as metas de hoje?</div>
+          <Btn onClick={onEnter} size="lg" icon={ArrowRight}>Acessar a plataforma</Btn>
+        </Revelar>
       </div>
-      <WelcomePage welcome={welcome} onEnter={onEnter} alunoStats={alunoStats} />
     </div>
   );
 }
@@ -5060,39 +5192,66 @@ function ThemeShell({ children }) {
 }
 function Root({ children }) {
   const p = usePalette();
-  return <div style={{ background: p.bg, color: p.text, minHeight: "100vh", fontFamily: "'Plus Jakarta Sans', -apple-system, system-ui, sans-serif" }}>{children}</div>;
+  return <div style={{ background: p.bg, color: p.text, minHeight: "100vh", fontFamily: SANS }}>{children}</div>;
 }
 
 function GlobalStyles() {
   const { dark } = useTheme();
+  const p = usePalette();
   return (
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
       * { box-sizing: border-box; }
-      body { margin: 0; }
-      @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-      @keyframes popIn { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: scale(1); } }
+      html, body { margin: 0; background: ${p.bg}; color-scheme: ${dark ? "dark" : "light"}; }
+      body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+      h1, h2, h3, h4 { text-wrap: balance; }
+      svg.lucide { stroke-width: 1.6; }
+      ::selection { background: ${p.accent}33; }
+      :focus-visible { outline: 2px solid ${p.accent}; outline-offset: 2px; }
+      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes entraTela { from { opacity: .001; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+      @keyframes sobe { from { opacity: .001; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+      @keyframes popIn { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
       @keyframes slideIn { from { transform: translateX(-100%); } to { transform: none; } }
-      ::-webkit-scrollbar { width: 9px; height: 9px; }
+      .revelar { opacity: .25; transform: translateY(18px); transition: opacity .9s cubic-bezier(.16,1,.3,1), transform .9s cubic-bezier(.16,1,.3,1); }
+      .revelar.visivel { opacity: 1; transform: none; }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: .001ms !important; animation-delay: 0ms !important; transition-duration: .001ms !important; }
+        .revelar { opacity: 1; transform: none; }
+      }
+      ::-webkit-scrollbar { width: 10px; height: 10px; }
       ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: ${dark ? "#2a2e37" : "#d4d8de"}; border-radius: 99px; }
-      ::-webkit-scrollbar-thumb:hover { background: #f97316; }
+      ::-webkit-scrollbar-thumb { background: ${dark ? "#2A343A" : "#CFD0CA"}; border-radius: 99px; border: 3px solid ${p.bg}; }
       input[type=number]::-webkit-inner-spin-button { opacity: .4; }
+      .num-dia { -moz-appearance: textfield; }
+      .num-dia::-webkit-inner-spin-button, .num-dia::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+      .recharts-cartesian-axis-tick-value { font-family: ${MONO}; font-size: 11px; fill: ${p.textFaint}; }
+      .recharts-cartesian-axis-line, .recharts-cartesian-axis-tick-line { stroke: ${p.border}; }
+      .recharts-legend-item-text { color: ${p.textSoft} !important; font-size: 13px; }
+      .recharts-default-tooltip { border-radius: 4px !important; font-family: ${SANS}; box-shadow: 0 10px 30px rgba(10,14,18,.12); }
+      .recharts-tooltip-label { font-family: ${MONO}; font-size: 11px; letter-spacing: .06em; color: ${p.textFaint}; }
+      input::placeholder, textarea::placeholder { color: ${p.textFaint}; opacity: .8; }
 
       @media (max-width: 900px) {
         .sidebar-desktop { display: none !important; }
         .menu-btn { display: block !important; }
         .welcome-grid { grid-template-columns: 1fr !important; }
+        .welcome-grid > div { border-left: none !important; padding-left: 0 !important; border-bottom: 1px solid ${p.border}; }
         .chart-grid { grid-template-columns: 1fr !important; }
         .plano-grid { grid-template-columns: 1fr !important; }
         .week-grid { grid-template-columns: repeat(2,1fr) !important; }
         .stat-grid { grid-template-columns: 1fr !important; }
         .curso-grid { grid-template-columns: 1fr !important; }
         .aluno-stats { display: none !important; }
+        .login-grid { grid-template-columns: 1fr !important; }
+        .login-arte { min-height: 44vh !important; }
+        .cab-data { display: none; }
       }
       @media (min-width: 901px) { .sidebar-mobile, .sidebar-overlay { display: none; } }
       @media (max-width: 560px) {
         .week-grid { grid-template-columns: 1fr !important; }
+        .resumo-grid { grid-template-columns: 1fr !important; }
+        .resumo-grid > div { border-left: none !important; padding-left: 0 !important; border-bottom: 1px solid ${p.border}; }
       }
     `}</style>
   );
