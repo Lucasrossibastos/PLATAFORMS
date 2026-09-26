@@ -1,0 +1,599 @@
+<title>Arcadas &amp; Gabarito</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --papel: #F4F4F1;
+    --folha: #FBFBF9;
+    --grafite: #1C2024;
+    --grafite-2: #4F565C;
+    --grafite-3: #6A7177;
+    --linha: #DADBD5;
+    --linha-forte: #B7B9B1;
+    --caneta: #2A45A8;
+    --caneta-tinta: #E2E6F4;
+    --correcao: #C1342A;
+    --correcao-tinta: #F5DDD9;
+    --acerto: #2E7D4F;
+    --latao: #9C7430;
+    --btn-bg: #1C2024;
+    --btn-fg: #F4F4F1;
+    --a-hum: #B0601E; --a-lin: #1F6FA0; --a-mat: #A8356B; --a-nat: #3E8A3A;
+    --serif: "Newsreader", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    --sans: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --papel: #0F1417; --folha: #161D21;
+      --grafite: #E6E6E0; --grafite-2: #AEB3B5; --grafite-3: #8A9195;
+      --linha: #263036; --linha-forte: #3A464D;
+      --caneta: #8EA2F2; --caneta-tinta: #1E2748;
+      --correcao: #F07F73; --correcao-tinta: #3A1E1C;
+      --acerto: #62BE8B; --latao: #D2A95E;
+      --btn-bg: #E6E6E0; --btn-fg: #0F1417;
+      --a-hum: #C9793A; --a-lin: #4B8FC4; --a-mat: #CC5A8A; --a-nat: #5AA555;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --papel: #0F1417; --folha: #161D21;
+    --grafite: #E6E6E0; --grafite-2: #AEB3B5; --grafite-3: #8A9195;
+    --linha: #263036; --linha-forte: #3A464D;
+    --caneta: #8EA2F2; --caneta-tinta: #1E2748;
+    --correcao: #F07F73; --correcao-tinta: #3A1E1C;
+    --acerto: #62BE8B; --latao: #D2A95E;
+    --btn-bg: #E6E6E0; --btn-fg: #0F1417;
+    --a-hum: #C9793A; --a-lin: #4B8FC4; --a-mat: #CC5A8A; --a-nat: #5AA555;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--papel); color: var(--grafite);
+    font-family: var(--sans); font-size: 15px; line-height: 1.55;
+    padding-inline: 20px; padding-block: 0 96px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; }
+  a { color: var(--caneta); }
+
+  /* ---------- tipografia ---------- */
+  .eyebrow { font-family: var(--mono); font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--grafite-3); }
+  h1, h2, h3 { font-family: var(--serif); font-weight: 500; text-wrap: balance; margin: 0; letter-spacing: -.01em; }
+  h2 { font-size: clamp(30px, 4.2vw, 44px); line-height: 1.05; }
+  h3 { font-size: 22px; line-height: 1.2; }
+  p { margin: 0; max-width: 64ch; }
+  .lede { font-size: 17px; color: var(--grafite-2); }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* ---------- estrutura de seção: trilho à esquerda ---------- */
+  section.bloco { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 32px; padding-block: 64px; border-top: 1px solid var(--linha); }
+  section.bloco > .trilho { padding-top: 6px; }
+  section.bloco > .trilho .eyebrow { display: block; }
+  section.bloco > .trilho small { display: block; margin-top: 8px; color: var(--grafite-3); font-size: 13px; line-height: 1.45; }
+  .corpo { display: grid; gap: 28px; min-width: 0; }
+  @media (max-width: 820px) { section.bloco { grid-template-columns: 1fr; gap: 18px; padding-block: 48px; } }
+
+  /* ---------- capa ---------- */
+  header.capa { padding-block: 56px 40px; display: grid; gap: 22px; }
+  header.capa h1 { font-size: clamp(46px, 8vw, 96px); line-height: .95; letter-spacing: -.025em; }
+  header.capa h1 em { font-style: italic; color: var(--caneta); }
+  .capa-meta { display: flex; gap: 24px; flex-wrap: wrap; font-family: var(--mono); font-size: 12px; color: var(--grafite-3); }
+
+  /* ---------- diagnóstico ---------- */
+  .diag { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0; border-top: 1px solid var(--linha-forte); }
+  .diag div { padding: 16px 16px 18px 0; border-bottom: 1px solid var(--linha); }
+  .diag b { display: block; font-weight: 600; font-size: 14.5px; margin-bottom: 4px; }
+  .diag span { font-size: 13.5px; color: var(--grafite-2); }
+  .diag code { font-family: var(--mono); font-size: 12px; color: var(--correcao); }
+
+  /* ---------- conceito: duas tintas ---------- */
+  .tintas { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+  .tinta { display: grid; gap: 10px; align-content: start; }
+  .tinta .traco { height: 3px; width: 56px; border-radius: 2px; }
+  .tinta b { font-family: var(--serif); font-weight: 500; font-size: 21px; }
+  .tinta p { font-size: 14px; color: var(--grafite-2); }
+
+  /* ---------- paleta ---------- */
+  .paleta { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1px; background: var(--linha); border: 1px solid var(--linha); }
+  .cor { background: var(--folha); display: grid; grid-template-rows: 64px auto; }
+  .cor i { display: block; border-bottom: 1px solid var(--linha); }
+  .cor div { padding: 10px 12px 12px; display: grid; gap: 2px; }
+  .cor b { font-size: 13.5px; font-weight: 600; }
+  .cor code { font-family: var(--mono); font-size: 11.5px; color: var(--grafite-3); }
+  .cor span { font-size: 12px; color: var(--grafite-2); line-height: 1.35; }
+  .areas { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; font-size: 13.5px; }
+  .area { display: inline-flex; align-items: center; gap: 7px; }
+  .area::before { content: ""; width: 10px; height: 10px; border-radius: 1px; background: var(--c); }
+  .nota { font-size: 13px; color: var(--grafite-3); }
+
+  /* ---------- tipografia specimen ---------- */
+  .spec { display: grid; gap: 0; border-top: 1px solid var(--linha-forte); }
+  .spec > div { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 20px; padding-block: 18px; border-bottom: 1px solid var(--linha); align-items: baseline; }
+  .spec .rot { font-family: var(--mono); font-size: 11.5px; color: var(--grafite-3); line-height: 1.5; }
+  .spec .rot b { display: block; font-family: var(--sans); font-size: 13.5px; color: var(--grafite); font-weight: 600; letter-spacing: 0; }
+  .s-display { font-family: var(--serif); font-size: clamp(36px, 5.4vw, 60px); line-height: 1; letter-spacing: -.02em; }
+  .s-display em { font-style: italic; }
+  .s-ui { font-size: 17px; }
+  .s-mono { font-family: var(--mono); font-size: 15px; }
+  @media (max-width: 640px) { .spec > div { grid-template-columns: 1fr; gap: 6px; } }
+
+  .escala { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-end; }
+  .escala i { display: block; background: var(--caneta-tinta); border: 1px solid var(--caneta); opacity: .9; }
+  .escala span { display: grid; gap: 4px; justify-items: center; font-family: var(--mono); font-size: 10.5px; color: var(--grafite-3); }
+
+  /* ---------- componentes ---------- */
+  .painel { background: var(--folha); border: 1px solid var(--linha); border-radius: 6px; padding: 20px; }
+  .comp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+  .comp-grid .painel { display: grid; gap: 14px; align-content: start; }
+  .comp-titulo { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .comp-titulo h3 { font-size: 20px; }
+
+  .meta { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding-block: 11px; border-top: 1px solid var(--linha); }
+  .meta:first-of-type { border-top: 0; }
+  .bolha { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--grafite-3); background: transparent; cursor: pointer; padding: 0; display: grid; place-items: center; transition: background .15s, border-color .15s; }
+  .bolha:hover { border-color: var(--caneta); }
+  .bolha:focus-visible { outline: 2px solid var(--caneta); outline-offset: 2px; }
+  .bolha[aria-pressed="true"] { background: var(--caneta); border-color: var(--caneta); }
+  .meta .t { font-weight: 600; font-size: 14.5px; }
+  .meta .s { font-size: 12.5px; color: var(--grafite-3); display: flex; gap: 8px; align-items: center; }
+  .meta .s .area::before { width: 8px; height: 8px; }
+  .meta .min { font-family: var(--mono); font-size: 13px; color: var(--grafite-2); }
+  .meta.feita .t { color: var(--grafite-3); text-decoration: line-through; text-decoration-color: var(--caneta); text-decoration-thickness: 1.5px; }
+  .meta .atraso { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--correcao); }
+
+  .gab { display: grid; grid-template-columns: 28px repeat(7, 1fr); gap: 7px 6px; align-items: center; }
+  .gab .h { font-family: var(--mono); font-size: 10.5px; color: var(--correcao); text-align: center; letter-spacing: .06em; }
+  .gab .r { font-family: var(--mono); font-size: 10.5px; color: var(--correcao); }
+  .gab i { width: 22px; height: 22px; border-radius: 50%; border: 1.3px solid color-mix(in srgb, var(--correcao) 55%, transparent); justify-self: center; position: relative; }
+  .gab i.ok { background: var(--caneta); border-color: var(--caneta); }
+  .gab i.x::after { content: ""; position: absolute; inset: 9px -2px; border-top: 1.6px solid var(--correcao); transform: rotate(-35deg); }
+  .gab i.fut { opacity: .45; }
+  .legenda { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--grafite-3); }
+  .legenda span { display: inline-flex; gap: 6px; align-items: center; }
+  .legenda i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+
+  .stat { display: grid; gap: 2px; }
+  .stat .v { font-family: var(--serif); font-size: 54px; line-height: 1; letter-spacing: -.02em; }
+  .stat .v small { font-size: 22px; color: var(--grafite-3); }
+  .stat .l { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--grafite-3); }
+  .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--linha-forte); }
+  .stats > div { padding: 14px 14px 4px 0; }
+  .stats > div + div { padding-left: 14px; border-left: 1px solid var(--linha); }
+  @media (max-width: 480px) { .stat .v { font-size: 40px; } }
+
+  .barras { display: grid; gap: 12px; }
+  .barra { display: grid; grid-template-columns: 96px minmax(0, 1fr) 44px; gap: 12px; align-items: center; font-size: 13.5px; }
+  .barra .trilha { height: 8px; background: color-mix(in srgb, var(--linha) 70%, transparent); border-radius: 4px; position: relative; }
+  .barra .trilha i { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--c); }
+  .barra .trilha .corte { position: absolute; top: -5px; bottom: -5px; width: 1.5px; background: var(--grafite); }
+  .barra .pct { font-family: var(--mono); font-size: 12.5px; text-align: right; }
+  .barra:hover .trilha i { filter: brightness(1.1); }
+
+  .selos { display: flex; flex-wrap: wrap; gap: 18px; }
+  .selo { display: grid; justify-items: center; gap: 6px; width: 104px; text-align: center; }
+  .selo svg { width: 88px; height: 88px; }
+  .selo b { font-family: var(--serif); font-weight: 500; font-size: 15px; line-height: 1.15; }
+  .selo span { font-size: 11.5px; color: var(--grafite-3); line-height: 1.3; }
+  .selo.bloq svg { opacity: .28; }
+
+  .botoes { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .btn { font-family: var(--sans); font-size: 14px; font-weight: 600; padding: 10px 16px; border-radius: 4px; border: 1px solid var(--btn-bg); background: var(--btn-bg); color: var(--btn-fg); cursor: pointer; transition: transform .15s ease, background .15s; }
+  .btn:hover { transform: translateY(-1px); }
+  .btn:focus-visible { outline: 2px solid var(--caneta); outline-offset: 2px; }
+  .btn.sec { background: transparent; color: var(--grafite); border-color: var(--linha-forte); }
+  .btn.cor { background: transparent; color: var(--correcao); border-color: color-mix(in srgb, var(--correcao) 45%, transparent); }
+  .link { font-weight: 600; font-size: 14px; color: var(--caneta); text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; }
+
+  .devol { display: grid; gap: 10px; }
+  .devol .marg { border-left: 2px solid var(--correcao); padding-left: 12px; font-family: var(--serif); font-style: italic; font-size: 16.5px; line-height: 1.45; color: var(--grafite); }
+  .devol .marg small { display: block; font-family: var(--mono); font-style: normal; font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--correcao); margin-bottom: 4px; }
+
+  /* ---------- hero (visual único: sempre noturno) ---------- */
+  .hero {
+    position: relative; overflow: hidden; border-radius: 6px;
+    background: #0B1116; color: #ECE8DF;
+    min-height: 520px; aspect-ratio: 16 / 8.2; max-width: 100%;
+    isolation: isolate;
+  }
+  @media (max-width: 760px) { .hero { aspect-ratio: auto; min-height: 600px; } }
+  .hero .camada { position: absolute; inset: -4%; will-change: transform; transition: transform .6s cubic-bezier(.16,1,.3,1); }
+  .hero svg { width: 100%; height: 100%; display: block; }
+  .hero .texto { position: absolute; inset: auto 0 0 0; padding: clamp(22px, 4vw, 48px); display: grid; gap: 14px; z-index: 5; background: linear-gradient(to top, rgba(7,10,13,.88), rgba(7,10,13,.55) 55%, transparent); }
+  .hero .texto .eyebrow { color: #B9B3A5; }
+  .hero h2 { font-size: clamp(38px, 6.2vw, 78px); line-height: .98; letter-spacing: -.025em; color: #F2EEE5; max-width: 13ch; }
+  .hero h2 em { font-style: italic; color: #E4B868; }
+  .hero .linha-dados { display: flex; flex-wrap: wrap; gap: 8px 22px; font-family: var(--mono); font-size: 12.5px; color: #CFC9BC; }
+  .hero .linha-dados b { color: #F2EEE5; font-weight: 500; }
+  .hero .prog { height: 2px; background: rgba(236,232,223,.18); max-width: 420px; position: relative; }
+  .hero .prog i { position: absolute; inset: 0 auto 0 0; width: 47%; background: #E4B868; }
+  .hero .aviso { position: absolute; top: 14px; right: 14px; z-index: 6; font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: #9D9789; border: 1px solid rgba(157,151,137,.4); padding: 5px 8px; border-radius: 3px; background: rgba(11,17,22,.6); }
+  .hero .fade { animation: sobe .9s cubic-bezier(.16,1,.3,1) both; }
+  .hero .fade:nth-child(2) { animation-delay: .08s; } .hero .fade:nth-child(3) { animation-delay: .16s; } .hero .fade:nth-child(4) { animation-delay: .24s; }
+  @keyframes sobe { from { transform: translateY(10px); opacity: .01; } to { transform: none; opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .hero .camada { transition: none; } .hero .fade { animation: none; } .btn { transition: none; } }
+
+  /* ---------- tabela de decisão ---------- */
+  .tabela { overflow-x: auto; border-top: 1px solid var(--linha-forte); }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 13.5px; }
+  th, td { text-align: left; vertical-align: top; padding: 11px 14px 11px 0; border-bottom: 1px solid var(--linha); }
+  th { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--grafite-3); font-weight: 500; }
+  td:first-child { font-weight: 600; width: 22%; }
+  td.esc { background: color-mix(in srgb, var(--caneta-tinta) 60%, transparent); padding-left: 12px; }
+  th.esc { color: var(--caneta); padding-left: 12px; }
+
+  .lista { display: grid; gap: 0; border-top: 1px solid var(--linha-forte); }
+  .lista > div { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; padding-block: 14px; border-bottom: 1px solid var(--linha); }
+  .lista .m { font-family: var(--mono); font-size: 12px; color: var(--correcao); padding-top: 2px; }
+  .lista .m.ok { color: var(--caneta); }
+  .lista b { display: block; font-size: 15px; margin-bottom: 3px; }
+  .lista span { font-size: 14px; color: var(--grafite-2); }
+
+  .registros { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+  .registros .painel h3 { font-size: 20px; margin-bottom: 6px; }
+  .registros .painel p { font-size: 14px; color: var(--grafite-2); }
+  .registros ul { margin: 10px 0 0; padding-left: 18px; font-size: 13.5px; color: var(--grafite-2); display: grid; gap: 4px; }
+
+  .fontes { font-size: 12.5px; color: var(--grafite-3); display: grid; gap: 4px; }
+  .fontes a { color: var(--grafite-2); }
+</style>
+
+<div class="wrap">
+
+<header class="capa">
+  <span class="eyebrow">Proposta de identidade · v0.1 · para aprovação</span>
+  <h1>Arcadas &amp; <em>Gabarito</em></h1>
+  <p class="lede">Uma identidade para a plataforma de vestibular construída a partir de dois mundos que o aluno já conhece: a pedra das Arcadas, que representa a tradição e o lugar onde ele quer chegar, e a folha de respostas, que representa o trabalho diário. Nada aqui altera funcionalidade; é a camada visual.</p>
+  <div class="capa-meta"><span>Tema claro ou escuro: segue o seu sistema</span><span>Hero: sempre noturno</span></div>
+</header>
+
+<section class="bloco">
+  <div class="trilho"><span class="eyebrow">Diagnóstico</span><small>Por que hoje parece gerado por IA. Encontrado no código, não é impressão.</small></div>
+  <div class="corpo">
+    <div class="diag">
+      <div><b>Cores padrão do Tailwind</b><span>O laranja, o roxo, o azul, o verde e o vermelho são exatamente os tons "500" da biblioteca: <code>#f97316</code> <code>#a855f7</code> <code>#3b82f6</code> <code>#22c55e</code>.</span></div>
+      <div><b>Ícone em quadrado colorido</b><span>Todo título e todo número vêm com um ícone dentro de um quadrado tingido. É o marcador mais reconhecível de template.</span></div>
+      <div><b>Emoji como ícone</b><span>Conquistas usam 🔥 ⚡ 🏆; a boas-vindas usa 👥 e 👤. Não há desenho próprio.</span></div>
+      <div><b>Mesmo cartão para tudo</b><span>Raio de 16px, borda e fundo iguais em meta, estatística, aviso e lista. Sem hierarquia, tudo pesa igual.</span></div>
+      <div><b>Fonte "segura"</b><span>Plus Jakarta Sans em todos os papéis. Nenhuma voz editorial.</span></div>
+      <div><b>Gradientes decorativos</b><span>As capas das playlists que eu mesmo fiz na última rodada caem nesse vício. Entram na lista para corrigir.</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="bloco">
+  <div class="trilho"><span class="eyebrow">Conceito</span><small>Cada cor tem um trabalho. Nenhuma é decoração.</small></div>
+  <div class="corpo">
+    <h2>Papel, grafite e duas canetas.</h2>
+    <p class="lede">O aluno estuda com caneta azul; o professor corrige com caneta vermelha. A interface usa essa mesma gramática: azul marca o que é do aluno (progresso, feito, selecionado) e vermelho marca correção (erro, atraso, devolutiva). O grafite estrutura tudo e é a cor das ações principais.</p>
+    <div class="tintas">
+      <div class="tinta"><i class="traco" style="background:var(--grafite)"></i><b>Grafite</b><p>Texto, estrutura e botões principais. O "lápis" da prova.</p></div>
+      <div class="tinta"><i class="traco" style="background:var(--caneta)"></i><b>Caneta azul</b><p>As marcas do aluno: metas feitas, bolhas preenchidas, progresso, item selecionado.</p></div>
+      <div class="tinta"><i class="traco" style="background:var(--correcao)"></i><b>Caneta vermelha</b><p>Correção: questão errada, meta atrasada, caderno de erros, devolutiva de redação. Também a tinta da grade da folha de respostas.</p></div>
+      <div class="tinta"><i class="traco" style="background:var(--latao)"></i><b>Latão</b><p>A luz dos lampiões das Arcadas. Aparece só no hero e nos selos de conquista. Rara de propósito.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="bloco">
+  <div class="trilho"><span class="eyebrow">Paleta</span><small>Tokens. Troque o tema da página para ver o modo noturno, com passos próprios, não uma inversão.</small></div>
+  <div class="corpo">
+    <div class="paleta">
+      <div class="cor"><i style="background:var(--papel)"></i><div><b>Papel</b><code>#F4F4F1 · #0F1417</code><span>Fundo. Branco de folha reciclada, levemente frio.</span></div></div>
+      <div class="cor"><i style="background:var(--folha)"></i><div><b>Folha</b><code>#FBFBF9 · #161D21</code><span>Superfície elevada: painéis e modais.</span></div></div>
+      <div class="cor"><i style="background:var(--grafite)"></i><div><b>Grafite</b><code>#1C2024 · #E6E6E0</code><span>Texto e ações principais.</span></div></div>
+      <div class="cor"><i style="background:var(--linha-forte)"></i><div><b>Linha</b><code>#DADBD5 · #B7B9B1</code><span>Fios de 1px no lugar de sombras.</span></div></div>
+      <div class="cor"><i style="background:var(--caneta)"></i><div><b>Caneta azul</b><code>#2A45A8 · #8EA2F2</code><span>Marcas do aluno.</span></div></div>
+      <div class="cor"><i style="background:var(--correcao)"></i><div><b>Correção</b><code>#C1342A · #F07F73</code><span>Erro, atraso, devolutiva.</span></div></div>
+      <div class="cor"><i style="background:var(--acerto)"></i><div><b>Acerto</b><code>#2E7D4F · #62BE8B</code><span>Status "correto". Sempre com rótulo, nunca só a cor.</span></div></div>
+      <div class="cor"><i style="background:var(--latao)"></i><div><b>Latão</b><code>#9C7430 · #D2A95E</code><span>Hero e selos. Nunca em botão.</span></div></div>
+    </div>
+    <div class="areas">
+      <span class="eyebrow" style="margin-right:6px">Áreas</span>
+      <span class="area" style="--c:var(--a-hum)">Humanas · ocre</span>
+      <span class="area" style="--c:var(--a-lin)">Linguagens · azul-petróleo</span>
+      <span class="area" style="--c:var(--a-mat)">Matemática · carmim</span>
+      <span class="area" style="--c:var(--a-nat)">Naturais · verde-folha</span>
+    </div>
+    <p class="nota">Tintas de impressão em vez de cores de biblioteca. Validadas por script para daltonismo (protanopia e deuteranopia) e contraste, no claro e no escuro. No modo escuro, o par Naturais/Matemática fica no limite, então o nome da área aparece sempre escrito ao lado da cor.</p>
+  </div>
+</section>
+
+<section class="bloco">
+  <div class="trilho"><span class="eyebrow">Tipografia</span><small>Três vozes, cada uma com um papel.</small></div>
+  <div class="corpo">
+    <div class="spec">
+      <div><span class="rot"><b>Newsreader</b>serifa editorial · títulos, números de destaque, citações</span><span class="s-display">Faltam <em>58 dias</em> para a FUVEST.</span></div>
+      <div><span class="rot"><b>Schibsted Grotesk</b>interface e texto corrido</span><span class="s-ui">Hoje: 4 metas, 3h10 de estudo e 1 revisão de Termoquímica.</span></div>
+      <div><span class="rot"><b>IBM Plex Mono</b>dados, gabaritos, tempos, rótulos</span><span class="s-mono num">Q.23 · C &nbsp; 02:14:09 &nbsp; 16/20 acertos</span></div>
+    </div>
+    <p class="nota">Newsreader foi desenhada para leitura em tela, tem eixo de tamanho óptico (fica mais fina e elegante em tamanhos grandes) e itálico de verdade. Schibsted Grotesk nasceu num grupo de jornais: é neutra sem ser a fonte de sempre. As três são livres (Google Fonts) e suportam todos os acentos do português.</p>
+    <div class="escala" aria-label="Escala de espaçamento">
+      <span><i style="width:4px;height:4px"></i>4</span><span><i style="width:8px;height:8px"></i>8</span><span><i style="width:12px;height:12px"></i>12</span><span><i style="width:16px;height:16px"></i>16</span><span><i style="width:24px;height:24px"></i>24</span><span><i style="width:32px;height:32px"></i>32</span><span><i style="width:48px;height:48px"></i>48</span><span><i style="width:64px;height:64px"></i>64</span><span><i style="width:96px;height:96px"></i>96</span>
+    </div>
+    <p class="nota">Espaçamento em múltiplos de 4. Raio de 4 a 6px (não 16). Separação por fios de 1px e espaço em branco; sombra só em modal.</p>
+  </div>
+</section>
+
+<section class="bloco">
+  <div class="trilho"><span class="eyebrow">Componentes</span><small>As mesmas funções de hoje, com a nova gramática. Clique nas bolhas.</small></div>
+  <div class="corpo">
+    <div class="comp-grid">
+      <div class="painel">
+        <div class="comp-titulo"><h3>Metas de hoje</h3><span class="eyebrow num">2 de 4</span></div>
+        <div id="metas"></div>
+      </div>
+      <div class="painel">
+        <div class="comp-titulo"><h3>Setembro</h3><span class="eyebrow num">19 de 25 dias</span></div>
+        <div class="gab" id="gab" role="img" aria-label="Grade de consistência do mês: 19 dias cumpridos, 6 perdidos"></div>
+        <div class="legenda"><span><i style="background:var(--caneta)"></i>Cumprido</span><span><i style="border:1.3px solid var(--correcao)"></i>Perdido</span><span><i style="border:1.3px solid var(--linha-forte)"></i>A seguir</span></div>
+        <p class="nota">O grid de consistência vira uma folha de respostas: cada dia é uma bolha que o aluno preenche.</p>
+      </div>
+    </div>
+
+    <div class="painel">
+      <div class="stats">
+        <div class="stat"><span class="v num">12</span><span class="l">Dias seguidos</span></div>
+        <div class="stat"><span class="v num">74<small>%</small></span><span class="l">Acerto no mês</span></div>
+        <div class="stat"><span class="v num">47<small>%</small></span><span class="l">Do programa</span></div>
+      </div>
+    </div>
+
+    <div class="comp-grid">
+      <div class="painel">
+        <div class="comp-titulo"><h3>Acerto por área</h3><span class="eyebrow">Traço = sua meta</span></div>
+        <div class="barras" id="barras"></div>
+      </div>
+      <div class="painel">
+        <div class="comp-titulo"><h3>Selos</h3><span class="eyebrow">Conquistas</span></div>
+        <div class="selos" id="selos"></div>
+        <p class="nota">Cada conquista ganha um selo guilhochê, o mesmo desenho de diplomas e cédulas, gerado por fórmula. É único por conquista e pesa menos de 2 KB.</p>
+      </div>
+    </div>
+
+    <div class="comp-grid">
+      <div class="painel">
+        <div class="comp-titulo"><h3>Ações</h3></div>
+        <div class="botoes">
+          <button class="btn" type="button" id="b1">Começar simulado</button>
+          <button class="btn sec" type="button" id="b2">Ver gabarito</button>
+          <button class="btn cor" type="button" id="b3">Abrir caderno de erros</button>
+          <a class="link" href="#componentes">Rever a semana</a>
+        </div>
+      </div>
+      <div class="painel devol">
+        <div class="comp-titulo"><h3>Devolutiva</h3><span class="eyebrow num">840 / 1000</span></div>
+        <div class="marg"><small>Comentário do professor</small>No segundo parágrafo, explique por que o dado sustenta a tese em vez de só apresentá-lo.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="bloco" id="hero">
+  <div class="trilho"><span class="eyebrow">Página inicial</span><small>Protótipo de composição e de profundidade. A arte é provisória: mova o mouse ou role a página.</small></div>
+  <div class="corpo">
+    <div class="hero" id="heroBox">
+      <span class="aviso">Arte provisória · só enquadramento e camadas</span>
+      <div class="camada" data-f="6"><svg viewBox="0 0 1600 820" preserveAspectRatio="xMidYMid slice" id="c1" aria-hidden="true"></svg></div>
+      <div class="camada" data-f="14"><svg viewBox="0 0 1600 820" preserveAspectRatio="xMidYMid slice" id="c2" aria-hidden="true"></svg></div>
+      <div class="camada" data-f="28"><svg viewBox="0 0 1600 820" preserveAspectRatio="xMidYMid slice" id="c3" aria-hidden="true"></svg></div>
+      <div class="texto">
+        <span class="eyebrow fade">Sábado, 26 de setembro · Vestibular-foco: FUVEST</span>
+        <h2 class="fade">Ana, faltam <em>58 dias.</em></h2>
+        <div class="linha-dados fade"><span><b>4</b> metas hoje</span><span><b>3h10</b> de estudo</span><span><b>12</b> dias seguidos</span><span><b>47%</b> do programa</span></div>
+        <div class="prog fade" aria-label="47% do programa concluído"><i></i></div>
+      </div>
+    </div>
+    <p class="nota">Direção de arte proposta: o aluno está <em>dentro</em> das Arcadas, sob um arco, olhando o pátio iluminado na hora azul (logo após o pôr do sol). O arco em primeiro plano funciona como moldura e cria a profundidade. A contagem de dias neste exemplo é ilustrativa; na plataforma ela vem da data da prova cadastrada no plano do aluno.</p>
+  </div>
+</section>
+
+<section class="bloco">
+  <div class="trilho"><span class="eyebrow">Arte 3D</span><small>Três caminhos avaliados. Estimativas, não medições.</small></div>
+  <div class="corpo">
+    <h2>Render estático com mapa de profundidade.</h2>
+    <p class="lede">Uma cena 3D renderizada uma vez, com qualidade de cinema, e animada no navegador com um efeito de profundidade leve (2,5D). Esse caminho dá o realismo que você pediu sem o custo de rodar 3D ao vivo no celular de um aluno.</p>
+    <div class="tabela">
+      <table>
+        <thead><tr><th></th><th>3D em tempo real (Three.js / R3F)</th><th class="esc">Render + mapa de profundidade</th><th>Vídeo em loop</th></tr></thead>
+        <tbody>
+          <tr><td>Realismo</td><td>Limitado no celular. Tende a "cara de jogo", o oposto de premium.</td><td class="esc">O do render: máximo. A luz é calculada uma vez, fora do navegador.</td><td>Máximo.</td></tr>
+          <tr><td>Peso na página</td><td>≈150–180 KB só da biblioteca (gzip) + modelo de 2 a 10 MB.</td><td class="esc">≈250–450 KB (imagem AVIF + mapa) + ~4 KB de código.</td><td>1,5 a 4 MB.</td></tr>
+          <tr><td>Celular médio</td><td>Esquenta e gasta bateria; risco de travar.</td><td class="esc">Leve. Em celular vira parallax por rolagem; com "reduzir movimento" fica estático.</td><td>Pesado no 4G; modo economia bloqueia o autoplay.</td></tr>
+          <tr><td>Uso diário</td><td>Carregamento pesado toda vez que abre.</td><td class="esc">Fica em cache; na segunda visita é instantâneo.</td><td>Cansa rápido.</td></tr>
+          <tr><td>Arte a produzir</td><td>Modelo 3D completo e otimizado para web.</td><td class="esc">Um render da cena. O software exporta o mapa de profundidade junto, de graça.</td><td>Render animado (várias vezes mais caro).</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="lista">
+      <div><span class="m ok">✓</span><div><b>Por que as Arcadas e não o ITA</b><span>Mais cinematográfico (arcos, torre, luz de lampião) e juridicamente mais seguro. O prédio é de Ricardo Severo, morto em 1940: os direitos patrimoniais duram 70 anos após a morte e já expiraram. Os prédios do ITA são de Oscar Niemeyer, morto em 2012, protegidos até 2082, e o STJ já decidiu que o art. 48 da Lei 9.610 (liberdade de representar obras em logradouro público) não cobre exploração comercial. Não sou advogado; vale uma confirmação.</span></div></div>
+      <div><span class="m">!</span><div><b>Não posso produzir a arte final aqui</b><span>Eu construo toda a mecânica (composição, camadas, efeito de profundidade, versões para celular), mas não gero imagem fotorrealista. A arte precisa vir de um artista 3D (render em Blender) ou de uma foto profissional própria. Imagem de IA contraria o seu objetivo: erra detalhes da arquitetura (número de arcos, ornamentos) e quem conhece o prédio percebe.</span></div></div>
+      <div><span class="m">!</span><div><b>Não use nome, brasão ou logo da USP</b><span>O prédio pode aparecer; a marca da universidade sugeriria vínculo oficial. A arte deve evitar também a inscrição da fachada.</span></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="bloco">
+  <div class="trilho"><span class="eyebrow">Onde discordo</span><small>Pontos do pedido que conflitam com o uso real.</small></div>
+  <div class="corpo">
+    <div class="lista">
+      <div><span class="m">1</span><div><b>Imersão em tudo prejudica quem estuda todo dia</b><span>Dashboard, questões e simulados são ferramentas abertas várias vezes por dia. Produtos premium de verdade deixam essas telas silenciosas: a qualidade aparece em tipografia, ritmo e precisão, não em transições. Proponho dois registros da mesma identidade (abaixo).</span></div></div>
+      <div><span class="m">2</span><div><b>Scroll storytelling na home logada tem prazo de validade</b><span>Na primeira visita do dia, o hero cheio. Nas seguintes, ele se recolhe numa faixa e as metas sobem. O storytelling completo vai para a página pública e para Quem somos, onde a trajetória do Joca e do Rossini desde o 2º ano é literalmente uma história em capítulos.</span></div></div>
+      <div><span class="m">3</span><div><b>O laranja sai</b><span>É a cor atual da marca, mas é o laranja padrão do Tailwind e não significa nada. Se você tem apego a ele, dá para trazer uma variação terrosa como cor de marca, mas as funções (azul e vermelho) continuam.</span></div></div>
+      <div><span class="m">4</span><div><b>"Manter rotas e Firebase" ainda não se aplica</b><span>O protótipo não tem Firebase nem rotas de URL; ainda é tudo simulado. O redesenho não muda isso, e continua valendo começar a base técnica antes de lançar.</span></div></div>
+      <div><span class="m">5</span><div><b>O nome "Aprova+" é genérico</b><span>Uma identidade forte com nome fraco perde metade do efeito. Fora do escopo deste pedido, mas é o próximo gargalo de marca.</span></div></div>
+    </div>
+    <div class="registros">
+      <div class="painel"><span class="eyebrow">Registro editorial</span><h3>Para ler e se inspirar</h3><p>Página inicial, Quem somos, Aulas, Atualidades, Redação (análises).</p><ul><li>Serifa grande, bastante espaço em branco</li><li>Hero, parallax leve, entrada em fade por seção</li><li>Largura de leitura de ~65 caracteres</li></ul></div>
+      <div class="painel"><span class="eyebrow">Registro de estudo</span><h3>Para trabalhar rápido</h3><p>Dashboard, Plano, Questões, Simulados, painel do moderador.</p><ul><li>Densidade maior, números em mono</li><li>Movimento só como resposta a uma ação</li><li>Mesma paleta, mesmos fios, mesmas fontes</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<section class="bloco">
+  <div class="trilho"><span class="eyebrow">Ordem</span><small>Se aprovar a direção.</small></div>
+  <div class="corpo">
+    <div class="lista">
+      <div><span class="m ok">1</span><div><b>Tokens e componentes base</b><span>Paleta, fontes e os componentes que já existem (Btn, Card, Field, Badge, Modal, SectionTitle). Cerca de metade da cara nova vem daqui, sem tocar em lógica.</span></div></div>
+      <div><span class="m ok">2</span><div><b>Estrutura e navegação</b><span>Menu lateral, cabeçalho, transição entre telas.</span></div></div>
+      <div><span class="m ok">3</span><div><b>Página inicial</b><span>Com arte provisória no lugar da final, até a arte chegar.</span></div></div>
+      <div><span class="m ok">4</span><div><b>Tela por tela</b><span>Com captura antes e depois de cada uma, para provar que nenhuma função mudou.</span></div></div>
+    </div>
+    <div class="fontes">
+      <span>Fontes consultadas:</span>
+      <a href="https://www.planalto.gov.br/ccivil_03/leis/l9610.htm" target="_blank" rel="noreferrer">Lei 9.610/1998 (Planalto)</a>
+      <a href="https://www.stj.jus.br/websecstj/cgi/revista/REJ.cgi/ITA?seq=1974102&amp;tipo=0&amp;nreg=201801365812&amp;dt=20200831&amp;formato=HTML&amp;salvar=false" target="_blank" rel="noreferrer">STJ, Revista Eletrônica de Jurisprudência</a>
+      <a href="https://direito.usp.br/patrimonio-historico/f319e2d3b0e2-o-edificio-e-sua-historia-" target="_blank" rel="noreferrer">Faculdade de Direito da USP: o edifício e sua história</a>
+      <a href="https://www.nucleodocomomosp.com.br/patrimonio-paulista-vale-do-paraiba/centro-t%C3%A9cnico-de-aeron%C3%A1utica-cta" target="_blank" rel="noreferrer">Docomomo SP: Centro Técnico de Aeronáutica</a>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<script>
+(function () {
+  var reduz = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---- metas ---- */
+  var metas = [
+    { t: "Termoquímica: entalpia", a: "Naturais", c: "var(--a-nat)", m: "60 min", feita: true },
+    { t: "Funções: logaritmo", a: "Matemática", c: "var(--a-mat)", m: "80 min", feita: true },
+    { t: "Era Vargas: Estado Novo", a: "Humanas", c: "var(--a-hum)", m: "45 min", feita: false },
+    { t: "Revisão: Citologia", a: "Naturais", c: "var(--a-nat)", m: "30 min", feita: false, atraso: true }
+  ];
+  var box = document.getElementById("metas");
+  metas.forEach(function (x, i) {
+    var el = document.createElement("div");
+    el.className = "meta" + (x.feita ? " feita" : "");
+    el.innerHTML = '<button class="bolha" type="button" id="meta-' + i + '" aria-pressed="' + x.feita + '" aria-label="Marcar meta como feita"></button>' +
+      '<div><div class="t">' + x.t + '</div><div class="s"><span class="area" style="--c:' + x.c + '">' + x.a + '</span>' + (x.atraso ? '<span class="atraso">atrasada</span>' : '') + '</div></div>' +
+      '<span class="min num">' + x.m + '</span>';
+    box.appendChild(el);
+  });
+  box.addEventListener("click", function (e) {
+    var b = e.target.closest(".bolha"); if (!b) return;
+    var on = b.getAttribute("aria-pressed") !== "true";
+    b.setAttribute("aria-pressed", on);
+    b.closest(".meta").classList.toggle("feita", on);
+  });
+
+  /* ---- grade de consistência (folha de respostas) ---- */
+  var gab = document.getElementById("gab");
+  var dias = ["S", "T", "Q", "Q", "S", "S", "D"];
+  gab.innerHTML = '<span></span>' + dias.map(function (d) { return '<span class="h">' + d + '</span>'; }).join("");
+  var perdidos = { 4: 1, 9: 1, 13: 1, 17: 1, 20: 1, 23: 1 };
+  // setembro/2026 começa numa terça: a primeira célula (segunda) fica vazia
+  var dia = 0, html = gab.innerHTML;
+  for (var sem = 0; sem < 5; sem++) {
+    html += '<span class="r num">' + String(sem + 1).padStart(2, "0") + '</span>';
+    for (var d = 0; d < 7; d++) {
+      if (dia < 1 || dia > 30) html += '<span></span>';
+      else html += '<i class="' + (dia > 25 ? "fut" : perdidos[dia] ? "x" : "ok") + '" title="' + dia + '/09"></i>';
+      dia++;
+    }
+  }
+  gab.innerHTML = html;
+
+  /* ---- barras por área ---- */
+  var areas = [["Humanas", 71, "var(--a-hum)"], ["Linguagens", 81, "var(--a-lin)"], ["Matemática", 62, "var(--a-mat)"], ["Naturais", 66, "var(--a-nat)"]];
+  var meta = 75;
+  document.getElementById("barras").innerHTML = areas.map(function (a) {
+    return '<div class="barra" title="' + a[0] + ': ' + a[1] + '% de acerto (meta ' + meta + '%)"><span>' + a[0] + '</span>' +
+      '<span class="trilha"><i style="width:' + a[1] + '%;--c:' + a[2] + '"></i><span class="corte" style="left:' + meta + '%"></span></span>' +
+      '<span class="pct num">' + a[1] + '%</span></div>';
+  }).join("");
+
+  /* ---- selos guilhochê ---- */
+  function guilloche(R, r, d, voltas, cor, espessura) {
+    var pts = [], passos = 1400;
+    for (var i = 0; i <= passos; i++) {
+      var t = (i / passos) * Math.PI * 2 * voltas;
+      var x = (R - r) * Math.cos(t) + d * Math.cos(((R - r) / r) * t);
+      var y = (R - r) * Math.sin(t) - d * Math.sin(((R - r) / r) * t);
+      pts.push((50 + x).toFixed(2) + " " + (50 + y).toFixed(2));
+    }
+    return '<path d="M' + pts.join("L") + '" fill="none" stroke="' + cor + '" stroke-width="' + espessura + '"/>';
+  }
+  var selos = [
+    { n: "Uma semana firme", s: "7 dias seguidos", p: [30, 7, 13, 7], ok: true },
+    { n: "Centena", s: "100 questões", p: [28, 11, 16, 11], ok: true },
+    { n: "Precisão", s: "80% de acerto", p: [32, 9, 12, 9], ok: false },
+    { n: "Maratonista", s: "5 simulados", p: [29, 13, 15, 13], ok: false }
+  ];
+  document.getElementById("selos").innerHTML = selos.map(function (s) {
+    var q = s.p;
+    var svg = '<svg viewBox="0 0 100 100" role="img" aria-label="Selo ' + s.n + (s.ok ? '' : ' (bloqueado)') + '">' +
+      '<circle cx="50" cy="50" r="47" fill="none" stroke="var(--latao)" stroke-width=".8"/>' +
+      '<circle cx="50" cy="50" r="44" fill="none" stroke="var(--latao)" stroke-width=".4"/>' +
+      guilloche(q[0], q[1], q[2], q[3], "var(--latao)", .45) +
+      guilloche(q[0] * .62, q[1] * .62, q[2] * .55, q[3], "var(--caneta)", .4) +
+      '</svg>';
+    return '<div class="selo' + (s.ok ? '' : ' bloq') + '">' + svg + '<b>' + s.n + '</b><span>' + s.s + '</span></div>';
+  }).join("");
+
+  /* ---- hero: arcadas em três camadas (arte provisória) ---- */
+  var W = 1600, H = 820;
+  function arcada(n, x0, x1, base, alturaPe, cor, corLuz, espessuraLuz, parede) {
+    var larg = (x1 - x0) / n, pilar = larg * 0.2, vao = larg - pilar, r = vao / 2;
+    var buracos = "", luzes = "";
+    for (var i = 0; i < n; i++) {
+      var a = x0 + i * larg + pilar / 2, b = a + vao, mola = base - alturaPe;
+      buracos += "M" + a + " " + base + "L" + a + " " + mola + "A" + r + " " + r + " 0 0 1 " + b + " " + mola + "L" + b + " " + base + "Z";
+      luzes += '<path d="M' + a + " " + mola + "A" + r + " " + r + " 0 0 1 " + b + " " + mola + '" fill="none" stroke="' + corLuz + '" stroke-width="' + espessuraLuz + '" opacity=".55"/>';
+    }
+    return '<path fill-rule="evenodd" fill="' + cor + '" d="' + parede + buracos + '"/>' + luzes;
+  }
+  // camada 1: céu da hora azul, torre e fundo do pátio com lampiões
+  var c1 = '<defs><radialGradient id="ceu" cx="50%" cy="35%" r="75%"><stop offset="0" stop-color="#2B3F58"/><stop offset=".6" stop-color="#16222F"/><stop offset="1" stop-color="#0B1116"/></radialGradient>' +
+    '<radialGradient id="lamp" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#E4B868" stop-opacity=".45"/><stop offset="1" stop-color="#E4B868" stop-opacity="0"/></radialGradient></defs>' +
+    '<rect width="' + W + '" height="' + H + '" fill="url(#ceu)"/>' +
+    '<path d="M760 120 L840 120 L840 330 L760 330 Z M772 150 L828 150 L828 210 L772 210 Z" fill="#1A2530" fill-rule="evenodd"/>' +
+    '<path d="M752 120 L800 72 L848 120 Z" fill="#1A2530"/>' +
+    arcada(9, 330, 1270, 560, 150, "#1D2833", "#E4B868", 1.2, "M330 330 L1270 330 L1270 600 L330 600 Z") +
+    [1, 3, 5, 7].map(function (i) {
+      var x = 330 + (i + 0.5) * (940 / 9);
+      return '<circle cx="' + x.toFixed(1) + '" cy="398" r="34" fill="url(#lamp)"/><circle cx="' + x.toFixed(1) + '" cy="398" r="2.4" fill="#F3D08E"/>';
+    }).join("");
+  // camada 2: colunata lateral do claustro, mais perto
+  var c2 = arcada(4, -40, 520, 700, 220, "#131B23", "#C99A52", 1.6, "M-40 300 L520 300 L520 820 L-40 820 Z") +
+    arcada(4, 1080, 1640, 700, 220, "#131B23", "#C99A52", 1.6, "M1080 300 L1640 300 L1640 820 L1080 820 Z") +
+    '<rect x="0" y="700" width="' + W + '" height="120" fill="#10171E"/>' +
+    '<path d="M0 700 L1600 700" stroke="#C99A52" stroke-opacity=".25" stroke-width="1"/>';
+  // camada 3: o grande arco em primeiro plano, moldura da cena
+  var c3 = '<path fill-rule="evenodd" fill="#06090C" d="M-80 -80 L1680 -80 L1680 900 L-80 900 Z M250 900 L250 610 A550 550 0 0 1 1350 610 L1350 900 Z"/>' +
+    '<path d="M250 900 L250 610 A550 550 0 0 1 1350 610 L1350 900" fill="none" stroke="#E4B868" stroke-opacity=".3" stroke-width="2"/>';
+  document.getElementById("c1").innerHTML = c1;
+  document.getElementById("c2").innerHTML = c2;
+  document.getElementById("c3").innerHTML = c3;
+
+  if (!reduz) {
+    var hero = document.getElementById("heroBox");
+    var camadas = [].slice.call(hero.querySelectorAll(".camada"));
+    var mx = 0, my = 0, sy = 0, pendente = false;
+    function aplicar() {
+      pendente = false;
+      camadas.forEach(function (c) {
+        var f = +c.getAttribute("data-f");
+        c.style.transform = "translate3d(" + (mx * f).toFixed(2) + "px," + (my * f + sy * f * 0.6).toFixed(2) + "px,0) scale(" + (1 + f / 900) + ")";
+      });
+    }
+    function agendar() { if (!pendente) { pendente = true; requestAnimationFrame(aplicar); } }
+    hero.addEventListener("pointermove", function (e) {
+      var r = hero.getBoundingClientRect();
+      mx = ((e.clientX - r.left) / r.width - 0.5) * -1;
+      my = ((e.clientY - r.top) / r.height - 0.5) * -1;
+      agendar();
+    });
+    hero.addEventListener("pointerleave", function () { mx = 0; my = 0; agendar(); });
+    window.addEventListener("scroll", function () {
+      var r = hero.getBoundingClientRect();
+      var p = (r.top + r.height / 2 - window.innerHeight / 2) / window.innerHeight;
+      sy = Math.max(-1, Math.min(1, p));
+      agendar();
+    }, { passive: true });
+  }
+})();
+</script>
