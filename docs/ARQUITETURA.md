@@ -1,6 +1,7 @@
 # Arquitetura: plataforma de vestibular (proposta v1)
 
-> Status: **proposta para discussão**. Nenhum código foi escrito ainda.
+> Status: **proposta para discussão (v2)**. Nenhum código foi escrito ainda.
+> v2: questões em PDF; Introdução/Atualidades/Redação viram módulos de videoaulas configuráveis (`modules/`).
 > Base analisada: `PlataformaVestibular_1.jsx` (4.257 linhas, protótipo com dados mock).
 
 ---
@@ -55,14 +56,31 @@ Regras dos ids: slug estável (`fisica`, `mecanica-cinematica`). **Nunca renomei
 
 ### 2.2 Motor de Conteúdo
 
-```
-sections/{sectionId}
-  { module: "aulas" | "atualidades" | "redacao" | "institucional",
-    parentId: null | sectionId,          // árvore de subdivisões, editável
-    titulo, slug, ordem, capa?, visivelPara: "todos" | { examIds: [...] } }
+**Decisão (v2):** Introdução ao curso, Atualidades e Redação são **abas de videoaulas personalizáveis**, com aulas anexadas pelo moderador. O código não conhece essas três abas: ele conhece um *tipo* de módulo (`videoaulas`). As três são registros em `modules/`, e você pode criar uma quarta (por exemplo, "Aulões de véspera") sem deploy.
 
-contents/{contentId}
-  { module, sectionId, tipo: "aula" | "atualidade" | "analise_redacao" | "pagina",
+```
+modules/{moduleId}                        // cada registro vira um item do menu lateral
+  { titulo: "Atualidades", slug: "atualidades", icone: "globe", ordem,
+    tipo: "videoaulas",                   // único tipo na v1; o renderizador é escolhido por aqui
+    layout: "trilha" | "feed",            // trilha = ordem fixa (Introdução); feed = mais recente primeiro (Atualidades)
+    descricao, capaPath?, ativo: bool,
+    visivelPara: "todos" | { examIds } | { turmaIds },
+    extras: [] | ["repertorios", "envio_redacao"] }   // widgets fixos que só a Redação liga
+
+// Módulos iniciais (seed):
+//   introducao  → layout "trilha", extras []
+//   atualidades → layout "feed",   extras []
+//   redacao     → layout "trilha", extras ["repertorios", "envio_redacao"]
+
+sections/{sectionId}                      // subdivisões/abas DENTRO do módulo
+  { moduleId,
+    parentId: null | sectionId,           // árvore editável (recomendo limitar a 2 níveis na UI)
+    titulo, slug, ordem, capa?, visivelPara: "todos" | { examIds: [...] } }
+//  ex.: redacao → "Dissecando redações nota 1000", "Competência 1", ...
+//       atualidades → "Outubro/2026", "Geopolítica", ...
+
+contents/{contentId}                      // uma aula
+  { moduleId, sectionId, tipo: "videoaula" | "pagina",
     titulo, slug, resumo, status: "rascunho" | "publicado", publicarEm,
     topicIds: [], subjectIds: [], examIds: [], tags: [],
     media?: { provider: "youtube" | "vimeo" | "panda" | "bunny", videoId, duracaoSeg },
@@ -85,9 +103,23 @@ repertoires/{id}                          // estruturado de propósito, porque p
 pages/{slug}                              // Quem somos, Boas-vindas: { blocks: [...] } (hoje WELCOME_INICIAL)
 ```
 
+**Aula = vídeo principal + blocos opcionais.** O formulário do admin pede o mínimo (título, seção, link ou upload do vídeo) e deixa texto, PDF de apoio e questões relacionadas como blocos opcionais. Se anexar uma aula exigir preencher 10 campos, você vai parar de anexar.
+
 **Por que `blocks` fica embutido no documento e não numa subcoleção:** uma leitura por aula, e o limite de 1 MB por documento é folgado para texto. Imagens e PDFs vão para o Storage; o bloco guarda apenas o caminho.
 
-### 2.3 Motor de Avaliação (compartilhado por Questões e Simulados)
+### 2.3 Motor de Avaliação
+
+**Decisão (v2):** as questões chegam em **PDF**. A unidade de cadastro é a *prova* (PDF + gabarito), não a questão isolada:
+
+1. O moderador sobe o PDF e cria o `assessment`.
+2. Preenche a grade de gabarito: número → alternativa → matéria → tópico (+ página do PDF). É o formulário que já existe em `ModSimulados`.
+3. Cada linha dessa grade gera um `item` "leve", sem enunciado em texto: `{ origem: { assessmentId, paginaPdf } }`.
+
+Consequências:
+- O filtro por tópico no banco de questões funciona: ele lista "FUVEST 2023, Q. 23, p. 9" e abre o PDF na página certa.
+- O caderno de erros mostra a referência + a página do PDF, não o enunciado recortado. O recorte de imagem por questão (`enunciado.imagemPath`) fica como melhoria opcional, sem mudar o modelo.
+- Uma questão sem tópico marcado não entra no "% por tópico". O admin deve bloquear a publicação de uma prova com linhas incompletas.
+ (compartilhado por Questões e Simulados)
 
 ```
 items/{itemId}                            // uma questão
@@ -229,15 +261,19 @@ Adotar `react-router` (URLs reais). Hoje o menu do aluno tem 11 itens. Somar oit
 /app/simulados/:id/resolver                  <AssessmentRunner> (o mesmo das listas, em modo cronometrado)
 /app/simulados/resultado/:attemptId          Análise questão a questão
 /app/simulados/enviar                        Anexar simulado externo
-/app/redacao                                 ?aba=analises | repertorios | minhas
-/app/redacao/enviar
-/app/redacao/:essayId                        Devolutiva
-/app/atualidades                             Feed por semana/eixo
-/app/atualidades/:slug
+/app/m/:modulo                               Módulo de videoaulas (introducao | atualidades | redacao | ...)
+/app/m/:modulo/:secao                        Aba/subdivisão
+/app/m/:modulo/:secao/:aula                  Player + blocos
+/app/m/redacao/repertorios                   extra do módulo Redação
+/app/m/redacao/enviar                        extra do módulo Redação
+/app/m/redacao/minhas/:essayId               Devolutiva
+                                             ⚠ os slugs "repertorios", "enviar" e "minhas" ficam reservados:
+                                               o admin não deixa criar uma aba com esses nomes (senão a rota colide)
 
 /admin/alunos                                (existe)
 /admin/alunos/:uid/:aba                      (existe como ModAlunoPerfil)
-/admin/conteudo/:modulo                      Árvore de seções + lista de conteúdos (serve Aulas, Atualidades, Redação e Institucional)
+/admin/modulos                               Criar/ordenar/ocultar módulos (itens do menu)
+/admin/modulos/:modulo                       Abas (sections) + aulas com arrastar e soltar
 /admin/conteudo/editar/:contentId            Editor de blocos genérico
 /admin/questoes                              Importar prova, recortar e taguear itens
 /admin/avaliacoes/:id                        Montar lista ou simulado + gabarito
@@ -269,7 +305,7 @@ Itens atuais que saem do menu principal: *Semana* vai para o Dashboard; *Organiz
 
 ## 5. Pontos cegos e decisões pendentes
 
-1. **Formato dos "arquivos que vou anexar" do banco de questões.** Isto define o modelo:
+1. ~~Formato dos arquivos do banco de questões~~ **Decidido: PDF** (ver 2.3). Histórico da análise:
    - *PDF de prova inteira + gabarito:* rápido de subir, mas "% por tópico" **exige** que cada número de questão seja tagueado com `topicId`. É o mesmo formulário que já existe em `ModSimulados` e é trabalho manual: cerca de 90 questões por prova da 1ª fase da FUVEST, multiplicadas pelos anos.
    - *Questão por questão (recorte de imagem ou texto):* permite o explorador por tópico e o caderno de erros com enunciado, mas custa muito mais no cadastro.
    - **Recomendação:** v1 com PDF + gabarito tagueado (o dado de desempenho já funciona); v2 recortando imagens por questão para as provas mais usadas. Um LLM pode sugerir o tópico de cada questão para você só revisar, o que reduz o tagueamento a conferência.
@@ -289,7 +325,7 @@ A lógica é construir primeiro o que os outros módulos consomem e deixar por �
 | Fase | Entrega | Por quê |
 |---|---|---|
 | **0. Fundação** | Projeto Vite, arquivo quebrado em módulos, `react-router`, Firebase Auth + custom claims, regras de segurança; **taxonomia canônica no Firestore** (corrige os problemas 2, 4 e 5); `exams` unificado; migração dos mocks | Sem isto, nada persiste e as métricas por tópico nascem erradas |
-| **1. Motor de Conteúdo** | `sections` + `contents` + `<BlockEditor>` genérico + `<MediaPlayer>`; entregas: **Quem somos**, **Boas-vindas** e **Aula de introdução** | Valida o requisito "edito sem deploy" com o menor risco possível |
+| **1. Motor de Conteúdo** | `modules` + `sections` + `contents` + `<BlockEditor>` + `<MediaPlayer>` + admin de módulos; entregas: abas **Introdução ao curso**, **Atualidades** e **Redação** (só as videoaulas; envio e correção de redação ficam na fase 4), **Quem somos** e **Boas-vindas** | Valida o requisito "edito sem deploy" com o menor risco possível |
 | **2. Motor de Avaliação** | `items` / `assessments` / `answerKeys` / `attempts` + `grade()` + `stats` agregado; **Banco de questões** (listas + desempenho), **Simulados** (plataforma + envio externo), **Caderno de erros** ligado às revisões | É o núcleo pedagógico e a fonte de dados do Dashboard e do Início |
 | **3. Plano + Dashboard reais** | Portar a engine para `plan/current` + `days/{data}`; corrigir a seleção de tópico (hoje sempre `topicos[0]`) para seguir o `topicProgress`; resolver quem é dono do plano | A engine já existe no mock; falta persistir e corrigir |
 | **4. Redação** | Rubricas, envio, fila, tela de correção, cota; depois repertórios e análises (estas reaproveitam a fase 1) | Precisa das decisões operacionais do ponto 5.3 |
