@@ -195,6 +195,13 @@ describe("alterações individuais com histórico", () => {
     expect(imp.concluidosPreservados).toBe(1);
     expect(imp.conteudosRemarcados).toBeGreaterThan(0);
     expect(imp.fimDepois <= imp.fimAntes).toBe(true);
+    expect(imp.conteudosRetirados).toBe(0);
+    const materia = base.materias[0].materiaId;
+    const { plano: semMateria } = alterarPlano(base, ind, { tipo: "removerMateria", materiaId: materia });
+    const imp2 = impactoAlteracao(base, semMateria, ind, prog, HOJE);
+    const daMateria = itens.filter((it) => it.materiaId === materia);
+    expect(imp2.conteudosRetirados).toBe(daMateria.filter((it) => !prog[it.itemId]).length);
+    expect(imp2.conteudosIncluidos).toBe(0);
   });
 });
 

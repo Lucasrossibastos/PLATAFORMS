@@ -6,6 +6,8 @@ import { fmtMin } from "../../core/nucleo.js";
 import { Abas, Botao, Campo, Carregando, Dialogo, MensagemErro, TituloPagina, Vazio } from "../../ui/ui.jsx";
 
 const NOMES = { area: "área", materia: "matéria", topico: "tópico", subtopico: "subtópico", vestibular: "vestibular", curso: "curso" };
+const FEMININO = new Set(["area", "materia"]);
+const novoNome = (tipo) => `${FEMININO.has(tipo) ? "Nova" : "Novo"} ${NOMES[tipo]}`;
 const PAI = { materia: "areaId", topico: "materiaId", subtopico: "topicoId" };
 
 /* Formulário de um item (novo ou edição). */
@@ -22,7 +24,7 @@ function FormItem({ alvo, aoFechar }) {
     aoFechar();
   });
   return (
-    <Dialogo aberto aoFechar={aoFechar} titulo={`${item ? "Editar" : "Novo"} ${NOMES[tipo]}`} largura={440}>
+    <Dialogo aberto aoFechar={aoFechar} titulo={item ? `Editar ${NOMES[tipo]}` : novoNome(tipo)} largura={440}>
       <div className="form">
         <Campo rotulo="Nome" erro={erros.nome}><input className="entrada" value={f.nome} autoFocus onChange={(e) => setF({ ...f, nome: e.target.value })} /></Campo>
         {temCor && <Campo rotulo="Cor"><input className="entrada cor-livre" type="color" value={f.cor} onChange={(e) => setF({ ...f, cor: e.target.value })} /></Campo>}
@@ -70,7 +72,7 @@ function Arvore({ aoEditar }) {
   const { ind } = useApp();
   const [abertos, setAbertos] = useState(() => new Set());
   const alternar = (id) => setAbertos((x) => { const n = new Set(x); if (n.has(id)) n.delete(id); else n.add(id); return n; });
-  const novo = (tipo, paiId) => <Botao variante="texto" tamanho="sm" icone={Plus} onClick={() => aoEditar({ tipo, paiId })}>Novo {NOMES[tipo]}</Botao>;
+  const novo = (tipo, paiId) => <Botao variante="texto" tamanho="sm" icone={Plus} onClick={() => aoEditar({ tipo, paiId })}>{novoNome(tipo)}</Botao>;
   return (
     <div className="arvore">
       {ind.areas.map((a, ia) => (
@@ -113,7 +115,7 @@ function ListaSimples({ tipo, lista, aoEditar }) {
   return (
     <section className="cartao">
       {lista.map((x, i) => <Linha key={x.id} tipo={tipo} item={x} irmaos={lista} i={i} aoEditar={aoEditar} />)}
-      <Botao variante="texto" tamanho="sm" icone={Plus} onClick={() => aoEditar({ tipo })}>Novo {NOMES[tipo]}</Botao>
+      <Botao variante="texto" tamanho="sm" icone={Plus} onClick={() => aoEditar({ tipo })}>{novoNome(tipo)}</Botao>
     </section>
   );
 }

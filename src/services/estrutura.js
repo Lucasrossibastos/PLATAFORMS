@@ -9,6 +9,8 @@ import { COLECOES_ESTRUTURA, ErroValidacao, loteEmPartes, opsDeLog } from "./bas
 const PAI = { materia: "areaId", topico: "materiaId", subtopico: "topicoId" };
 const TIPO_PAI = { materia: "area", topico: "materia", subtopico: "topico" };
 const NOMES = { area: "área", materia: "matéria", topico: "tópico", subtopico: "subtópico", vestibular: "vestibular", curso: "curso" };
+const ARTIGO = { area: "a", materia: "a", topico: "o", subtopico: "o", vestibular: "o", curso: "o" };
+const com = (tipo) => `${ARTIGO[tipo]} ${NOMES[tipo]}`; // "a matéria", "o tópico"
 
 export function servicoEstrutura(ctx) {
   const { repo } = ctx;
@@ -44,9 +46,9 @@ export function servicoEstrutura(ctx) {
       const ind = await ctx.indice();
       const erros = {};
       const nome = String(dados.nome || "").trim();
-      if (!nome) erros.nome = `Dê um nome ao ${NOMES[tipo]}.`;
+      if (!nome) erros.nome = `Dê um nome ${ARTIGO[tipo] === "a" ? "à" : "ao"} ${NOMES[tipo]}.`;
       const campoPai = PAI[tipo];
-      if (campoPai && !ind[TIPO_PAI[tipo]](dados[campoPai])) erros[campoPai] = `Escolha o ${NOMES[TIPO_PAI[tipo]]}.`;
+      if (campoPai && !ind[TIPO_PAI[tipo]](dados[campoPai])) erros[campoPai] = `Escolha ${com(TIPO_PAI[tipo])}.`;
       if ((tipo === "topico" || tipo === "subtopico") && dados.cargaMin != null && dados.cargaMin !== "") {
         const c = Number(dados.cargaMin);
         if (!Number.isInteger(c) || c < 5 || c > 6000) erros.cargaMin = "Carga em minutos: inteiro entre 5 e 6000.";
@@ -69,7 +71,7 @@ export function servicoEstrutura(ctx) {
         { tipo: "mesclar", colecao, id, dados: doc },
         ...opsDeLog(ctx, { entidade: "estrutura", entidadeId: id }, [{
           tipo: atual ? "editar" : "criar",
-          descricao: `${atual ? "Editou" : "Criou"} ${NOMES[tipo]} ${nome}`,
+          descricao: `${atual ? "Editou" : "Criou"} ${com(tipo)} ${nome}`,
           antes: atual ? atual.nome : null, depois: nome,
         }]),
       ]);
@@ -84,7 +86,7 @@ export function servicoEstrutura(ctx) {
       if (!atual) return;
       await repo.lote([
         { tipo: "atualizar", colecao: COLECOES_ESTRUTURA[tipo], id, dados: { arquivado, atualizadoEm: carimbo() } },
-        ...opsDeLog(ctx, { entidade: "estrutura", entidadeId: id }, [{ tipo: arquivado ? "arquivar" : "restaurar", descricao: `${arquivado ? "Arquivou" : "Restaurou"} ${NOMES[tipo]} ${atual.nome}` }]),
+        ...opsDeLog(ctx, { entidade: "estrutura", entidadeId: id }, [{ tipo: arquivado ? "arquivar" : "restaurar", descricao: `${arquivado ? "Arquivou" : "Restaurou"} ${com(tipo)} ${atual.nome}` }]),
       ]);
       ctx.esquecerIndice();
     },

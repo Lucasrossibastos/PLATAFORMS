@@ -59,8 +59,10 @@ export function useEdicaoPlano(alunoId, { confirmar = true } = {}) {
           <p className="aviso" role="note">
             <CalendarClock aria-hidden="true" />
             <span>
-              Essa alteração modificará <b>{pedido.previa.conteudosRemarcados}</b> {pedido.previa.conteudosRemarcados === 1 ? "sessão futura" : "sessões futuras"} do cronograma.
-              O histórico concluído será preservado{pedido.previa.concluidosPreservados ? ` (${pedido.previa.concluidosPreservados} ${pedido.previa.concluidosPreservados === 1 ? "conteúdo concluído" : "conteúdos concluídos"})` : ""}.
+              Essa alteração modificará <b>{pedido.previa.conteudosRemarcados}</b> {pedido.previa.conteudosRemarcados === 1 ? "sessão futura" : "sessões futuras"} do cronograma
+              {pedido.previa.conteudosRetirados > 0 && <>, retira <b>{pedido.previa.conteudosRetirados}</b> {pedido.previa.conteudosRetirados === 1 ? "conteúdo pendente" : "conteúdos pendentes"}</>}
+              {pedido.previa.conteudosIncluidos > 0 && <>, inclui <b>{pedido.previa.conteudosIncluidos}</b> {pedido.previa.conteudosIncluidos === 1 ? "conteúdo novo" : "conteúdos novos"}</>}.
+              {" "}O histórico concluído será preservado{pedido.previa.concluidosPreservados ? ` (${pedido.previa.concluidosPreservados} ${pedido.previa.concluidosPreservados === 1 ? "conteúdo concluído" : "conteúdos concluídos"})` : ""}.
               {pedido.previa.fimAntes !== pedido.previa.fimDepois && <> Previsão de término: {fmtDataLonga(pedido.previa.fimAntes) || "sem previsão"} → <b>{fmtDataLonga(pedido.previa.fimDepois) || "sem previsão"}</b>.</>}
               {!pedido.previa.cabeDepois && <> <b>Não cabe até a data-alvo</b> com as horas atuais.</>}
             </span>

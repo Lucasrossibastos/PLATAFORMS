@@ -471,12 +471,17 @@ export function alterarPlano(plano, ind, op) {
 export function impactoAlteracao(antes, depois, ind, progresso, hojeIso) {
   const r1 = recalcularPlano(antes, ind, progresso, hojeIso);
   const r2 = recalcularPlano(depois, ind, progresso, hojeIso);
+  const itens1 = itensDoPlano(antes, ind);
   const itens2 = itensDoPlano(depois, ind);
-  const pendentes = itens2.filter((it) => !estadoItem(it, progresso).concluido);
+  const ids1 = new Set(itens1.map((it) => it.itemId));
+  const ids2 = new Set(itens2.map((it) => it.itemId));
+  const pendentes = itens2.filter((it) => !estadoItem(it, progresso).concluido && ids1.has(it.itemId));
   const mudaram = pendentes.filter((it) => r1.plano.cronograma[it.itemId]?.fim !== r2.plano.cronograma[it.itemId]?.fim).length;
   return {
     conteudosRemarcados: mudaram,
-    concluidosPreservados: itens2.length - pendentes.length,
+    conteudosRetirados: itens1.filter((it) => !ids2.has(it.itemId) && !estadoItem(it, progresso).concluido).length,
+    conteudosIncluidos: itens2.filter((it) => !ids1.has(it.itemId)).length,
+    concluidosPreservados: itens2.filter((it) => estadoItem(it, progresso).concluido).length,
     fimAntes: r1.resumo.fimPrevisto,
     fimDepois: r2.resumo.fimPrevisto,
     cabeDepois: r2.resumo.cabe,

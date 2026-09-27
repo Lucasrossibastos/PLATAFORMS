@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AppProvider, rotaInicial, useApp } from "./state/AppContext.jsx";
 import { MENU_ALUNO, MENU_MODERADOR } from "./navegacao.js";
@@ -17,21 +18,26 @@ import MateriaisAluno from "./screens/aluno/Materiais.jsx";
 import AvisosAluno from "./screens/aluno/Avisos.jsx";
 import { CursosAluno, PlaylistAluno } from "./screens/aluno/Cursos.jsx";
 import { RedacaoAluno, RedacoesAluno } from "./screens/aluno/Redacao.jsx";
-import Alunos from "./screens/moderador/Alunos.jsx";
-import AlunoPainel from "./screens/moderador/AlunoPainel.jsx";
-import { Modelo, Modelos } from "./screens/moderador/Modelos.jsx";
-import Estrutura from "./screens/moderador/Estrutura.jsx";
-import MateriaisModerador from "./screens/moderador/Materiais.jsx";
-import AvisosModerador from "./screens/moderador/Avisos.jsx";
-import Textos from "./screens/moderador/Textos.jsx";
-import { CursosModerador, PlaylistModerador } from "./screens/moderador/Cursos.jsx";
-import { RedacaoModerador, RedacoesModerador } from "./screens/moderador/Redacao.jsx";
+// telas do moderador: baixadas só por quem é moderador
+const sob = (carregar, nome = "default") => lazy(() => carregar().then((m) => ({ default: m[nome] })));
+const Alunos = sob(() => import("./screens/moderador/Alunos.jsx"));
+const AlunoPainel = sob(() => import("./screens/moderador/AlunoPainel.jsx"));
+const Modelos = sob(() => import("./screens/moderador/Modelos.jsx"), "Modelos");
+const Modelo = sob(() => import("./screens/moderador/Modelos.jsx"), "Modelo");
+const Estrutura = sob(() => import("./screens/moderador/Estrutura.jsx"));
+const MateriaisModerador = sob(() => import("./screens/moderador/Materiais.jsx"));
+const AvisosModerador = sob(() => import("./screens/moderador/Avisos.jsx"));
+const Textos = sob(() => import("./screens/moderador/Textos.jsx"));
+const CursosModerador = sob(() => import("./screens/moderador/Cursos.jsx"), "CursosModerador");
+const PlaylistModerador = sob(() => import("./screens/moderador/Cursos.jsx"), "PlaylistModerador");
+const RedacoesModerador = sob(() => import("./screens/moderador/Redacao.jsx"), "RedacoesModerador");
+const RedacaoModerador = sob(() => import("./screens/moderador/Redacao.jsx"), "RedacaoModerador");
 
 function Tela({ children }) {
   const { usuario, erro, s } = useApp();
   if (erro) return <div className="tela-centro"><p className="aviso aviso--erro">Não foi possível iniciar: {erro.message}</p></div>;
   if (!s || usuario === undefined) return <div className="tela-centro"><Carregando /></div>;
-  return children;
+  return <Suspense fallback={<div className="tela-centro"><Carregando /></div>}>{children}</Suspense>;
 }
 
 function Protegida({ papel, children }) {
