@@ -14,6 +14,8 @@ import { ChevronDown, Menu, X } from "lucide-react";
 // Caminho relativo de propósito: funciona no servidor local, no site publicado e no
 // ambiente de teste. VITE_VIDEO_FUNDO troca por outro vídeo sem mexer no código.
 export const VIDEO_FUNDO = import.meta.env.VITE_VIDEO_FUNDO || "video/galeria.mp4";
+// versão WebM (VP9) para navegadores sem H.264; só usada com o vídeo padrão
+export const VIDEO_FUNDO_WEBM = import.meta.env.VITE_VIDEO_FUNDO ? null : "video/galeria.webm";
 export const POSTER_FUNDO = import.meta.env.VITE_POSTER_FUNDO || "video/galeria.jpg";
 // true só para vídeos claros na parte de baixo: aí o texto fica escuro no celular (como na referência)
 export const VIDEO_CLARO = import.meta.env.VITE_VIDEO_CLARO === "true";
@@ -41,16 +43,23 @@ export function Marca({ claroNoMobile = false, className = "" }) {
 }
 
 /* Fundo em movimento: o vídeo em tela cheia, em loop e sem som.
-   Se o vídeo não carregar, fica a imagem de capa (um quadro da mesma cena). */
+   - a imagem de capa aparece na hora e cobre o carregamento (sem limite de tempo)
+   - pausa com a aba oculta; com "reduzir movimento" fica só a imagem
+   - se o vídeo der erro, fica a imagem de capa (um quadro da mesma cena) */
 export function FundoCinema({ videoUrl = VIDEO_FUNDO, onModo }) {
-  const [modo, setModo] = useState(videoUrl ? "video" : "escuro");
+  const [modo, setModo] = useState(() => {
+    if (!videoUrl) return "imagem";
+    try { if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return "imagem"; } catch (e) { /* ignora */ }
+    return "video";
+  });
   const ref = useRef(null);
   useEffect(() => { if (onModo) onModo(modo); }, [modo]);
   useEffect(() => {
     if (modo !== "video") return undefined;
-    // sem dados para tocar em 6 s (rede bloqueada, link expirado): desiste do vídeo
-    const t = setTimeout(() => { const v = ref.current; if (!v || v.readyState < 2) setModo("escuro"); }, 6000);
-    return () => clearTimeout(t);
+    const v = ref.current;
+    const vis = () => { if (!v) return; if (document.hidden) v.pause(); else v.play().catch(() => {}); };
+    document.addEventListener("visibilitychange", vis);
+    return () => document.removeEventListener("visibilitychange", vis);
   }, [modo]);
   if (modo !== "video") {
     return (
@@ -61,10 +70,13 @@ export function FundoCinema({ videoUrl = VIDEO_FUNDO, onModo }) {
   }
   return (
     <video
-      ref={ref} src={videoUrl} poster={POSTER_FUNDO} autoPlay loop muted playsInline preload="auto"
-      onError={() => setModo("escuro")}
-      className="absolute inset-0 h-full w-full object-cover"
-    />
+      ref={ref} poster={POSTER_FUNDO} autoPlay loop muted playsInline preload="auto"
+      className="absolute inset-0 h-full w-full object-cover bg-[#0B0B0D]"
+    >
+      {videoUrl === VIDEO_FUNDO && VIDEO_FUNDO_WEBM && <source src={VIDEO_FUNDO_WEBM} type="video/webm" />}
+      {/* o erro de carregamento chega na última <source> */}
+      <source src={videoUrl} type="video/mp4" onError={() => setModo("imagem")} />
+    </video>
   );
 }
 

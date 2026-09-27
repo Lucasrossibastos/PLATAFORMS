@@ -23,11 +23,19 @@ for i, q in enumerate(quadros, 1):
     a = np.array(Image.open(q).convert("L")).astype(np.float32)
     a = np.clip(a * fator, 0, 255).astype(np.uint8)
     Image.fromarray(a, "L").convert("RGB").save(os.path.join(tmp, "f_%04d.png" % i))
+    # duas voltas no mesmo arquivo: o recomeço do vídeo (que alguns navegadores emendam com um salto) acontece a cada 8 s
+    Image.fromarray(a, "L").convert("RGB").save(os.path.join(tmp, "f_%04d.png" % (i + len(quadros))))
     if i == 1:
         Image.fromarray(a, "L").save(os.path.join(dst, "galeria.jpg"), quality=82, optimize=True, progressive=True)
 ff = imageio_ffmpeg.get_ffmpeg_exe()
 saida = os.path.join(dst, "galeria.mp4")
 subprocess.run([ff, "-y", "-loglevel", "error", "-framerate", "24", "-i", os.path.join(tmp, "f_%04d.png"),
-                "-c:v", "libx264", "-preset", "slow", "-crf", "22", "-tune", "film", "-pix_fmt", "yuv420p",
+                "-c:v", "libx264", "-preset", "slow", "-crf", "19", "-tune", "film", "-g", "48", "-pix_fmt", "yuv420p",
                 "-movflags", "+faststart", "-an", saida], check=True)
+# WebM (VP9) para navegadores sem H.264; o site oferece os dois e o navegador escolhe
+webm = os.path.join(dst, "galeria.webm")
+subprocess.run([ff, "-y", "-loglevel", "error", "-framerate", "24", "-i", os.path.join(tmp, "f_%04d.png"),
+                "-c:v", "libvpx-vp9", "-b:v", "0", "-crf", "26", "-row-mt", "1", "-deadline", "good", "-cpu-used", "2",
+                "-g", "48", "-pix_fmt", "yuv420p", "-an", webm], check=True)
+print("webm", os.path.getsize(webm) // 1024, "KB")
 print("ok", len(quadros), "quadros", os.path.getsize(saida) // 1024, "KB", os.path.getsize(os.path.join(dst, "galeria.jpg")) // 1024, "KB capa")

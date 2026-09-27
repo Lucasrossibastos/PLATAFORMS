@@ -13,7 +13,7 @@ import {
   ArrowRight, Zap, PlusCircle, Save, Image as ImageIcon, Minus,
   PlayCircle, PenLine, Video, ArrowUp, ArrowDown, Link2, Send, Paperclip, ExternalLink, EyeOff
 } from "lucide-react";
-import { HeroCinema, Capsula, CampoCapsula, PilulaCTA, CartaoNumero, CartaoRecado, FolhaVidro, GavetaMobile, BotaoMenu, Logo, Marca, GRADIENTE, PIXEL, FundoCinema, VIDEO_FUNDO, POSTER_FUNDO } from "./Cinema.jsx";
+import { HeroCinema, Capsula, CampoCapsula, PilulaCTA, CartaoNumero, CartaoRecado, FolhaVidro, GavetaMobile, BotaoMenu, Logo, Marca, GRADIENTE, PIXEL, FundoCinema, VIDEO_FUNDO, VIDEO_FUNDO_WEBM, POSTER_FUNDO } from "./Cinema.jsx";
 
 /* ============================================================================
    PLATAFORMA PRÉ-VESTIBULAR — PROTÓTIPO VISUAL COMPLETO (MOCK)
@@ -4966,9 +4966,12 @@ function FundoApp() {
             filter: dark ? "blur(48px) brightness(.55)" : "blur(48px) brightness(1.3)" }} />
       )}
       {!falhou && (
-        <video ref={ref} src={VIDEO_FUNDO} poster={POSTER_FUNDO} autoPlay loop muted playsInline preload="auto" onError={() => setFalhou(true)}
+        <video ref={ref} poster={POSTER_FUNDO} autoPlay loop muted playsInline preload="auto"
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", transform: "scale(1.2)",
-            filter: dark ? "blur(48px) brightness(.55) saturate(1.2)" : "blur(48px) brightness(1.3) saturate(.8)" }} />
+            filter: dark ? "blur(48px) brightness(.55) saturate(1.2)" : "blur(48px) brightness(1.3) saturate(.8)" }}>
+          {VIDEO_FUNDO_WEBM && <source src={VIDEO_FUNDO_WEBM} type="video/webm" />}
+          <source src={VIDEO_FUNDO} type="video/mp4" onError={() => setFalhou(true)} />
+        </video>
       )}
       <div style={{ position: "absolute", inset: 0, background: dark ? "rgba(8,9,11,.5)" : "rgba(233,233,236,.7)" }} />
     </div>
