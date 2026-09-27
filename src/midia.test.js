@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analisarLink, fmtDuracao, playlistVisivelPara, progressoPlaylist } from "./midia.js";
+import { analisarLink, fmtDuracao, materialDoPrograma, playlistVisivelPara, progressoPlaylist } from "./midia.js";
 import { competencia, devolutivasDoAluno, evolucao, mediaDoTema } from "./redacao.js";
 
 // fixture: três devolutivas (duas enviadas da mesma aluna, um rascunho)
@@ -32,17 +32,17 @@ describe("links de vídeo", () => {
     expect(fmtDuracao(NaN)).toBe("");
   });
 
-  it("progresso e visibilidade das playlists (vestibular, curso e plano)", () => {
-    const pl = { publicada: true, vestibularIds: ["fuvest"], cursoIds: [], materiaId: null, videos: [{ id: "a" }, { id: "b" }, { id: "c" }] };
-    const ana = { vestibularId: "fuvest", cursoId: "medicina" };
+  it("progresso e visibilidade das playlists (programa e matérias do plano)", () => {
+    const pl = { publicada: true, programaIds: ["fuvest-med"], materiaId: null, videos: [{ id: "a" }, { id: "b" }, { id: "c" }] };
     expect(progressoPlaylist(pl, { a: true })).toEqual({ total: 3, feitos: 1, pct: 33 });
-    expect(playlistVisivelPara(pl, ana)).toBe(true);
-    expect(playlistVisivelPara(pl, { vestibularId: "enem" })).toBe(false);
-    expect(playlistVisivelPara({ ...pl, publicada: false }, ana)).toBe(false);
-    expect(playlistVisivelPara({ ...pl, cursoIds: ["direito"] }, ana)).toBe(false);
-    expect(playlistVisivelPara({ ...pl, materiaId: "quimica" }, ana, ["biologia"])).toBe(false);
-    expect(playlistVisivelPara({ ...pl, materiaId: "biologia" }, ana, ["biologia"])).toBe(true);
-    expect(playlistVisivelPara({ publicada: true, videos: [] }, { vestibularId: "enem" })).toBe(true); // sem restrição
+    expect(playlistVisivelPara(pl, "fuvest-med")).toBe(true);
+    expect(playlistVisivelPara(pl, "enem-ext")).toBe(false);
+    expect(playlistVisivelPara({ ...pl, publicada: false }, "fuvest-med")).toBe(false);
+    expect(playlistVisivelPara({ ...pl, materiaId: "quimica" }, "fuvest-med", ["biologia"])).toBe(false);
+    expect(playlistVisivelPara({ ...pl, materiaId: "biologia" }, "fuvest-med", ["biologia"])).toBe(true);
+    expect(playlistVisivelPara({ publicada: true, videos: [] }, "qualquer")).toBe(true); // sem programa: todos
+    expect(materialDoPrograma({ programaIds: [] }, "x")).toBe(true);
+    expect(materialDoPrograma({ programaIds: ["a"] }, "b")).toBe(false);
   });
 });
 

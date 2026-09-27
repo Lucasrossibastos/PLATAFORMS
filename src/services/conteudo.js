@@ -29,7 +29,7 @@ export function servicoPlaylists(ctx) {
       const id = playlist.id || novoId();
       const doc = {
         ...semId(playlist), titulo: playlist.titulo.trim(), videos: playlist.videos || [],
-        vestibularIds: playlist.vestibularIds || [], cursoIds: playlist.cursoIds || [],
+        programaIds: playlist.programaIds || [], // jornadas; vazio = todos
         materiaId: playlist.materiaId || null, topicoId: playlist.topicoId || null,
         publicada: !!playlist.publicada, atualizadaEm: carimbo(),
       };

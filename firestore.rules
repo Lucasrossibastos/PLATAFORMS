@@ -150,6 +150,13 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // subtópicos que o aluno marcou como vistos (orientação, sem efeito no motor)
+    match /vistos/{alunoId} {
+      allow read: if podeVer(alunoId);
+      allow write: if moderador() || (proprio(alunoId) && (request.resource == null || novo().alunoId == alunoId)
+        && perfilPlanoPermite(alunoId, 'concluirItens'));
+    }
+
     match /revisoes/{id} {
       allow read: if podeLerRegistro();
       allow create: if moderador() || proprio(novo().alunoId);

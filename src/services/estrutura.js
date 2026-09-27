@@ -17,7 +17,7 @@ export function servicoEstrutura(ctx) {
 
   const irmaos = (ind, tipo, doc) => {
     if (tipo === "area") return ind.areas;
-    if (tipo === "materia") return ind.materiasDaArea(doc.areaId);
+    if (tipo === "materia") return doc.areaId ? ind.materiasDaArea(doc.areaId) : ind.materias;
     if (tipo === "topico") return ind.topicosDaMateria(doc.materiaId);
     if (tipo === "subtopico") return ind.subtopicosDoTopico(doc.topicoId);
     return tipo === "vestibular" ? ind.vestibulares : ind.cursos;
@@ -48,7 +48,8 @@ export function servicoEstrutura(ctx) {
       const nome = String(dados.nome || "").trim();
       if (!nome) erros.nome = `Dê um nome ${ARTIGO[tipo] === "a" ? "à" : "ao"} ${NOMES[tipo]}.`;
       const campoPai = PAI[tipo];
-      if (campoPai && !ind[TIPO_PAI[tipo]](dados[campoPai])) erros[campoPai] = `Escolha ${com(TIPO_PAI[tipo])}.`;
+      const paiOpcional = tipo === "materia"; // a área é opcional: o curso usa as matérias direto
+      if (campoPai && !(paiOpcional && !dados[campoPai]) && !ind[TIPO_PAI[tipo]](dados[campoPai])) erros[campoPai] = `Escolha ${com(TIPO_PAI[tipo])}.`;
       if ((tipo === "topico" || tipo === "subtopico") && dados.cargaMin != null && dados.cargaMin !== "") {
         const c = Number(dados.cargaMin);
         if (!Number.isInteger(c) || c < 5 || c > 6000) erros.cargaMin = "Carga em minutos: inteiro entre 5 e 6000.";
@@ -60,8 +61,8 @@ export function servicoEstrutura(ctx) {
       const doc = {
         nome,
         ordem: atual?.ordem ?? irmaos(ind, tipo, dados).length,
-        ...(campoPai ? { [campoPai]: dados[campoPai] } : {}),
-        ...(tipo === "area" || tipo === "vestibular" ? { cor: dados.cor || "#8A8A8A" } : {}),
+        ...(campoPai ? { [campoPai]: dados[campoPai] || null } : {}),
+        ...(tipo === "area" || tipo === "vestibular" || tipo === "materia" ? { cor: dados.cor || atual?.cor || "#8A8A8A" } : {}),
         ...(tipo === "topico" || tipo === "subtopico" ? { cargaMin: dados.cargaMin === "" || dados.cargaMin == null ? null : Number(dados.cargaMin) } : {}),
         ...(dados.descricao !== undefined ? { descricao: String(dados.descricao).trim() } : {}),
         arquivado: atual?.arquivado || false,

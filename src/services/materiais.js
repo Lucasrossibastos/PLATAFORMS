@@ -29,7 +29,8 @@ export function servicoMateriais(ctx) {
     const r = {
       titulo: String(d.titulo || "").trim(), descricao: String(d.descricao || "").trim().slice(0, 2000),
       materiaId: d.materiaId || null, topicoId: d.topicoId || null, subtopicoId: d.subtopicoId || null,
-      vestibularId: d.vestibularId || null, tipo: d.tipo || "outro", data: d.data || ctx.hoje(),
+      programaIds: [...new Set((d.programaIds || []).filter((x) => typeof x === "string" && x))], // jornadas; vazio = todos
+      tipo: d.tipo || "outro", data: d.data || ctx.hoje(),
       tags: [...new Set((Array.isArray(d.tags) ? d.tags : String(d.tags || "").split(","))
         .map((t) => t.trim().toLowerCase()).filter(Boolean))].slice(0, 20),
       publicado: d.publicado !== false,
@@ -39,7 +40,6 @@ export function servicoMateriais(ctx) {
     if (r.materiaId && !ind.materia(r.materiaId)) erros.materiaId = "Matéria inválida.";
     if (r.topicoId && ind.topico(r.topicoId)?.materiaId !== r.materiaId) erros.topicoId = "O tópico não é dessa matéria.";
     if (r.subtopicoId && ind.subtopico(r.subtopicoId)?.topicoId !== r.topicoId) erros.subtopicoId = "O subtópico não é desse tópico.";
-    if (r.vestibularId && !ind.vestibular(r.vestibularId)) erros.vestibularId = "Vestibular inválido.";
     if (!/^\d{4}-\d{2}-\d{2}$/.test(r.data)) erros.data = "Data inválida.";
     if (Object.keys(erros).length) throw new ErroValidacao(erros);
     return r;

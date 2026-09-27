@@ -7,7 +7,10 @@ import {
 } from "./plano.js";
 import { gerarSemana, DIAS } from "./nucleo.js";
 
-const ind = indiceEstrutura(estruturaInicial());
+// estrutura base + um segundo tópico de Biologia para os testes de sequência
+const base = estruturaInicial();
+base.topicos.push({ id: "bi2", materiaId: "biologia", nome: "Genética", ordem: 1, cargaMin: 120 });
+const ind = indiceEstrutura(base);
 const HOJE = "2026-09-28"; // segunda-feira
 const DISP = { seg: 120, ter: 120, qua: 120, qui: 120, sex: 120, sab: 0, dom: 0 };
 
@@ -17,7 +20,10 @@ function modeloBio() {
     revisao: { intervalos: [7, 30], duracaoMin: 20 },
     materias: [
       { materiaId: "biologia", minutosSemanais: 300, maxSessao: 60, prioridade: 1, ritmo: 1,
-        topicos: [{ topicoId: "bi1", subtopicos: ind.subtopicosDoTopico("bi1").map((s) => ({ subtopicoId: s.id })) }] },
+        topicos: [
+          { topicoId: "bi1", subtopicos: ind.subtopicosDoTopico("bi1").map((s) => ({ subtopicoId: s.id })) },
+          { topicoId: "bi2", subtopicos: [] },
+        ] },
       { materiaId: "historia", minutosSemanais: 120, maxSessao: 60, prioridade: 2, ritmo: 1,
         topicos: [{ topicoId: "h2", subtopicos: [] }] },
     ],
@@ -31,15 +37,24 @@ describe("plano individual a partir do plano geral", () => {
     const modelo = modeloBio();
     const plano = novoPlano(modelo);
     const { plano: alterado } = alterarPlano(plano, ind, { tipo: "removerTopico", materiaId: "biologia", topicoId: "bi1" });
-    expect(alterado.materias[0].topicos).toHaveLength(0);
-    expect(modelo.materias[0].topicos).toHaveLength(1);
+    expect(alterado.materias[0].topicos).toHaveLength(1);
+    expect(modelo.materias[0].topicos).toHaveLength(2);
     expect(plano.modeloId).toBe("m1");
     expect(plano.modeloVersao).toBe(2);
   });
 
-  it("itens seguem a ordem do plano, um por subtópico (ou o tópico inteiro)", () => {
+  it("um item por tópico, na ordem do plano; subtópicos vão junto como orientação", () => {
     const itens = itensDoPlano(novoPlano(), ind);
-    expect(itens.map((i) => i.itemId)).toEqual([...ind.subtopicosDoTopico("bi1").map((s) => s.id), "t:h2"]);
+    expect(itens.map((i) => i.itemId)).toEqual(["t:bi1", "t:bi2", "t:h2"]);
+    expect(itens[0].subtopicos).toEqual(ind.subtopicosDoTopico("bi1").map((s) => s.id));
+    expect(itens[0].carga).toBe(240);
+  });
+
+  it("matéria oculta fica no plano, mas sai das metas e do cronograma", () => {
+    const { plano: oculto } = alterarPlano(novoPlano(), ind, { tipo: "definirMateria", materiaId: "historia", campos: { ativa: false } });
+    expect(oculto.materias.map((m) => m.materiaId)).toEqual(["biologia", "historia"]);
+    expect(itensDoPlano(oculto, ind).some((i) => i.materiaId === "historia")).toBe(false);
+    expect(cicloDoPlano(oculto, ind).alocacoes.map((a) => a.materiaId)).toEqual(["biologia"]);
   });
 
   it("o ritmo muda a duração efetiva dos conteúdos", () => {
@@ -82,7 +97,7 @@ describe("progresso e status dos itens", () => {
 
   it("conteúdo da vez pula o que está concluído", () => {
     const c = conteudoDaVez(itens, { [a.itemId]: { concluido: true } }, "biologia", ind);
-    expect(c).toMatchObject({ itemId: b.itemId, topicoId: "bi1", subtopicoId: b.subtopicoId });
+    expect(c).toMatchObject({ itemId: b.itemId, topicoId: "bi2", subtopicoId: null });
   });
 });
 

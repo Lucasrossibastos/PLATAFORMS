@@ -1,4 +1,5 @@
-/* Estrutura acadêmica: ÁREA → MATÉRIA → TÓPICO → SUBTÓPICO, cada um com id.
+/* Estrutura acadêmica: MATÉRIA → TÓPICO → SUBTÓPICO, cada um com id (a área
+   ficou opcional: o curso trabalha direto com as 9 matérias).
    As coleções vêm do banco (o moderador cadastra); aqui só há leitura e a
    estrutura inicial opcional, que o moderador importa se quiser. */
 
@@ -26,7 +27,7 @@ export function indiceEstrutura({ areas = [], materias = [], topicos = [], subto
 
   return {
     areas: ativos(areas).sort(porOrdem),
-    materias: ativos(materias).sort((a, b) => String(a.nome).localeCompare(String(b.nome), "pt-BR")),
+    materias: ativos(materias).sort(porOrdem),
     vestibulares: ativos(vestibulares).sort(porOrdem),
     cursos: ativos(cursos).sort(porOrdem),
     vazio: !materias.length,
@@ -40,7 +41,7 @@ export function indiceEstrutura({ areas = [], materias = [], topicos = [], subto
     materiasDaArea: (id) => materiasPorArea.get(id) || [],
     topicosDaMateria: (id) => topicosPorMateria.get(id) || [],
     subtopicosDoTopico: (id) => subtopicosPorTopico.get(id) || [],
-    corDaMateria: (id) => A.get(M.get(id)?.areaId)?.cor,
+    corDaMateria: (id) => M.get(id)?.cor || A.get(M.get(id)?.areaId)?.cor,
     nomeMateria: (id) => M.get(id)?.nome || "Matéria removida",
     nomeTopico: (id) => T.get(id)?.nome || "Tópico removido",
     nomeSubtopico: (id) => S.get(id)?.nome || "",
@@ -51,23 +52,38 @@ export function indiceEstrutura({ areas = [], materias = [], topicos = [], subto
 
 const slug = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
-/* Estrutura inicial (a do protótipo) em formato normalizado, com ids
-   estáveis também para os subtópicos, que antes eram só texto. */
+/* As 9 matérias do curso, na ordem da grade. As cores só identificam a
+   matéria (bolinha e bloco); o moderador pode trocar. */
+export const MATERIAS_DO_CURSO = [
+  { id: "biologia", nome: "Biologia", cor: "#5AA555" },
+  { id: "fisica", nome: "Física", cor: "#4B8FC4" },
+  { id: "quimica", nome: "Química", cor: "#3FA99B" },
+  { id: "matematica", nome: "Matemática", cor: "#CC5A8A" },
+  { id: "linguagens", nome: "Linguagens", cor: "#8A8FD6" },
+  { id: "filosofia", nome: "Filosofia", cor: "#C9A13A" },
+  { id: "sociologia", nome: "Sociologia", cor: "#C9793A" },
+  { id: "geografia", nome: "Geografia", cor: "#7FA36B" },
+  { id: "historia", nome: "História", cor: "#D0555F" },
+];
+
+// matérias do protótipo que viraram uma das 9 (os tópicos vão junto)
+const DESTINO = { portugues: "linguagens", literatura: "linguagens", redacao: "linguagens", ingles: "linguagens", algebra: "matematica", geometria: "matematica", trigonometria: "matematica", estatistica: "matematica" };
+export const materiaDoCurso = (id) => DESTINO[id] || id;
+
+/* Estrutura inicial: as 9 matérias com tópicos de exemplo (os do protótipo,
+   mais "Geografia agrária"), que o moderador edita, arquiva ou completa.
+   Subtópico é orientação de estudo dentro do tópico. */
 export function estruturaInicial() {
-  const areas = [], materias = [], topicos = [], subtopicos = [];
-  AREAS.forEach((a, ia) => {
-    areas.push({ id: a.id, nome: a.nome, cor: a.cor, ordem: ia });
-    a.materias.forEach((m, im) => {
-      materias.push({ id: m.id, areaId: a.id, nome: m.nome, ordem: im });
-      m.topicos.forEach((t, it) => {
-        topicos.push({ id: t.id, materiaId: m.id, nome: t.nome, ordem: it, cargaMin: t.carga });
-        const cargaSub = Math.max(15, Math.round(t.carga / Math.max(1, t.subs.length) / 5) * 5);
-        t.subs.forEach((s, is) => {
-          subtopicos.push({ id: `${t.id}-${slug(s)}`, topicoId: t.id, nome: s, ordem: is, cargaMin: cargaSub });
-        });
-      });
-    });
-  });
+  const materias = MATERIAS_DO_CURSO.map((m, i) => ({ ...m, areaId: null, ordem: i }));
+  const topicos = [], subtopicos = [];
+  const ordemNa = {};
+  const addTopico = (materiaId, id, nome, cargaMin, subs) => {
+    const ordem = (ordemNa[materiaId] = (ordemNa[materiaId] ?? -1) + 1);
+    topicos.push({ id, materiaId, nome, ordem, cargaMin });
+    subs.forEach((sub, is) => subtopicos.push({ id: `${id}-${slug(sub)}`, topicoId: id, nome: sub, ordem: is, cargaMin: null }));
+  };
+  AREAS.forEach((a) => a.materias.forEach((m) => m.topicos.forEach((t) => addTopico(materiaDoCurso(m.id), t.id, t.nome, t.carga, t.subs))));
+  addTopico("geografia", "g2", "Geografia agrária", 180, ["Técnicas e cultivo", "Estrutura fundiária", "Agronegócio e agricultura familiar"]);
   const vestibulares = VESTIBULARES.map((v, i) => ({ id: v.id, nome: v.nome, cor: v.cor, ordem: i }));
   const cursos = [
     { id: "medicina", nome: "Medicina", ordem: 0 },
@@ -75,5 +91,5 @@ export function estruturaInicial() {
     { id: "engenharia", nome: "Engenharia", ordem: 2 },
     { id: "economia", nome: "Economia", ordem: 3 },
   ];
-  return { areas, materias, topicos, subtopicos, vestibulares, cursos };
+  return { areas: [], materias, topicos, subtopicos, vestibulares, cursos };
 }

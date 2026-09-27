@@ -5,8 +5,8 @@
 
 import { ErroDados, ehOperacao, novoId, passaFiltros } from "./contrato.js";
 
-const CHAVE = "aprova:banco:v2";
-const CHAVE_SESSAO = "aprova:sessao:v2";
+const CHAVE = "aprova:banco:v3"; // v3: 9 matérias do curso, tópico como unidade
+const CHAVE_SESSAO = "aprova:sessao:v3";
 
 function memoria() {
   const m = new Map();
@@ -70,7 +70,7 @@ export function criarRepositorioLocal({ armazenamento, arquivos, relogio = () =>
   const store = armazenamento || (typeof localStorage !== "undefined" ? localStorage : memoria());
   let banco;
   try { banco = JSON.parse(store.getItem(CHAVE)) || null; } catch { banco = null; }
-  if (!banco || banco.versao !== 2) banco = { versao: 2, colecoes: {}, contas: {} };
+  if (!banco || banco.versao !== 3) banco = { versao: 3, colecoes: {}, contas: {} };
 
   const ouvintes = new Set(); // { colecao, id?, filtros, cb }
   const ouvintesSessao = new Set();
@@ -220,7 +220,7 @@ export function criarRepositorioLocal({ armazenamento, arquivos, relogio = () =>
     // só no modo local: saber se o banco está vazio (para a demonstração)
     vazio: () => !Object.keys(banco.contas).length,
     apagarTudo() {
-      banco = { versao: 2, colecoes: {}, contas: {} };
+      banco = { versao: 3, colecoes: {}, contas: {} };
       sessao = null;
       store.removeItem(CHAVE_SESSAO);
       try { store.setItem(CHAVE, JSON.stringify(banco)); } catch { /* idem */ }

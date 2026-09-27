@@ -45,7 +45,7 @@ describe("instalação de demonstração", () => {
   it("cria estrutura, planos gerais e planos individuais, sem histórico inventado", async () => {
     const { repo, uidDe } = t;
     const ana = await uidDe("aluno@curso.com");
-    expect((await repo.listar("materias")).length).toBeGreaterThan(10);
+    expect((await repo.listar("materias")).map((m) => m.nome)).toEqual(["Biologia", "Física", "Química", "Matemática", "Linguagens", "Filosofia", "Sociologia", "Geografia", "História"]);
     expect((await repo.listar("modelosPlano")).length).toBe(7);
     const plano = await repo.obter("planos", ana);
     expect(plano.modeloId).toBe("modelo-fuvest");
@@ -352,5 +352,56 @@ describe("estrutura acadêmica", () => {
     const ind = await t.s.ctx.indice();
     expect(ind.topicosDaMateria("biologia").some((x) => x.id === id)).toBe(false);
     expect(ind.nomeTopico(id)).toBe("Bioquímica");
+  });
+});
+
+describe("jornadas práticas e edital por aluno", () => {
+  it("jornada em um passo: 9 matérias, todos os tópicos, horas divididas", async () => {
+    await t.entrar("moderador@curso.com");
+    const id = await t.s.planos.criarJornada({ vestibularId: "fuvest", cursoId: "medicina", horasSemanais: 20 });
+    const m = await t.repo.obter("modelosPlano", id);
+    expect(m.nome).toBe("FUVEST · Medicina");
+    expect(m.materias).toHaveLength(9);
+    expect(m.materias.reduce((x, y) => x + y.minutosSemanais, 0)).toBe(1200);
+    expect(m.materias.find((x) => x.materiaId === "geografia").topicos.map((x) => x.topicoId)).toEqual(["g1", "g2"]);
+  });
+
+  it("tópico novo na jornada entra na estrutura, na jornada e nos alunos dela, com log", async () => {
+    const ana = await t.uidDe("aluno@curso.com");
+    await t.entrar("moderador@curso.com");
+    const topicoId = await t.s.planos.novoTopico({ materiaId: "geografia", nome: "Geografia urbana", cargaMin: 90, modeloId: "modelo-fuvest", propagar: true });
+    const sub = await t.s.planos.novoSubtopico({ materiaId: "geografia", topicoId, nome: "Metrópoles", modeloId: "modelo-fuvest", propagar: true });
+    const modelo = await t.repo.obter("modelosPlano", "modelo-fuvest");
+    const plano = await t.repo.obter("planos", ana);
+    for (const p of [modelo, plano]) {
+      const geo = p.materias.find((x) => x.materiaId === "geografia");
+      expect(geo.topicos.at(-1)).toMatchObject({ topicoId, subtopicos: [{ subtopicoId: sub }] });
+    }
+    const carlos = await t.repo.obter("planos", await t.uidDe("carlos@curso.com"));
+    expect(JSON.stringify(carlos)).not.toContain(topicoId); // outra jornada
+    const logs = await t.repo.listar("logs", [["alunoId", "==", ana], ["tipo", "==", "adicionarTopico"]]);
+    expect(logs[0]).toMatchObject({ motivo: "Incluído pela jornada", papel: "moderador" });
+  });
+
+  it("moderador oculta uma matéria do aluno: some das metas, fica no plano", async () => {
+    const ana = await t.uidDe("aluno@curso.com");
+    await t.entrar("moderador@curso.com");
+    await t.s.planos.alterar(ana, { tipo: "definirMateria", materiaId: "historia", campos: { ativa: false, minutosSemanais: 240 } });
+    await t.entrar("aluno@curso.com");
+    const est = await t.s.estudo.garantirSemana(ana);
+    const materias = new Set(Object.values(est.metas).flat().map((m) => m.materiaId));
+    expect(materias.has("historia")).toBe(false);
+    expect((await t.repo.obter("planos", ana)).materias.find((m) => m.materiaId === "historia").ativa).toBe(false);
+  });
+
+  it("aluno marca subtópico como visto (se pode concluir conteúdos)", async () => {
+    const ana = await t.uidDe("aluno@curso.com");
+    await t.entrar("aluno@curso.com");
+    await t.s.planos.marcarSubtopico(ana, "g2-tecnicas-e-cultivo", true);
+    expect((await t.repo.obter("vistos", ana)).subtopicos).toEqual({ "g2-tecnicas-e-cultivo": true });
+    await t.s.planos.marcarSubtopico(ana, "g2-tecnicas-e-cultivo", false);
+    expect((await t.repo.obter("vistos", ana)).subtopicos).toEqual({});
+    const carlos = await t.uidDe("carlos@curso.com");
+    await expect(t.s.planos.marcarSubtopico(carlos, "g2-tecnicas-e-cultivo", true)).rejects.toThrow(ErroPermissao);
   });
 });

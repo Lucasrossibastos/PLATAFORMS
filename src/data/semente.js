@@ -4,8 +4,8 @@
    sessões, redações e notificações começam vazios e só existem se alguém
    registrar de verdade. */
 
-import { CICLO_TEMPLATES, DISP_PADRAO, INSTRUCOES_REDACAO_INICIAL, expandirAlocacoes, isoLocal } from "../core/nucleo.js";
-import { estruturaInicial, indiceEstrutura } from "../core/estrutura.js";
+import { CICLO_TEMPLATES, DISP_PADRAO, INSTRUCOES_REDACAO_INICIAL, isoLocal } from "../core/nucleo.js";
+import { estruturaInicial, indiceEstrutura, materiaDoCurso } from "../core/estrutura.js";
 import { REVISAO_PADRAO, PERMISSOES_PADRAO, planoDoModelo, recalcularPlano } from "../core/plano.js";
 import { COR_DESTAQUE_PADRAO } from "../textos.js";
 import { carimbo } from "./contrato.js";
@@ -27,21 +27,30 @@ export const BOAS_VINDAS_PADRAO = {
   ],
 };
 
-// planos gerais a partir dos ciclos do núcleo (uma área vira as suas matérias)
+// jornadas (planos gerais) a partir dos ciclos do núcleo, nas 9 matérias do
+// curso: Português, Literatura, Redação e Inglês somam em Linguagens
 export function modelosIniciais(ind) {
-  return Object.entries(CICLO_TEMPLATES).map(([vestibularId, t], i) => ({
-    id: `modelo-${vestibularId}`,
-    nome: `${t.nome} · Extensivo`,
-    descricao: t.desc || "",
-    vestibularId, cursoId: "", modalidade: "extensivo", periodo: "", versao: 1, dataAlvo: null, ritmo: 1,
-    revisao: { ...REVISAO_PADRAO }, permissoesAluno: { ...PERMISSOES_PADRAO }, ordem: i,
-    materias: expandirAlocacoes(t.alocacoes)
-      .filter((a) => ind.materia(a.materiaId))
-      .map((a) => ({
-        materiaId: a.materiaId, minutosSemanais: a.minutosSemanais, maxSessao: a.maxSessao || 60, prioridade: 2, ritmo: 1,
-        topicos: ind.topicosDaMateria(a.materiaId).map((tp) => ({ topicoId: tp.id, subtopicos: ind.subtopicosDoTopico(tp.id).map((s) => ({ subtopicoId: s.id })) })),
+  return Object.entries(CICLO_TEMPLATES).map(([vestibularId, t], i) => {
+    const porMateria = new Map();
+    t.alocacoes.forEach((a) => {
+      const id = materiaDoCurso(a.materiaId);
+      const atual = porMateria.get(id) || { minutos: 0, maxSessao: 0 };
+      porMateria.set(id, { minutos: atual.minutos + a.minutosSemanais, maxSessao: Math.max(atual.maxSessao, a.maxSessao || 60) });
+    });
+    return {
+      id: `modelo-${vestibularId}`,
+      nome: `${t.nome} · Extensivo`,
+      descricao: t.desc || "",
+      vestibularId, cursoId: "", modalidade: "extensivo", periodo: "", versao: 1, dataAlvo: null, ritmo: 1,
+      revisao: { ...REVISAO_PADRAO }, permissoesAluno: { ...PERMISSOES_PADRAO }, ordem: i,
+      // todas as matérias do curso; as que o ciclo não previa entram com 1h por semana
+      materias: ind.materias.map((m) => ({
+        materiaId: m.id, minutosSemanais: porMateria.get(m.id)?.minutos ?? 60, maxSessao: porMateria.get(m.id)?.maxSessao ?? 60,
+        prioridade: porMateria.has(m.id) ? 2 : 3, ritmo: 1,
+        topicos: ind.topicosDaMateria(m.id).map((tp) => ({ topicoId: tp.id, subtopicos: ind.subtopicosDoTopico(tp.id).map((x) => ({ subtopicoId: x.id })) })),
       })),
-  }));
+    };
+  });
 }
 
 export async function semearDemonstracao(repo, { agora = new Date() } = {}) {
@@ -50,7 +59,7 @@ export async function semearDemonstracao(repo, { agora = new Date() } = {}) {
   const e = estruturaInicial();
   const ind = indiceEstrutura(e);
   const ops = [];
-  Object.entries({ areas: e.areas, materias: e.materias, topicos: e.topicos, subtopicos: e.subtopicos, vestibulares: e.vestibulares, cursos: e.cursos })
+  Object.entries({ materias: e.materias, topicos: e.topicos, subtopicos: e.subtopicos, vestibulares: e.vestibulares, cursos: e.cursos })
     .forEach(([colecao, lista]) => lista.forEach(({ id, ...dados }) => ops.push({ tipo: "definir", colecao, id, dados: { ...dados, arquivado: false } })));
 
   const modelos = modelosIniciais(ind);

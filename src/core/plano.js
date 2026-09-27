@@ -7,9 +7,11 @@
    CÓPIA editável do modelo (com modeloId/modeloVersao para rastrear a origem):
    mudar o plano de um aluno não mexe no modelo nem nos outros alunos.
 
-   Item = menor unidade do plano: um subtópico, ou o tópico inteiro quando ele
-   não tem subtópicos no plano. Duração efetiva = carga ÷ (ritmo do plano ×
-   ritmo da matéria). O progresso fica fora do plano (progresso por item), e o
+   Item = unidade de estudo do plano: o TÓPICO. Os subtópicos são orientação
+   de estudo dentro dele (ordem e seleção ficam no plano, mas não viram metas
+   separadas). Duração efetiva = carga ÷ (ritmo do plano × ritmo da matéria).
+   Matéria com ativa: false fica no plano (com o histórico) mas não aparece
+   nas metas nem no cronograma. O progresso fica fora do plano (por item), e o
    histórico de estudo fica nas sessões: alterar o plano nunca apaga o que já
    foi feito. */
 
@@ -61,21 +63,16 @@ const arred5 = (n) => Math.ceil(n / 5) * 5;
 export function itensDoPlano(plano, ind) {
   const itens = [];
   (plano?.materias || []).forEach((m, posMateria) => {
-    if (!ind.materia(m.materiaId)) return;
+    if (!ind.materia(m.materiaId) || m.ativa === false) return;
     const fator = (plano.ritmo || 1) * (m.ritmo || 1);
     (m.topicos || []).forEach((t, posTopico) => {
       const topico = ind.topico(t.topicoId);
       if (!topico) return;
-      const cargaTopico = t.cargaMin ?? topico.cargaMin ?? CARGA_PADRAO;
-      const subs = (t.subtopicos || []).filter((s) => ind.subtopico(s.subtopicoId));
-      const base = { materiaId: m.materiaId, topicoId: t.topicoId, prioridade: m.prioridade ?? 2, posMateria, posTopico };
-      if (!subs.length) {
-        itens.push({ ...base, itemId: idItem(t.topicoId), subtopicoId: null, posSub: 0, carga: cargaTopico, duracao: Math.max(5, Math.round(cargaTopico / fator)) });
-        return;
-      }
-      subs.forEach((s, posSub) => {
-        const carga = s.cargaMin ?? ind.subtopico(s.subtopicoId)?.cargaMin ?? Math.round(cargaTopico / subs.length);
-        itens.push({ ...base, itemId: idItem(t.topicoId, s.subtopicoId), subtopicoId: s.subtopicoId, posSub, carga, duracao: Math.max(5, Math.round(carga / fator)) });
+      const carga = t.cargaMin ?? topico.cargaMin ?? CARGA_PADRAO;
+      itens.push({
+        materiaId: m.materiaId, topicoId: t.topicoId, subtopicoId: null, itemId: idItem(t.topicoId),
+        prioridade: m.prioridade ?? 2, posMateria, posTopico, posSub: 0, carga, duracao: Math.max(5, Math.round(carga / fator)),
+        subtopicos: (t.subtopicos || []).map((x) => x.subtopicoId).filter((id) => ind.subtopico(id)),
       });
     });
   });
@@ -137,7 +134,7 @@ export function calcularAlocacao(plano, itens, progresso, hojeIso) {
   itens.forEach((it) => { restante[it.materiaId] = (restante[it.materiaId] || 0) + estadoItem(it, progresso).restante; });
   const semanasRestantes = plano.dataAlvo ? Math.max(1, diasEntre(hojeIso, plano.dataAlvo) / 7) : null;
 
-  const pedidos = (plano.materias || []).map((m, i) => {
+  const pedidos = (plano.materias || []).filter((m) => m.ativa !== false).map((m, i) => {
     const falta = restante[m.materiaId] || 0;
     const necessario = semanasRestantes && falta ? arred5(falta / semanasRestantes) : 0;
     return { m, i, falta, necessario, quer: falta > 0 ? Math.max(m.minutosSemanais || 0, necessario) : 0 };
@@ -293,13 +290,14 @@ export const revisoesDoItem = (dataConclusao, revisao = REVISAO_PADRAO) =>
 export function cicloDoPlano(plano, ind) {
   const alocacoes = (plano?.materias || [])
     .map((m, i) => ({ m, i }))
-    .filter(({ m }) => ind.materia(m.materiaId))
+    .filter(({ m }) => ind.materia(m.materiaId) && m.ativa !== false)
     .sort((a, b) => (a.m.prioridade ?? 2) - (b.m.prioridade ?? 2) || a.i - b.i)
     .map(({ m }) => ({
       materiaId: m.materiaId,
       materiaNome: ind.nomeMateria(m.materiaId),
       minutosSemanais: plano.alocacaoSemanal?.[m.materiaId] ?? m.minutosSemanais ?? 0,
       maxSessao: m.maxSessao || 60,
+      ehMateria: true, // o motor não confunde com uma área de mesmo id
     }));
   return { alocacoes };
 }
@@ -394,10 +392,12 @@ export function alterarPlano(plano, ind, op) {
     case "definirMateria": {
       const m = mat(op.materiaId);
       if (!m) break;
-      const rotulos = { minutosSemanais: "minutos por semana", maxSessao: "sessão máxima", prioridade: "prioridade", ritmo: "ritmo da matéria" };
+      const rotulos = { minutosSemanais: "horas por semana", maxSessao: "duração de cada meta", prioridade: "prioridade", ritmo: "velocidade", ativa: "aparecimento" };
+      const fmt = (k, v) => (k === "ativa" ? (v === false ? "oculta" : "visível") : k === "prioridade" ? PRIORIDADES.find((p) => p.id === v)?.nome ?? v : k === "ritmo" ? nomeRitmo(v) : v);
       Object.entries(op.campos || {}).forEach(([k, v]) => {
-        if (!(k in rotulos) || m[k] === v) return;
-        registrar(op.tipo, `Mudou ${rotulos[k]} de ${nomeM}`, m[k] ?? null, v);
+        const atual = k === "ativa" ? m.ativa !== false : m[k];
+        if (!(k in rotulos) || atual === v) return;
+        registrar(op.tipo, `Mudou ${rotulos[k]} de ${nomeM}`, fmt(k, atual ?? null), fmt(k, v));
         m[k] = v;
       });
       break;

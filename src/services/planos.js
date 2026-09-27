@@ -149,6 +149,73 @@ export function servicoPlanos(ctx, servicos) {
 
     sugerir: (modelos, aluno) => sugerirModelo(modelos.filter((m) => !m.arquivado), aluno),
 
+    /* Jornada em um passo: todas as matérias do curso, com todos os tópicos,
+       e as horas da semana divididas por igual (depois é só ajustar). */
+    async criarJornada({ nome, vestibularId, cursoId = "", dataAlvo = null, modalidade = "extensivo", horasSemanais = 20 }) {
+      ctx.exigir("gerenciar:modelos");
+      const ind = await ctx.indice();
+      const materias = ind.materias;
+      const total = Math.max(15, Math.round(horasSemanais * 60));
+      const base = Math.floor(total / materias.length / 15) * 15;
+      let sobra = total - base * materias.length;
+      const nomePadrao = [ind.nomeVestibular(vestibularId), ind.nomeCurso(cursoId)].filter(Boolean).join(" · ");
+      return this.salvarModelo({
+        ...modeloVazio(),
+        nome: String(nome || "").trim() || nomePadrao, vestibularId, cursoId, dataAlvo, modalidade,
+        materias: materias.map((m) => {
+          const extra = sobra >= 15 ? 15 : 0;
+          sobra -= extra;
+          return {
+            materiaId: m.id, minutosSemanais: base + extra, maxSessao: 60, prioridade: 2, ritmo: 1,
+            topicos: ind.topicosDaMateria(m.id).map((t) => ({ topicoId: t.id, subtopicos: ind.subtopicosDoTopico(t.id).map((x) => ({ subtopicoId: x.id })) })),
+          };
+        }),
+      });
+    },
+
+    /* Tópico novo criado direto na jornada (ou no plano de um aluno): entra na
+       estrutura, na jornada e, com propagar, no plano de cada aluno dela. */
+    async novoTopico({ materiaId, nome, cargaMin = 60, modeloId, alunoId, propagar = false, motivo = "" }) {
+      ctx.exigir("gerenciar:estrutura");
+      const topicoId = await servicos.estrutura.salvar("topico", { materiaId, nome, cargaMin });
+      const op = { tipo: "adicionarTopico", materiaId, topicoId };
+      await this.aplicarNaJornada({ modeloId, alunoId, op, propagar, motivo });
+      return topicoId;
+    },
+
+    async novoSubtopico({ materiaId, topicoId, nome, modeloId, alunoId, propagar = false, motivo = "" }) {
+      ctx.exigir("gerenciar:estrutura");
+      const subtopicoId = await servicos.estrutura.salvar("subtopico", { topicoId, nome });
+      const op = { tipo: "adicionarSubtopico", materiaId, topicoId, subtopicoId };
+      await this.aplicarNaJornada({ modeloId, alunoId, op, propagar, motivo });
+      return subtopicoId;
+    },
+
+    // aplica uma alteração na jornada e, se pedido, nos planos dos alunos dela
+    async aplicarNaJornada({ modeloId, alunoId, op, propagar = false, motivo = "" }) {
+      if (modeloId) {
+        await this.alterarModelo(modeloId, op);
+        if (propagar) {
+          const planos = await repo.listar("planos", [["modeloId", "==", modeloId]]);
+          for (const p of planos) await this.alterar(p.id, op, { motivo: motivo || "Incluído pela jornada" });
+        }
+      }
+      if (alunoId) await this.alterar(alunoId, op, { motivo });
+    },
+
+    alunosDaJornada: async (modeloId) => (await repo.listar("planos", [["modeloId", "==", modeloId]])).map((p) => p.id),
+
+    /* Subtópicos que o aluno já viu (orientação dentro do tópico). */
+    observarVistos(alunoId, cb) {
+      ctx.exigir("ver:aluno", { alunoId });
+      return repo.observarDoc("vistos", alunoId, (d) => cb(d?.subtopicos || {}));
+    },
+    async marcarSubtopico(alunoId, subtopicoId, visto) {
+      const plano = await repo.obter("planos", alunoId);
+      ctx.exigir("alterar:plano", { alunoId, plano, permissao: "concluirItens" });
+      await repo.mesclar("vistos", alunoId, { alunoId, subtopicos: { [subtopicoId]: visto ? true : apagarCampo() } });
+    },
+
     /* ---------- Plano individual ---------- */
 
     observarPlano(alunoId, cb) {

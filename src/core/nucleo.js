@@ -38,6 +38,8 @@
       "próximos 7 dias" (que caíam no dia da semana errado).
   11. As sessões semanais de cada matéria saem equilibradas (105 min com
       máximo de 90 → 55 + 50), em vez de uma sessão cheia e uma sobra de 15.
+  12. Alocação com ehMateria: true não é expandida como área (o id da
+      matéria pode coincidir com o de uma área do protótipo).
 ============================================================================ */
 
 // Estrutura universal de matérias — 🔥 FIREBASE: /studyPlan (global)
@@ -320,7 +322,9 @@ function semanaKey(dt = new Date()) {
 // em múltiplos de 15 min; o que sobrar fica com a matéria de maior carga.
 function expandirAlocacoes(alocacoes = []) {
   return alocacoes.flatMap((aloc) => {
-    const area = AREAS.find((a) => a.id === aloc.materiaId);
+    // CORREÇÃO 12: alocação marcada como matéria nunca é tratada como área
+    // (a matéria "matematica" do curso tem o mesmo id da área do protótipo)
+    const area = !aloc.ehMateria && AREAS.find((a) => a.id === aloc.materiaId);
     if (!area) return [aloc];
     const total = aloc.minutosSemanais || 0;
     const partes = area.materias.map((m) => ({

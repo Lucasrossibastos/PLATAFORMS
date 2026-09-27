@@ -41,14 +41,16 @@ export function progressoPlaylist(playlist, assistidos = {}) {
   return { total, feitos, pct: total ? Math.round((feitos / total) * 100) : 0 };
 }
 
-// A playlist aparece para o aluno se publicada e se bate com o vestibular, o
-// curso e as matérias do plano dele (lista vazia = vale para todos).
-export function playlistVisivelPara(pl, aluno, materiasDoPlano = null) {
+// A playlist aparece para o aluno se publicada, se é do programa (jornada)
+// dele e, com matéria definida, se a matéria está visível no plano dele.
+// Programas vazios = vale para todos.
+export function playlistVisivelPara(pl, programaId = null, materiasDoPlano = null) {
   if (!pl.publicada) return false;
-  const vests = pl.vestibularIds || [];
-  const cursos = pl.cursoIds || [];
-  if (vests.length && !vests.includes(aluno?.vestibularId)) return false;
-  if (cursos.length && !cursos.includes(aluno?.cursoId)) return false;
+  const programas = pl.programaIds || [];
+  if (programas.length && !programas.includes(programaId)) return false;
   if (pl.materiaId && materiasDoPlano && !materiasDoPlano.includes(pl.materiaId)) return false;
   return true;
 }
+
+// Material: mesmo critério de programa (vazio = todos).
+export const materialDoPrograma = (m, programaId) => !(m.programaIds || []).length || m.programaIds.includes(programaId);
