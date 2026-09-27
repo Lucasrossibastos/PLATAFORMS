@@ -34,6 +34,10 @@
       mais uma "sessão típica" extra quando a semana dela já foi cumprida.
    8. Pendência que não cabe na semana volta em resumo.naoCouberam em vez de
       sumir em silêncio.
+   9. opcoes.conteudoDaVez(materiaId): o plano individual informa tópico e
+      subtópico de cada sessão (a taxonomia deixa de ser fixa no código).
+  10. opcoes.semana: revisões entram pela data dentro da semana, não pelos
+      "próximos 7 dias" (que caíam no dia da semana errado).
 ============================================================================ */
 
 const MOCK_USERS = [
@@ -318,20 +322,26 @@ const dataParaDiaSemana = (iso) => {
 
 // Agrupa revisões agendadas nos próximos 7 dias por dia-da-semana.
 
-function revisoesPorDiaSemana(revisoes) {
+// CORREÇÃO 10: com `semana` (a segunda-feira, "YYYY-MM-DD"), entram as sessões
+// com data dentro daquela semana. Sem ela, vale o comportamento antigo (hoje
+// + 7 dias), que misturava a semana atual com a próxima pelo dia da semana.
+function revisoesPorDiaSemana(revisoes, semana) {
   const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
   const fim = new Date(hoje); fim.setDate(fim.getDate() + 7);
+  const fimSemana = semana ? (() => { const [y, m, d] = semana.split("-").map(Number); return isoLocal(new Date(y, m - 1, d + 6)); })() : null;
   const out = { seg: [], ter: [], qua: [], qui: [], sex: [], sab: [], dom: [] };
   (revisoes || []).forEach((r) => {
     (r.sessoes || []).forEach((s) => {
       if (s.status !== "agendada") return;
       const [y, m, d] = s.dia.split("-").map(Number);
       const dt = new Date(y, m - 1, d); dt.setHours(0, 0, 0, 0);
-      if (dt >= hoje && dt <= fim) {
+      const dentro = semana ? s.dia >= semana && s.dia <= fimSemana : dt >= hoje && dt <= fim;
+      if (dentro) {
         const k = dataParaDiaSemana(s.dia);
         if (k && out[k]) out[k].push({
           revisaoId: r.id, materiaId: r.materiaId || "", materia: r.materia,
-          topicoId: r.topicoId, topico: r.topico, duracaoMin: r.duracaoMin, dia: s.dia,
+          topicoId: r.topicoId, topico: r.topico, subtopicoId: r.subtopicoId || null, subtopico: r.subtopico || "",
+          itemId: r.itemId || null, duracaoMin: r.duracaoMin, dia: s.dia,
         });
       }
     });
@@ -382,6 +392,15 @@ function topicoDaVez(materiaId, progresso) {
   return topicos.find((t) => (progresso[t.id] || 0) < 100) || topicos[0];
 }
 
+// EXTENSÃO 9: o plano individual pode informar o conteúdo da vez de cada
+// matéria (tópico e subtópico); sem isso, vale o tópico da vez da taxonomia fixa.
+function conteudoDaSessao(materiaId, nomeMateria, opcoes) {
+  const c = opcoes.conteudoDaVez?.(materiaId);
+  if (c) return { topicoId: c.topicoId, topico: c.topico, subtopicoId: c.subtopicoId || null, subtopico: c.subtopico || "", itemId: c.itemId || null };
+  const t = topicoDaVez(materiaId, opcoes.progresso);
+  return { topicoId: t?.id, topico: t ? t.nome : nomeMateria };
+}
+
 function distribuirSemana(cicloConfig, disp, revisoes = [], opcoes = {}) {
   // normaliza: aceita tanto { alocacoes } quanto o formato legado { blocos }
   const alocacoes = expandirAlocacoes(cicloConfig?.alocacoes
@@ -396,7 +415,7 @@ function distribuirSemana(cicloConfig, disp, revisoes = [], opcoes = {}) {
   DIAS.forEach((d) => { cap[d.k] = Math.max(0, disp[d.k] || 0); });
 
   // --- ETAPA 1: revisões espaçadas (prioridade) ---
-  const revsPorDia = revisoesPorDiaSemana(revisoes);
+  const revsPorDia = revisoesPorDiaSemana(revisoes, opcoes.semana);
   DIAS.forEach((d) => {
     (revsPorDia[d.k] || []).forEach((rev, idx) => {
       const dur = Math.min(rev.duracaoMin, cap[d.k]);
@@ -404,7 +423,7 @@ function distribuirSemana(cicloConfig, disp, revisoes = [], opcoes = {}) {
         resultado[d.k].push({
           id: `rev-${d.k}-${idx}-${rev.dia || ""}`,
           materiaId: rev.materiaId || "", materia: rev.materia,
-          topicoId: rev.topicoId, topico: rev.topico,
+          topicoId: rev.topicoId, topico: rev.topico, subtopicoId: rev.subtopicoId, subtopico: rev.subtopico, itemId: rev.itemId,
           minutos: dur, done: false, tipo: "revisao", revisaoId: rev.revisaoId,
         });
         cap[d.k] -= dur;
@@ -444,11 +463,10 @@ function distribuirSemana(cicloConfig, disp, revisoes = [], opcoes = {}) {
       .filter((d) => cap[d.k] >= sessao.minutos)
       .sort((a, b) => cap[b.k] - cap[a.k])[0];
     if (!dia) return; // não coube em nenhum dia desta semana
-    const topico = topicoDaVez(sessao.materiaId, opcoes.progresso);
     resultado[dia.k].push({
       id: `${dia.k}-${sessao.materiaId}-${idx}`,
       materiaId: sessao.materiaId, materia: sessao.materiaNome,
-      topicoId: topico?.id, topico: topico ? topico.nome : sessao.materiaNome,
+      ...conteudoDaSessao(sessao.materiaId, sessao.materiaNome, opcoes),
       minutos: sessao.minutos, done: false, tipo: "ciclo",
     });
     cap[dia.k] -= sessao.minutos;
@@ -522,7 +540,7 @@ function recalcularPlanoInteligente(cicloConfig, disp, semanaAtual, atrasadas, r
   }));
 
   // 2) revisões agendadas para esta semana (entram como prioritárias no dia certo)
-  const revsPorDia = revisoesPorDiaSemana(revisoes);
+  const revsPorDia = revisoesPorDiaSemana(revisoes, opcoes.semana);
 
   // 3) capacidade = disponibilidade − minutos JÁ CONCLUÍDOS no dia
   const capacidade = {};
@@ -544,7 +562,7 @@ function recalcularPlanoInteligente(cicloConfig, disp, semanaAtual, atrasadas, r
         novaSemana[d.k].push({
           id: `rev-${d.k}-${idx}-${rev.dia}`,
           materiaId: rev.materiaId, materia: rev.materia,
-          topicoId: rev.topicoId, topico: rev.topico,
+          topicoId: rev.topicoId, topico: rev.topico, subtopicoId: rev.subtopicoId, subtopico: rev.subtopico, itemId: rev.itemId,
           minutos: aloca, done: false, tipo: "revisao", revisaoId: rev.revisaoId,
         });
         capacidade[d.k] -= aloca; totalRevisoes += aloca;
@@ -594,10 +612,9 @@ function recalcularPlanoInteligente(cicloConfig, disp, semanaAtual, atrasadas, r
         const dk = DIAS.map((d) => d.k).find((k) => capacidade[k] >= Math.min(15, item.minutos));
         if (dk) {
           const aloca = Math.min(capacidade[dk], item.minutos);
-          const topico = topicoDaVez(item.materiaId, opcoes.progresso);
           novaSemana[dk].push({
             id: `r${Date.now()}-${seq++}`, materiaId: item.materiaId, materia: item.materia,
-            topicoId: topico?.id, topico: topico ? topico.nome : item.materia,
+            ...conteudoDaSessao(item.materiaId, item.materia, opcoes),
             minutos: aloca, done: false, replanejada: true, tipo: "ciclo",
           });
           capacidade[dk] -= aloca; item.minutos -= aloca; totalRealocado += aloca;
