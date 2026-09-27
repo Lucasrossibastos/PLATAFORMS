@@ -36,6 +36,13 @@ export const PERMISSOES_ALUNO = [
 // autonomia por padrão; o moderador restringe o que quiser
 export const PERMISSOES_PADRAO = Object.fromEntries(PERMISSOES_ALUNO.map((p) => [p.id, true]));
 
+export const MODALIDADES = [
+  { id: "extensivo", nome: "Extensivo" },
+  { id: "semiextensivo", nome: "Semiextensivo" },
+  { id: "intensivo", nome: "Intensivo" },
+  { id: "revisao", nome: "Revisão final" },
+];
+
 export const REVISAO_PADRAO = { intervalos: [7, 15, 30], duracaoMin: 20 };
 export const CARGA_PADRAO = 60;
 
@@ -301,7 +308,7 @@ export function cicloDoPlano(plano, ind) {
 
 export function modeloVazio() {
   return {
-    nome: "", vestibularId: "", cursoId: "", periodo: "", versao: 1, dataAlvo: null,
+    nome: "", descricao: "", vestibularId: "", cursoId: "", modalidade: "extensivo", periodo: "", versao: 1, dataAlvo: null,
     ritmo: 1, revisao: { ...REVISAO_PADRAO }, permissoesAluno: { ...PERMISSOES_PADRAO }, materias: [],
   };
 }
@@ -313,6 +320,10 @@ export function planoDoModelo(modelo, aluno, { hojeIso, disponibilidade } = {}) 
     modeloId: modelo.id || null,
     modeloVersao: modelo.versao || 1,
     nome: modelo.nome,
+    vestibularId: modelo.vestibularId || "",
+    cursoId: modelo.cursoId || "",
+    modalidade: modelo.modalidade || "",
+    periodo: modelo.periodo || "",
     ritmo: modelo.ritmo || 1,
     dataAlvo: modelo.dataAlvo || null,
     inicio: hojeIso,
@@ -441,7 +452,7 @@ export function alterarPlano(plano, ind, op) {
       break;
     }
     case "definirPlano": {
-      const rotulos = { nome: "nome do plano", ritmo: "ritmo", dataAlvo: "data-alvo", disponibilidade: "horas livres por dia", revisao: "revisões", permissoesAluno: "permissões do aluno", vestibularId: "vestibular", cursoId: "curso", periodo: "período", versao: "versão" };
+      const rotulos = { nome: "nome do plano", ritmo: "ritmo", dataAlvo: "data-alvo", disponibilidade: "horas livres por dia", revisao: "revisões", permissoesAluno: "permissões do aluno", vestibularId: "vestibular", cursoId: "curso", modalidade: "modalidade", periodo: "período", versao: "versão", descricao: "descrição" };
       Object.entries(op.campos || {}).forEach(([k, v]) => {
         if (!(k in rotulos) || JSON.stringify(p[k]) === JSON.stringify(v)) return;
         const fmt = (x) => (k === "ritmo" ? nomeRitmo(x) : x);

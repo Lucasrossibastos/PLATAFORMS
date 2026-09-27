@@ -6,14 +6,17 @@ import { AREAS, VESTIBULARES } from "./nucleo.js";
 
 const porOrdem = (a, b) => (a.ordem ?? 0) - (b.ordem ?? 0) || String(a.nome).localeCompare(String(b.nome), "pt-BR");
 
-/* Índice de consulta rápida sobre as coleções normalizadas. */
+/* Índice de consulta rápida sobre as coleções normalizadas.
+   Itens arquivados (arquivado: true) continuam com nome e cor, para o
+   histórico, mas saem das listas de escolha. */
 export function indiceEstrutura({ areas = [], materias = [], topicos = [], subtopicos = [], vestibulares = [], cursos = [] } = {}) {
   const mapa = (lista) => new Map(lista.map((x) => [x.id, x]));
   const A = mapa(areas), M = mapa(materias), T = mapa(topicos), S = mapa(subtopicos);
   const V = mapa(vestibulares), C = mapa(cursos);
+  const ativos = (lista) => lista.filter((x) => !x.arquivado);
   const agrupar = (lista, campo) => {
     const g = new Map();
-    lista.forEach((x) => { if (!g.has(x[campo])) g.set(x[campo], []); g.get(x[campo]).push(x); });
+    ativos(lista).forEach((x) => { if (!g.has(x[campo])) g.set(x[campo], []); g.get(x[campo]).push(x); });
     g.forEach((l) => l.sort(porOrdem));
     return g;
   };
@@ -22,10 +25,11 @@ export function indiceEstrutura({ areas = [], materias = [], topicos = [], subto
   const subtopicosPorTopico = agrupar(subtopicos, "topicoId");
 
   return {
-    areas: [...areas].sort(porOrdem),
-    materias: [...materias].sort((a, b) => String(a.nome).localeCompare(String(b.nome), "pt-BR")),
-    vestibulares: [...vestibulares].sort(porOrdem),
-    cursos: [...cursos].sort(porOrdem),
+    areas: ativos(areas).sort(porOrdem),
+    materias: ativos(materias).sort((a, b) => String(a.nome).localeCompare(String(b.nome), "pt-BR")),
+    vestibulares: ativos(vestibulares).sort(porOrdem),
+    cursos: ativos(cursos).sort(porOrdem),
+    vazio: !materias.length,
     area: (id) => A.get(id),
     materia: (id) => M.get(id),
     topico: (id) => T.get(id),
