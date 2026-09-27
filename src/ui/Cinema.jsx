@@ -2,27 +2,56 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, X } from "lucide-react";
 import { Marca } from "./ui.jsx";
+import { COR_DESTAQUE_PADRAO, linhasDe, partesDe } from "../textos.js";
 
 // Vídeo do herói (endereço passado pelo cliente). 🔥 Ideal: hospedar o arquivo
-// junto do site; se este link expirar, o fundo fica preto.
-export const VIDEO_FUNDO = "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260818_072341_50851634-bbc3-4c33-9acc-7647d4db44aa.mp4";
+// junto do site; se este link expirar, o fundo fica preto. VITE_VIDEO_FUNDO
+// troca o endereço no build (usado nos testes).
+export const VIDEO_FUNDO = import.meta.env.VITE_VIDEO_FUNDO
+  || "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260818_072341_50851634-bbc3-4c33-9acc-7647d4db44aa.mp4";
 
+/* O vídeo é a identidade visual: toca sempre, em loop, inclusive com
+   "reduzir movimento" ligado no sistema (decisão do cliente). Só pausa com a
+   aba escondida, para poupar bateria, e retoma ao voltar. */
 function VideoFundo() {
   const ref = useRef(null);
   useEffect(() => {
     const v = ref.current;
     if (!v) return undefined;
-    v.muted = true; // o atributo muted do React nem sempre chega ao DOM (autoplay no iOS)
-    const reduzir = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    const tocar = () => { if (!document.hidden && !reduzir) v.play().catch(() => {}); else v.pause(); };
+    // o atributo muted do React nem sempre chega ao DOM, e sem ele o autoplay falha
+    v.muted = true;
+    v.defaultMuted = true;
+    v.playsInline = true;
+
+    const gestos = ["pointerdown", "keydown", "touchstart", "scroll"];
+    const aoGesto = () => { gestos.forEach((g) => window.removeEventListener(g, aoGesto)); tocar(); };
+    // autoplay bloqueado pelo navegador: tenta de novo na primeira interação
+    const esperarGesto = () => gestos.forEach((g) => window.addEventListener(g, aoGesto, { passive: true }));
+    function tocar() {
+      if (document.hidden || !v.paused) return;
+      v.play()?.catch(esperarGesto);
+    }
+    const aoMudarAba = () => (document.hidden ? v.pause() : tocar());
+    // algo pausou com a aba visível (economia de energia, etc.): retoma
+    const aoPausar = () => { if (!document.hidden) setTimeout(tocar, 250); };
+
+    v.addEventListener("loadeddata", tocar);
+    v.addEventListener("canplay", tocar);
+    v.addEventListener("pause", aoPausar);
+    document.addEventListener("visibilitychange", aoMudarAba);
     tocar();
-    document.addEventListener("visibilitychange", tocar);
-    return () => document.removeEventListener("visibilitychange", tocar);
+    return () => {
+      v.removeEventListener("loadeddata", tocar);
+      v.removeEventListener("canplay", tocar);
+      v.removeEventListener("pause", aoPausar);
+      document.removeEventListener("visibilitychange", aoMudarAba);
+      gestos.forEach((g) => window.removeEventListener(g, aoGesto));
+    };
   }, []);
   return (
     <div className="cine-video" aria-hidden="true">
       <video ref={ref} autoPlay muted loop playsInline preload="auto" disablePictureInPicture disableRemotePlayback tabIndex={-1}>
-        <source src={VIDEO_FUNDO} type="video/mp4" />
+        <source src={VIDEO_FUNDO} />
       </video>
     </div>
   );
@@ -94,13 +123,30 @@ export function MenuCheio({ aberto, aoFechar, id, children, rodape, escuro, clas
   );
 }
 
-/* Moldura de cinema: a landing original, agora com conteúdo variável. */
-export function Cinema({ nav = [], acoes, selo, linha1, linha2, lede, children, stats = [], rodapeMenu }) {
+/* Título grande do cinema: uma linha mascarada por linha do texto, *destaque*
+   na cor escolhida pelo moderador. Também serve de prévia no editor. */
+export function TituloCinema({ texto, animar = true }) {
+  return (
+    <h1>
+      {linhasDe(texto).map((linha, i) => (
+        <span key={i} className="linha-titulo">
+          <span className={animar ? "aparece aparece--mascara" : undefined} style={animar ? { "--d": `${0.42 + i * 0.2}s` } : undefined}>
+            {partesDe(linha).map((p, j) => (p.destaque ? <em key={j}>{p.texto}</em> : p.texto))}
+          </span>
+        </span>
+      ))}
+    </h1>
+  );
+}
+
+/* Moldura de cinema: a landing original, agora com conteúdo variável.
+   `titulo` já vem com as variáveis preenchidas; Enter no texto quebra a linha. */
+export function Cinema({ nav = [], acoes, selo, titulo, corDestaque = COR_DESTAQUE_PADRAO, lede, children, stats = [], rodapeMenu }) {
   const [menu, setMenu] = useState(false);
   const itensMenu = nav.flatMap((i) => i.submenu || [i]);
 
   return (
-    <div className="cine" data-theme="dark">
+    <div className="cine" data-theme="dark" style={{ "--destaque": corDestaque }}>
       <VideoFundo />
       <div className="cine-pagina">
         <header className="cine-topo">
@@ -119,10 +165,7 @@ export function Cinema({ nav = [], acoes, selo, linha1, linha2, lede, children, 
         <main className="cine-hero">
           <div className="cine-copy">
             {selo}
-            <h1>
-              <span className="linha-titulo"><span className="aparece aparece--mascara" style={{ "--d": "0.42s" }}>{linha1}</span></span>
-              <span className="linha-titulo"><span className="aparece aparece--mascara" style={{ "--d": "0.62s" }}>{linha2}</span></span>
-            </h1>
+            <TituloCinema texto={titulo} />
             {lede && <div className="cine-lede aparece aparece--suave" style={{ "--d": "0.82s", animationDuration: "1.25s" }}>{lede}</div>}
             <div className="cine-slot aparece aparece--botao" style={{ "--d": "0.96s" }}>{children}</div>
           </div>

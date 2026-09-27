@@ -221,15 +221,55 @@
 }
 .linha-titulo { display: block; overflow: hidden; padding: 0.06em 0.15em 0.14em; }
 .linha-titulo > span { display: block; }
+/* Palavra em destaque: cor escolhida pelo moderador (--destaque), com relevo
+   metálico e um brilho que atravessa a palavra a cada poucos segundos. */
 .cine h1 em {
+  --cor-em: var(--destaque, #d9b56b);
   font-family: var(--font-serif);
   font-style: italic;
   font-weight: 400;
   font-size: 1.08em;
   letter-spacing: -0.03em;
-  color: #9a9a9a;
+  color: var(--cor-em);
   animation: in-em 1.2s var(--ease-out) 0.72s both;
 }
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .cine h1 em {
+    /* folga para a inclinação da itálica não ser cortada pelo recorte do fundo */
+    padding: 0 0.12em;
+    margin: 0 -0.12em;
+    background-image:
+      linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.7) 50%, transparent 60%),
+      linear-gradient(180deg,
+        color-mix(in srgb, var(--cor-em) 50%, #fff) 0%,
+        var(--cor-em) 52%,
+        color-mix(in srgb, var(--cor-em) 62%, #000) 100%);
+    background-size: 260% 100%, 100% 100%;
+    background-position: 0% 0, 0 0;
+    background-repeat: no-repeat;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: in-em 1.2s var(--ease-out) 0.72s both, brilho 6s ease-in-out 2s infinite;
+  }
+}
+@keyframes brilho {
+  0%, 55% { background-position: 0% 0, 0 0; }
+  100%    { background-position: 100% 0, 0 0; }
+}
+/* prévia no editor: mesmo título, sem animação de entrada */
+.cine.previa-cine {
+  --h1: clamp(26px, 4vw, 40px);
+  position: relative;
+  min-height: 0;
+  padding: 26px 20px 22px;
+  border-radius: 12px;
+  background: radial-gradient(120% 140% at 50% 0%, #2a2a2e 0%, #050505 60%);
+  text-align: center;
+  overflow: hidden;
+}
+.previa-cine h1 { margin: 0 auto; }
+.cine.previa-cine h1 em { animation: brilho 6s ease-in-out 1s infinite; }
 
 .cine-lede {
   max-width: var(--lede-max);

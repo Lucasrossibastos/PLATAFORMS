@@ -1,6 +1,6 @@
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, CircleDashed, ImageIcon } from "lucide-react";
-import { useApp } from "../state/AppContext.jsx";
+import { useApp, useFrasesDoAluno } from "../state/AppContext.jsx";
 import { baseDoPapel } from "../navegacao.js";
 import { Botao, TituloPagina } from "../ui/ui.jsx";
 
@@ -29,9 +29,10 @@ function Bloco({ bloco }) {
 export function BoasVindasPagina() {
   const { db } = useApp();
   const hero = db.welcome.hero || {};
+  const t = useFrasesDoAluno();
   return (
     <>
-      <TituloPagina eyebrow={hero.nome} antes="Boas-vindas ao" destaque="curso" />
+      <TituloPagina eyebrow={hero.nome} frase={t("painel.boasvindas.titulo")} />
       <div className="cartao professor">
         <span className="avatar" style={{ "--cor": hero.cor }}>
           {hero.foto ? <img src={hero.foto} alt="" /> : (hero.nome || "?").charAt(0)}
@@ -59,7 +60,7 @@ export function EmBreve({ menu }) {
   if (!item) return <Navigate to={base} replace />;
   return (
     <div className="em-breve">
-      <TituloPagina eyebrow="Próxima etapa" antes={item.label} texto={item.resumo} />
+      <TituloPagina eyebrow="Próxima etapa" frase={item.label} texto={item.resumo} />
       {item.itens?.length > 0 && (
         <ul>
           {item.itens.map((t) => <li key={t}><CircleDashed aria-hidden="true" />{t}</li>)}

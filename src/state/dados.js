@@ -9,6 +9,7 @@ import {
   ENVIOS_INICIAIS, PROGRESSO_INICIAL, QUESTOES_INICIAIS, REVISOES_INICIAIS, WELCOME_INICIAL,
   isoLocal,
 } from "../core/nucleo.js";
+import { textosIniciais } from "../textos.js";
 
 const CHAVE_DADOS = "aprova:db:v1";
 const CHAVE_SESSAO = "aprova:sessao";
@@ -32,6 +33,7 @@ export function dadosIniciais(agora = new Date()) {
     historicoReplan: [{ id: "rp1", alunoId: "alu1", data: "2026-05-20", totalRealocado: 90, materiasFundidas: 1, qtdPendencias: 2 }],
     estudo: {},
     config: { questoesPorHora: 10 },
+    textos: textosIniciais(),
   });
 }
 

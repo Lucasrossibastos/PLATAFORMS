@@ -1,6 +1,6 @@
 import {
   CalendarDays, FileQuestion, FileText, GraduationCap, LayoutDashboard, Library, ListChecks,
-  NotebookPen, PenLine, PlayCircle, Settings2, Clock4, TrendingUp, Trophy, Users,
+  NotebookPen, PenLine, PlayCircle, Settings2, Clock4, TrendingUp, Trophy, Type, Users,
 } from "lucide-react";
 
 /* Menus por papel. `pronto: false` mostra a tela "próxima etapa" com o que
@@ -44,6 +44,7 @@ export const MENU_MODERADOR = [
   { k: "alunos", label: "Alunos", icone: Users,
     resumo: "A turma com métricas e o perfil completo de cada aluno.",
     itens: ["Questões, horas e progresso por aluno", "Aviso de simulados enviados para classificar", "Visão comparativa da turma e cadastro de aluno", "Perfil com desempenho, plano, revisões espaçadas, ciclo de estudos, materiais, histórico de replanejamentos, anotações privadas e recados"] },
+  { k: "textos", label: "Textos", icone: Type, pronto: true },
   { k: "cursos", label: "Cursos em vídeo", icone: PlayCircle,
     resumo: "Criar e editar playlists e vídeos.",
     itens: ["Título, descrição, categoria, cor e visibilidade por vestibular", "Publicar ou deixar em rascunho", "Vídeo por arquivo ou link, com ordem e exclusão"] },

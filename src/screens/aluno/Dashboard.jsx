@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { BookOpen, Check, CheckCircle2, Clock4, FileQuestion, RefreshCw, TrendingUp, X, Zap } from "lucide-react";
 import { DIAS, fmtMin, vestInfo } from "../../core/nucleo.js";
-import { useApp, useEstudo } from "../../state/AppContext.jsx";
+import { useApp, useEstudo, useFrasesDoAluno } from "../../state/AppContext.jsx";
 import {
   adicionarTempoExtra, alternarMeta, aplicarReplanejamento, contextoMotor, corDaMateria, dominarTopico,
   previaReplanejamento, registrarEstudoFora, registrarQuestoes, resumoAluno, topicoFechouHoje,
@@ -229,6 +229,7 @@ export default function Dashboard() {
   const uid = usuario.uid;
   const r = resumoAluno(db, uid, est);
   const vest = vestInfo(db.alunos.find((a) => a.id === uid)?.vestibular);
+  const t = useFrasesDoAluno();
   const { disp } = contextoMotor(db, uid);
 
   const [popup, setPopup] = useState(null);
@@ -282,8 +283,7 @@ export default function Dashboard() {
     <>
       <TituloPagina
         eyebrow={dataHoje}
-        antes="Metas de"
-        destaque="hoje"
+        frase={t("painel.dashboard.titulo")}
         direita={
           <div className="titulo-direita">
             <span className="etiqueta"><i style={{ "--cor": vest.cor }} />{vest.nome}</span>
@@ -328,7 +328,7 @@ export default function Dashboard() {
         {r.atrasadas.length > 0 && <span className="eyebrow">Hoje</span>}
         {r.metasHoje.map((m) => <MetaLinha key={m.id} meta={m} aoAlternar={alternar} />)}
         {r.metasHoje.length === 0 && (
-          <div className="cartao"><Vazio icone={CheckCircle2} titulo="Nenhuma meta para hoje" texto="Dia livre no seu plano. Use para revisar ou registrar estudo por fora." /></div>
+          <div className="cartao"><Vazio icone={CheckCircle2} titulo={t("painel.dashboard.vazioTitulo")} texto={t("painel.dashboard.vazioTexto")} /></div>
         )}
       </section>
 

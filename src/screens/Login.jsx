@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Clock4, GraduationCap, Target } from "lucide-react";
 import { CICLO_TEMPLATES, VESTIBULARES, fmtMin } from "../core/nucleo.js";
-import { useApp } from "../state/AppContext.jsx";
+import { useApp, useFrases } from "../state/AppContext.jsx";
 import { Cinema } from "../ui/Cinema.jsx";
 import { Barra, Botao, Dialogo, Estrela } from "../ui/ui.jsx";
 
@@ -82,6 +82,7 @@ const TITULOS_FOLHA = { metodo: "Método", professores: "Professores", vestibula
 
 export default function Login() {
   const { db, entrar } = useApp();
+  const t = useFrases();
   const [passo, setPasso] = useState("email");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -116,10 +117,10 @@ export default function Login() {
           { label: "Acesso", onClick: () => setFolha("acesso") },
         ]}
         acoes={<Botao variante="solido" className="aparece aparece--escala" style={{ "--d": "0.34s" }} onClick={irParaEmail}>Entrar</Botao>}
-        selo={<span className="selo-topo aparece aparece--pop" style={{ "--d": "0.22s" }}><Estrela />Plataforma de estudos para vestibular</span>}
-        linha1="Seu vestibular, planejado"
-        linha2={<><em>meta por meta</em>.</>}
-        lede="Ciclos de estudo por vestibular, metas diárias que cabem na sua rotina e revisões no tempo certo, com o professor acompanhando."
+        selo={<span className="selo-topo aparece aparece--pop" style={{ "--d": "0.22s" }}><Estrela />{t("inicial.selo")}</span>}
+        titulo={t("inicial.titulo")}
+        corDestaque={db.textos.corDestaque}
+        lede={t("inicial.lede")}
         stats={destaque.map((d, i) => {
           const Icone = ICONES_DESTAQUE[i % ICONES_DESTAQUE.length];
           return { icone: <Icone aria-hidden="true" />, texto: <><b>{d.valor}</b> {d.label}</> };

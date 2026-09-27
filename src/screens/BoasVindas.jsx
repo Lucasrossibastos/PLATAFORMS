@@ -1,15 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import { CalendarCheck, FileText, Flame, PenLine, Target, Trophy, Users } from "lucide-react";
 import { fmtMin, vestInfo } from "../core/nucleo.js";
-import { useApp, useEstudo } from "../state/AppContext.jsx";
+import { useApp, useEstudo, useFrasesDoAluno } from "../state/AppContext.jsx";
 import { resumoAluno } from "../state/estudo.js";
 import { Cinema } from "../ui/Cinema.jsx";
 import { Botao, Estrela } from "../ui/ui.jsx";
-
-function saudacao(agora = new Date()) {
-  const h = agora.getHours();
-  return h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
-}
+import { primeiroNome, saudacao } from "../textos.js";
 
 const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
 
@@ -25,6 +21,7 @@ function GateAluno() {
   const ir = (tela) => navigate(`/aluno/${tela}`);
   const meta = r.proximaMeta;
   const recado = r.ultimoRecado;
+  const t = useFrasesDoAluno();
 
   return (
     <Cinema
@@ -44,9 +41,9 @@ function GateAluno() {
         <Botao variante="solido" className="aparece aparece--escala" style={{ "--d": "0.34s" }} onClick={() => ir("dashboard")}>Acessar a plataforma</Botao>
       </>}
       rodapeMenu={<Botao variante="vidro" onClick={sair}>Sair</Botao>}
-      selo={<span className="selo-topo aparece aparece--pop" style={{ "--d": "0.22s", "--cor": vest.cor }}><i />Foco: {vest.nome}</span>}
-      linha1={`${saudacao()}, ${usuario.name.split(" ")[0]}.`}
-      linha2={r.metasHoje.length ? <>Suas metas de hoje <em>já estão prontas</em>.</> : <>Hoje é dia <em>livre</em>.</>}
+      selo={<span className="selo-topo aparece aparece--pop" style={{ "--d": "0.22s", "--cor": vest.cor }}><i />{t("boasvindas.selo")}</span>}
+      titulo={`${t("boasvindas.saudacao")}\n${t(r.metasHoje.length ? "boasvindas.comMetas" : "boasvindas.semMetas")}`}
+      corDestaque={db.textos.corDestaque}
       lede={recado
         ? <>“{recado.texto}”<cite>{hero.nome} · recado do instrutor</cite></>
         : hero.subtitulo}
@@ -83,6 +80,7 @@ function GateModerador() {
         { label: "Alunos", onClick: () => ir("alunos") },
         { label: "Redação", onClick: () => ir("redacao") },
         { label: "Conteúdo", submenu: [
+          { label: "Textos da plataforma", onClick: () => ir("textos") },
           { label: "Cursos em vídeo", onClick: () => ir("cursos") },
           { label: "Simulados", onClick: () => ir("simulados") },
           { label: "Materiais", onClick: () => ir("materiais") },
@@ -96,8 +94,8 @@ function GateModerador() {
       </>}
       rodapeMenu={<Botao variante="vidro" onClick={sair}>Sair</Botao>}
       selo={<span className="selo-topo aparece aparece--pop" style={{ "--d": "0.22s" }}><Estrela />Painel do professor</span>}
-      linha1={`${saudacao()}, ${usuario.name.split(" ")[0]}.`}
-      linha2={<>Sua turma <em>está esperando</em>.</>}
+      titulo={`${saudacao()}, ${primeiroNome(usuario.name)}.\nSua turma *está esperando*.`}
+      corDestaque={db.textos.corDestaque}
       lede={hero.subtitulo}
       stats={[
         { icone: <Users aria-hidden="true" />, texto: <><b>{db.alunos.length}</b> alunos na plataforma</> },

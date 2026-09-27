@@ -5,7 +5,7 @@ import { useApp } from "../state/AppContext.jsx";
 import { useTema } from "../state/tema.js";
 import { baseDoPapel } from "../navegacao.js";
 import { MenuCheio } from "../ui/Cinema.jsx";
-import { Botao, Marca } from "../ui/ui.jsx";
+import { Botao, Grao, Marca } from "../ui/ui.jsx";
 
 /* Moldura das telas internas: cabeçalho com pílulas de metal (quatro fixas +
    "Mais"), tema, conta; no celular, menu em tela cheia. */
@@ -122,6 +122,8 @@ export default function Shell({ menu }) {
       <main className="app-main" key={pathname}>
         <Outlet />
       </main>
+      {/* grão só nas telas internas: sobre o vídeo, a mistura custa um quadro a cada quadro */}
+      <Grao />
     </div>
   );
 }

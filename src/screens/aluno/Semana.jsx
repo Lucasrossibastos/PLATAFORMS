@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Hand, RotateCcw, Sparkles } from "lucide-react";
 import { DIAS, fmtData, fmtMin } from "../../core/nucleo.js";
-import { useApp, useEstudo } from "../../state/AppContext.jsx";
+import { useApp, useEstudo, useFrasesDoAluno } from "../../state/AppContext.jsx";
 import { chaveDoDia, contextoMotor, corDaMateria, datasDaSemana, idxDia, moverMeta, resetarSemana } from "../../state/estudo.js";
 import { Barra, Botao, TituloPagina } from "../../ui/ui.jsx";
 
@@ -12,6 +12,7 @@ export default function Semana() {
   const est = useEstudo();
   const uid = usuario.uid;
   const { disp } = contextoMotor(db, uid);
+  const t = useFrasesDoAluno();
   const hIdx = idxDia(chaveDoDia());
   const datas = datasDaSemana(est.chave);
   const [arrastando, setArrastando] = useState(null); // { id, de }
@@ -31,9 +32,8 @@ export default function Semana() {
     <>
       <TituloPagina
         eyebrow={`${fmtData(datas.seg).slice(0, 5)} a ${fmtData(datas.dom).slice(0, 5)}`}
-        antes="Sua"
-        destaque="semana"
-        texto="Arraste uma meta para outro dia, ou toque nela e depois no dia. Só vale para esta semana; as próximas continuam automáticas."
+        frase={t("painel.semana.titulo")}
+        texto={t("painel.semana.texto")}
         direita={
           <div className="titulo-direita">
             <span className="etiqueta num">{fmtMin(total)} programados</span>

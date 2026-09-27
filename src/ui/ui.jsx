@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef } from "react";
 import { X } from "lucide-react";
 import { MATERIAS_FLAT, topicosDaMateria } from "../core/nucleo.js";
+import { linhasDe, partesDe } from "../textos.js";
 
 export const APP_NOME = "aprova";
 
@@ -71,12 +72,22 @@ export function Vazio({ icone: Icone, titulo, texto }) {
   );
 }
 
-export function TituloPagina({ eyebrow, antes, destaque, depois = "", texto, direita }) {
+/* Frase com marcação: *destaque* em serifa, Enter vira quebra de linha. */
+export function Frase({ texto }) {
+  return linhasDe(texto).map((linha, i) => (
+    <span key={i}>
+      {i > 0 && <br />}
+      {partesDe(linha).map((p, j) => (p.destaque ? <em key={j} className="serif">{p.texto}</em> : p.texto))}
+    </span>
+  ));
+}
+
+export function TituloPagina({ eyebrow, frase, texto, direita }) {
   return (
     <header className="titulo-pagina">
       <div>
         {eyebrow && <span className="eyebrow">{eyebrow}</span>}
-        <h1>{antes} {destaque && <em className="serif">{destaque}</em>}{depois}</h1>
+        <h1><Frase texto={frase} /></h1>
         {texto && <p>{texto}</p>}
       </div>
       {direita}

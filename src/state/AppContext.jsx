@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { MOCK_USERS } from "../core/nucleo.js";
+import { MOCK_USERS, vestInfo } from "../core/nucleo.js";
 import { carregarDados, carregarSessao, dadosIniciais, salvarDados, salvarSessao } from "./dados.js";
 import { estudoAtual } from "./estudo.js";
+import { preencher, primeiroNome, saudacao, textoDe } from "../textos.js";
 
 const Ctx = createContext(null);
 
@@ -66,6 +67,28 @@ export function AppProvider({ children }) {
 
 export function useApp() {
   return useContext(Ctx);
+}
+
+/* Frases editáveis já resolvidas para o aluno (ou gerais, sem uid) e com as
+   variáveis preenchidas. Uso: const t = useFrases(uid, vars); t("chave"). */
+export function useFrases(uid, vars) {
+  const { db } = useApp();
+  return (chave) => preencher(textoDe(db.textos, chave, uid), vars);
+}
+
+// Valores de {nome}, {saudacao} e {vestibular} para um aluno.
+export function varsDoAluno(db, uid, nomeCompleto = "") {
+  const aluno = db.alunos.find((a) => a.id === uid);
+  return {
+    nome: primeiroNome(nomeCompleto || aluno?.nome),
+    saudacao: saudacao(),
+    vestibular: vestInfo(aluno?.vestibular).nome,
+  };
+}
+
+export function useFrasesDoAluno() {
+  const { db, usuario } = useApp();
+  return useFrases(usuario.uid, varsDoAluno(db, usuario.uid, usuario.name));
 }
 
 export const rotaInicial = (usuario) => (usuario?.role === "moderador" ? "/moderador/alunos" : "/aluno/dashboard");

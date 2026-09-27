@@ -38,8 +38,14 @@ desatualizado.
 ## Estado atual
 
 Prontas: login, boas-vindas (aluno e moderador), dashboard do aluno, semana,
-página de boas-vindas. As demais telas mostram o que vão fazer (texto da
-especificação).
+página de boas-vindas e, no moderador, **Textos**: edita as frases da página
+inicial, das boas-vindas e do painel do aluno, para todos ou só para um aluno
+(`*palavra*` destaca, Enter quebra a linha, `{nome}`, `{saudacao}` e
+`{vestibular}` são preenchidos). As demais telas mostram o que vão fazer
+(texto da especificação).
+
+O vídeo de fundo toca sempre, mesmo com "reduzir movimento" ligado no
+sistema. Para testar com outro vídeo: `VITE_VIDEO_FUNDO=./video.webm npm run build`.
 
 Os dados ficam no `localStorage` do navegador: recarregar não perde nada, mas
 cada aparelho tem a sua cópia. Os pontos de troca pelo Firebase estão marcados

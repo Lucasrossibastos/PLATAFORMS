@@ -7,7 +7,7 @@ import Shell from "./screens/Shell.jsx";
 import Dashboard from "./screens/aluno/Dashboard.jsx";
 import Semana from "./screens/aluno/Semana.jsx";
 import { BoasVindasPagina, EmBreve } from "./screens/Paginas.jsx";
-import { Grao } from "./ui/ui.jsx";
+import Textos from "./screens/moderador/Textos.jsx";
 
 function Protegida({ papel, children }) {
   const { usuario } = useApp();
@@ -44,12 +44,12 @@ export default function App() {
           </Route>
           <Route path="/moderador" element={<Protegida papel="moderador"><Shell menu={MENU_MODERADOR} /></Protegida>}>
             <Route index element={<Navigate to="alunos" replace />} />
+            <Route path="textos" element={<Textos />} />
             <Route path=":tela" element={<EmBreve menu={MENU_MODERADOR} />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </HashRouter>
-      <Grao />
     </AppProvider>
   );
 }
