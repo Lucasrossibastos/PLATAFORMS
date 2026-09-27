@@ -43,11 +43,12 @@ export function criarContexto(repo, { relogio = () => new Date() } = {}) {
 }
 
 /* Operações de histórico. entradas: [{ tipo, descricao, antes, depois }] */
-export function opsDeLog(ctx, { alunoId = null, entidade, entidadeId = null, motivo = "" }, entradas) {
+export function opsDeLog(ctx, { alunoId = null, entidade, entidadeId = null, motivo = "", logId }, entradas) {
   const autor = ctx.autor();
-  return entradas.map((e) => ({
+  return entradas.map((e, i) => ({
     tipo: "criar",
     colecao: "logs",
+    ...(i === 0 && logId ? { id: logId } : {}),
     dados: {
       alunoId, entidade, entidadeId, tipo: e.tipo, descricao: e.descricao,
       antes: e.antes ?? null, depois: e.depois ?? null, motivo: motivo || "",
@@ -55,6 +56,11 @@ export function opsDeLog(ctx, { alunoId = null, entidade, entidadeId = null, mot
     },
   }));
 }
+
+/* Regras do servidor: alterar ou apagar histórico exige um log gravado no
+   mesmo lote. Alteração: o documento aponta o log (ultimoLogId). Exclusão: o
+   log tem o id "rm_" + id do registro apagado. */
+export const idLogRemocao = (id) => `rm_${id}`;
 
 // lotes grandes em partes (o Firestore aceita até 500 operações por lote)
 export async function loteEmPartes(repo, ops, tamanho = 400) {

@@ -79,10 +79,11 @@ export function servicoPlanos(ctx, servicos) {
   async function gravarPlano(alunoId, plano, prog, ind, entradas, { motivo, extra = [] } = {}) {
     const { plano: calculado, resumo } = recalcularPlano(plano, ind, prog, ctx.hoje());
     const { id: _id, ...dados } = calculado;
+    const logId = novoId();
     await repo.lote([
-      { tipo: "definir", colecao: "planos", id: alunoId, dados: { ...dados, alunoId, atualizadoEm: carimbo() } },
+      ...opsDeLog(ctx, { alunoId, entidade: "plano", entidadeId: alunoId, motivo, logId }, entradas),
+      { tipo: "definir", colecao: "planos", id: alunoId, dados: { ...dados, alunoId, ultimoLogId: logId, atualizadoEm: carimbo() } },
       ...extra,
-      ...opsDeLog(ctx, { alunoId, entidade: "plano", entidadeId: alunoId, motivo }, entradas),
     ]);
     await servicos.estudo?.aposMudarPlano(alunoId).catch(() => {});
     return resumo;
@@ -249,14 +250,18 @@ export function servicoPlanos(ctx, servicos) {
       if (estadoItem(item, prog).concluido && prog[itemId]?.concluido === true) return false;
       const hoje = ctx.hoje();
       const jaAuto = estadoItem(item, prog).concluido;
-      const ops = [{ tipo: "mesclar", colecao: "progresso", id: alunoId, dados: { alunoId, itens: { [itemId]: { concluido: true, concluidoEm: prog[itemId]?.concluidoEm || hoje } } } }];
+      const logId = novoId();
+      const ops = [
+        ...opsDeLog(ctx, { alunoId, entidade: "plano", entidadeId: alunoId, motivo, logId }, [{
+          tipo: "concluirItem", descricao: `Concluiu ${nomeItem(ind, item)}`, antes: "aberto", depois: "concluído",
+        }]),
+        { tipo: "mesclar", colecao: "progresso", id: alunoId, dados: { alunoId, ultimaOperacao: { tipo: "log", id: logId }, itens: { [itemId]: { concluido: true, concluidoEm: prog[itemId]?.concluidoEm || hoje } } } },
+      ];
       if (!jaAuto) {
         const rev = opRevisoesDoItem(plano, item, alunoId, hoje, "conclusao");
         if (rev) ops.push(rev);
       }
-      await repo.lote([...ops, ...opsDeLog(ctx, { alunoId, entidade: "plano", entidadeId: alunoId, motivo }, [{
-        tipo: "concluirItem", descricao: `Concluiu ${nomeItem(ind, item)}`, antes: "aberto", depois: "concluído",
-      }])]);
+      await repo.lote(ops);
       await servicos.estudo?.sincronizarRevisoes(alunoId).catch(() => {});
       return true;
     },
@@ -268,12 +273,13 @@ export function servicoPlanos(ctx, servicos) {
       const item = itensDoPlano(plano, ind).find((it) => it.itemId === itemId);
       if (!item || !estadoItem(item, prog).concluido) return false;
       const revisoes = await repo.listar("revisoes", [["alunoId", "==", alunoId]]);
+      const logId = novoId();
       await repo.lote([
-        { tipo: "mesclar", colecao: "progresso", id: alunoId, dados: { alunoId, itens: { [itemId]: { concluido: false, concluidoEm: apagarCampo() } } } },
-        ...opsCancelarRevisoes(revisoes, itemId),
-        ...opsDeLog(ctx, { alunoId, entidade: "plano", entidadeId: alunoId, motivo }, [{
+        ...opsDeLog(ctx, { alunoId, entidade: "plano", entidadeId: alunoId, motivo, logId }, [{
           tipo: "reabrirItem", descricao: `Reabriu ${nomeItem(ind, item)}`, antes: "concluído", depois: "aberto",
         }]),
+        { tipo: "mesclar", colecao: "progresso", id: alunoId, dados: { alunoId, ultimaOperacao: { tipo: "log", id: logId }, itens: { [itemId]: { concluido: false, concluidoEm: apagarCampo() } } } },
+        ...opsCancelarRevisoes(revisoes, itemId),
       ]);
       await servicos.estudo?.sincronizarRevisoes(alunoId).catch(() => {});
       return true;

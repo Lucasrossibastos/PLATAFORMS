@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, configDefaults } from "vitest/config";
 import react from "@vitejs/plugin-react";
 
 // base relativa + HashRouter: o build em docs/ funciona no GitHub Pages
@@ -7,4 +7,6 @@ export default defineConfig({
   base: "./",
   plugins: [react()],
   build: { outDir: "docs", emptyOutDir: true },
+  // *.emu.test.js rodam contra os emuladores do Firebase: npm run test:emuladores
+  test: { exclude: [...configDefaults.exclude, "**/*.emu.test.js"] },
 });

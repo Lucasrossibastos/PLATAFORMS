@@ -17,7 +17,7 @@ import {
   acharMeta, adicionarTempoExtra, aplicarReplanejamento, lerIdRevisaoAvulsa, marcarMeta, moverMeta,
   previaReplanejamento, reorganizarSemana, revisoesAtrasadas, semanaVigente, sincronizarRevisoes,
 } from "../core/semana.js";
-import { ErroValidacao, opsDeLog, recentesPrimeiro } from "./base.js";
+import { ErroValidacao, idLogRemocao, opsDeLog, recentesPrimeiro } from "./base.js";
 import { opRevisoesDoItem, opsCancelarRevisoes } from "./planos.js";
 
 export function servicoEstudo(ctx) {
@@ -58,7 +58,7 @@ export function servicoEstudo(ctx) {
 
   /* Minutos numa sessão → partes por item, com as conclusões que ela provoca
      (progresso e revisões no mesmo lote). */
-  function efeitosNoProgresso(c, alunoId, partes, hoje) {
+  function efeitosNoProgresso(c, alunoId, partes, hoje, sessaoId) {
     const itensPatch = {};
     const revisoesOps = [];
     const concluidos = [];
@@ -75,7 +75,7 @@ export function servicoEstudo(ctx) {
       }
       return { itemId: p.itemId, minutos: p.minutos, concluiu };
     });
-    const ops = partes.length ? [{ tipo: "mesclar", colecao: "progresso", id: alunoId, dados: { alunoId, itens: itensPatch } }, ...revisoesOps] : [];
+    const ops = partes.length ? [{ tipo: "mesclar", colecao: "progresso", id: alunoId, dados: { alunoId, ultimaOperacao: { tipo: "sessao", id: sessaoId }, itens: itensPatch } }, ...revisoesOps] : [];
     return { ops, partes: partesFinais, concluidos, revisoesCriadas: revisoesOps.map((o) => o.id), novasRevisoes: revisoesOps.map((o) => ({ id: o.id, ...o.dados })) };
   }
 
@@ -90,7 +90,7 @@ export function servicoEstudo(ctx) {
         ops.push(...opsCancelarRevisoes(c.revisoes, p.itemId, { soIds: sessao.revisoesCriadas || [] }));
       }
     });
-    if (Object.keys(itensPatch).length) ops.unshift({ tipo: "mesclar", colecao: "progresso", id: alunoId, dados: { alunoId, itens: itensPatch } });
+    if (Object.keys(itensPatch).length) ops.unshift({ tipo: "mesclar", colecao: "progresso", id: alunoId, dados: { alunoId, ultimaOperacao: { tipo: "remocao", id: sessao.id }, itens: itensPatch } });
     return ops;
   }
 
@@ -121,7 +121,7 @@ export function servicoEstudo(ctx) {
       if (op) ops.push(op);
     } else {
       const partes = distribuirMinutos(c.itens, c.prog, meta.materiaId, meta.minutos);
-      efeitos = efeitosNoProgresso(c, alunoId, partes, hoje);
+      efeitos = efeitosNoProgresso(c, alunoId, partes, hoje, sessaoId);
       const primeiro = c.itens.find((it) => it.itemId === partes[0]?.itemId);
       conteudo = primeiro ? { topicoId: primeiro.topicoId, subtopicoId: primeiro.subtopicoId, itemId: primeiro.itemId } : {};
     }
@@ -154,7 +154,7 @@ export function servicoEstudo(ctx) {
     if (!meta.avulsa) marcarMeta(est, meta.id, { done: false });
     const revisoesDepois = c.revisoes.filter((r) => !ops.some((o) => o.tipo === "remover" && o.colecao === "revisoes" && o.id === r.id));
     ops.push(opSemana(alunoId, sincronizarRevisoes(est, revisoesDepois, ctx.hoje())));
-    ops.push(...opsDeLog(ctx, { alunoId, entidade: "estudo", entidadeId: sessao?.id || meta.id }, [{
+    ops.push(...opsDeLog(ctx, { alunoId, entidade: "estudo", entidadeId: sessao?.id || meta.id, ...(sessao ? { logId: idLogRemocao(sessao.id) } : {}) }, [{
       tipo: "desfazerMeta", descricao: `Desmarcou uma meta de ${c.ind.nomeMateria(meta.materiaId)} (${meta.minutos} min)`, antes: "feita", depois: "aberta",
     }]));
     await repo.lote(ops);
@@ -229,9 +229,9 @@ export function servicoEstudo(ctx) {
       const partes = subtopicoId || topicoId
         ? distribuirMinutos(alvo.map((it) => ({ ...it, materiaId: "_" })), c.prog, "_", min)
         : distribuirMinutos(c.itens, c.prog, materiaId, min);
-      const efeitos = efeitosNoProgresso(c, alunoId, partes, dia);
-      const primeiro = c.itens.find((it) => it.itemId === partes[0]?.itemId);
       const sessaoId = novoId();
+      const efeitos = efeitosNoProgresso(c, alunoId, partes, dia, sessaoId);
+      const primeiro = c.itens.find((it) => it.itemId === partes[0]?.itemId);
       const ops = [{
         tipo: "criar", colecao: "sessoesEstudo", id: sessaoId,
         dados: docSessao(alunoId, {
@@ -269,7 +269,7 @@ export function servicoEstudo(ctx) {
         const op = opStatusRevisao(c, sessao.revisaoId, sessao.revisaoDia, "agendada");
         if (op) ops.push(op);
       }
-      ops.push(...opsDeLog(ctx, { alunoId: sessao.alunoId, entidade: "estudo", entidadeId: sessaoId, motivo }, [{
+      ops.push(...opsDeLog(ctx, { alunoId: sessao.alunoId, entidade: "estudo", entidadeId: sessaoId, motivo, logId: idLogRemocao(sessaoId) }, [{
         tipo: "removerSessao", descricao: `Apagou um estudo de ${c.ind.nomeMateria(sessao.materiaId)} (${sessao.minutos} min, ${sessao.data})`, antes: `${sessao.minutos} min`, depois: null,
       }]));
       await repo.lote(ops);

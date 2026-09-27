@@ -5,7 +5,7 @@
 
 import { carimbo, ErroDados, novoId } from "../data/contrato.js";
 import { validarPdf, validarQuestoes, validarSimulado } from "../core/validacao.js";
-import { ErroValidacao, opsDeLog, recentesPrimeiro } from "./base.js";
+import { ErroValidacao, idLogRemocao, opsDeLog, recentesPrimeiro } from "./base.js";
 
 const numero = (v) => (v === "" || v == null ? v : Number(v));
 const resumoRegistro = (r) => `${r.acertos}/${r.total} (${r.erros} erros) em ${r.data}`;
@@ -63,9 +63,10 @@ export function servicoQuestoes(ctx) {
       const r = await normalizar({ ...atual, ...dados });
       const dif = diferencas(atual, r, CAMPOS);
       if (!dif) return false;
+      const logId = novoId();
       await repo.lote([
-        { tipo: "atualizar", colecao: "questoes", id, dados: { ...r, atualizadoEm: carimbo(), atualizadoPor: ctx.usuario.uid } },
-        ...opsDeLog(ctx, { alunoId: atual.alunoId, entidade: "questoes", entidadeId: id, motivo }, [{ tipo: "corrigir", descricao: "Corrigiu um registro de questões", ...dif }]),
+        ...opsDeLog(ctx, { alunoId: atual.alunoId, entidade: "questoes", entidadeId: id, motivo, logId }, [{ tipo: "corrigir", descricao: "Corrigiu um registro de questões", ...dif }]),
+        { tipo: "atualizar", colecao: "questoes", id, dados: { ...r, ultimoLogId: logId, atualizadoEm: carimbo(), atualizadoPor: ctx.usuario.uid } },
       ]);
       return true;
     },
@@ -76,7 +77,7 @@ export function servicoQuestoes(ctx) {
       ctx.exigir("corrigir:registro", { registro: atual });
       await repo.lote([
         { tipo: "remover", colecao: "questoes", id },
-        ...opsDeLog(ctx, { alunoId: atual.alunoId, entidade: "questoes", entidadeId: id, motivo }, [{
+        ...opsDeLog(ctx, { alunoId: atual.alunoId, entidade: "questoes", entidadeId: id, motivo, logId: idLogRemocao(id) }, [{
           tipo: "remover", descricao: "Apagou um registro de questões", antes: resumoRegistro(atual), depois: null,
         }]),
       ]);
@@ -147,9 +148,10 @@ export function servicoSimulados(ctx) {
       const entradas = [];
       if (dif) entradas.push({ tipo: "corrigir", descricao: `Corrigiu o simulado ${r.nome}`, ...dif });
       if (trocaArquivo) entradas.push({ tipo: "arquivo", descricao: arquivo ? "Trocou o PDF do simulado" : "Tirou o PDF do simulado", antes: atual.arquivo?.nome || null, depois: novoPdf?.nome || null });
+      const logId = novoId();
       await repo.lote([
-        { tipo: "atualizar", colecao: "simulados", id, dados: { ...r, ...(trocaArquivo ? { arquivo: novoPdf || null } : {}), atualizadoEm: carimbo(), atualizadoPor: ctx.usuario.uid } },
-        ...opsDeLog(ctx, { alunoId: atual.alunoId, entidade: "simulado", entidadeId: id, motivo }, entradas),
+        ...opsDeLog(ctx, { alunoId: atual.alunoId, entidade: "simulado", entidadeId: id, motivo, logId }, entradas),
+        { tipo: "atualizar", colecao: "simulados", id, dados: { ...r, ...(trocaArquivo ? { arquivo: novoPdf || null } : {}), ultimoLogId: logId, atualizadoEm: carimbo(), atualizadoPor: ctx.usuario.uid } },
       ]);
       if (trocaArquivo && atual.arquivo?.ref) await repo.removerArquivo(atual.arquivo.ref).catch(() => {});
       return true;
@@ -161,7 +163,7 @@ export function servicoSimulados(ctx) {
       ctx.exigir("corrigir:registro", { registro: atual });
       await repo.lote([
         { tipo: "remover", colecao: "simulados", id },
-        ...opsDeLog(ctx, { alunoId: atual.alunoId, entidade: "simulado", entidadeId: id, motivo }, [{
+        ...opsDeLog(ctx, { alunoId: atual.alunoId, entidade: "simulado", entidadeId: id, motivo, logId: idLogRemocao(id) }, [{
           tipo: "remover", descricao: `Apagou o simulado ${atual.nome}`, antes: resumoRegistro(atual), depois: null,
         }]),
       ]);
