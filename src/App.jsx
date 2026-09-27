@@ -4960,6 +4960,11 @@ function FundoApp() {
   }, []);
   return (
     <div aria-hidden="true" style={{ position: "fixed", inset: 0, zIndex: 0, overflow: "hidden", background: dark ? "#0A0B0D" : "#E9E9EC" }}>
+      {falhou && (
+        <img src={POSTER_FUNDO} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", transform: "scale(1.2)",
+            filter: dark ? "blur(48px) brightness(.55)" : "blur(48px) brightness(1.3)" }} />
+      )}
       {!falhou && (
         <video ref={ref} src={VIDEO_FUNDO} poster={POSTER_FUNDO} autoPlay loop muted playsInline preload="auto" onError={() => setFalhou(true)}
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", transform: "scale(1.2)",

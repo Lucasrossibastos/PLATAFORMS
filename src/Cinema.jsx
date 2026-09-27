@@ -41,7 +41,7 @@ export function Marca({ claroNoMobile = false, className = "" }) {
 }
 
 /* Fundo em movimento: o vídeo em tela cheia, em loop e sem som.
-   Se o vídeo não carregar, fica o fundo escuro (e o texto volta a ser branco). */
+   Se o vídeo não carregar, fica a imagem de capa (um quadro da mesma cena). */
 export function FundoCinema({ videoUrl = VIDEO_FUNDO, onModo }) {
   const [modo, setModo] = useState(videoUrl ? "video" : "escuro");
   const ref = useRef(null);
@@ -52,7 +52,13 @@ export function FundoCinema({ videoUrl = VIDEO_FUNDO, onModo }) {
     const t = setTimeout(() => { const v = ref.current; if (!v || v.readyState < 2) setModo("escuro"); }, 6000);
     return () => clearTimeout(t);
   }, [modo]);
-  if (modo !== "video") return <div className="absolute inset-0 bg-[#0B0B0D]" />;
+  if (modo !== "video") {
+    return (
+      <div className="absolute inset-0 bg-[#0B0B0D]">
+        <img src={POSTER_FUNDO} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} className="h-full w-full object-cover" />
+      </div>
+    );
+  }
   return (
     <video
       ref={ref} src={videoUrl} poster={POSTER_FUNDO} autoPlay loop muted playsInline preload="auto"
