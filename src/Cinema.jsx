@@ -9,12 +9,14 @@ import { ChevronDown, Menu, X } from "lucide-react";
    tudo e Silkscreen só nos números de destaque.
 ============================================================================ */
 
-// Vídeo de fundo (a animação da referência).
-// VITE_VIDEO_FUNDO permite apontar para uma cópia hospedada junto com o site
-// (recomendado: links de ferramentas de geração de vídeo podem expirar).
-export const VIDEO_REFERENCIA =
-  "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260803_192301_9231ed6b-c55c-4a48-909c-4ebe11cf2e11.mp4";
-export const VIDEO_FUNDO = import.meta.env.VITE_VIDEO_FUNDO || VIDEO_REFERENCIA;
+// Vídeo de fundo: galeria de arcos em preto e branco, renderizada em 3D para a
+// plataforma (cena/galeria.py) e servida junto com o site (public/video/).
+// Caminho relativo de propósito: funciona no servidor local, no site publicado e no
+// ambiente de teste. VITE_VIDEO_FUNDO troca por outro vídeo sem mexer no código.
+export const VIDEO_FUNDO = import.meta.env.VITE_VIDEO_FUNDO || "video/galeria.mp4";
+export const POSTER_FUNDO = import.meta.env.VITE_POSTER_FUNDO || "video/galeria.jpg";
+// true só para vídeos claros na parte de baixo: aí o texto fica escuro no celular (como na referência)
+export const VIDEO_CLARO = import.meta.env.VITE_VIDEO_CLARO === "true";
 
 export const GRADIENTE = { background: "linear-gradient(to bottom, #2B2B2B, #101010)" };
 export const PIXEL = "'Silkscreen', cursive";
@@ -53,7 +55,7 @@ export function FundoCinema({ videoUrl = VIDEO_FUNDO, onModo }) {
   if (modo !== "video") return <div className="absolute inset-0 bg-[#0B0B0D]" />;
   return (
     <video
-      ref={ref} src={videoUrl} autoPlay loop muted playsInline preload="auto"
+      ref={ref} src={videoUrl} poster={POSTER_FUNDO} autoPlay loop muted playsInline preload="auto"
       onError={() => setModo("escuro")}
       className="absolute inset-0 h-full w-full object-cover"
     />
@@ -205,8 +207,8 @@ export function NavHero({ links, cta, extra, claroNoMobile, menuAberto, setMenuA
 export function HeroCinema({ links, cta, extra, titulo, capsula, abaixoCapsula, cartoes, gaveta, videoUrl, conteudoTopo }) {
   const [modo, setModo] = useState("video");
   const [menuAberto, setMenuAberto] = useState(false);
-  // o texto escuro no celular só faz sentido sobre o vídeo claro da referência
-  const claro = modo === "video";
+  // texto escuro no celular só sobre vídeo claro (a galeria é escura: texto sempre branco)
+  const claro = modo === "video" && VIDEO_CLARO;
   const h1 = claro ? "text-[#010101] lg:text-white" : "text-white";
   return (
     <section className="cine relative h-screen w-full overflow-hidden bg-[#0B1116]" style={{ minHeight: 560 }}>

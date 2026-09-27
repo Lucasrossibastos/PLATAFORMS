@@ -13,7 +13,7 @@ import {
   ArrowRight, Zap, PlusCircle, Save, Image as ImageIcon, Minus,
   PlayCircle, PenLine, Video, ArrowUp, ArrowDown, Link2, Send, Paperclip, ExternalLink, EyeOff
 } from "lucide-react";
-import { HeroCinema, Capsula, CampoCapsula, PilulaCTA, CartaoNumero, CartaoRecado, FolhaVidro, GavetaMobile, BotaoMenu, Logo, Marca, GRADIENTE, PIXEL, FundoCinema, VIDEO_FUNDO } from "./Cinema.jsx";
+import { HeroCinema, Capsula, CampoCapsula, PilulaCTA, CartaoNumero, CartaoRecado, FolhaVidro, GavetaMobile, BotaoMenu, Logo, Marca, GRADIENTE, PIXEL, FundoCinema, VIDEO_FUNDO, POSTER_FUNDO } from "./Cinema.jsx";
 
 /* ============================================================================
    PLATAFORMA PRÉ-VESTIBULAR — PROTÓTIPO VISUAL COMPLETO (MOCK)
@@ -4961,7 +4961,7 @@ function FundoApp() {
   return (
     <div aria-hidden="true" style={{ position: "fixed", inset: 0, zIndex: 0, overflow: "hidden", background: dark ? "#0A0B0D" : "#E9E9EC" }}>
       {!falhou && (
-        <video ref={ref} src={VIDEO_FUNDO} autoPlay loop muted playsInline preload="auto" onError={() => setFalhou(true)}
+        <video ref={ref} src={VIDEO_FUNDO} poster={POSTER_FUNDO} autoPlay loop muted playsInline preload="auto" onError={() => setFalhou(true)}
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", transform: "scale(1.2)",
             filter: dark ? "blur(48px) brightness(.55) saturate(1.2)" : "blur(48px) brightness(1.3) saturate(.8)" }} />
       )}
