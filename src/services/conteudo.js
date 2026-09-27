@@ -5,22 +5,14 @@
 import { carimbo, ErroDados, novoId } from "../data/contrato.js";
 import { PAPEIS } from "../core/permissoes.js";
 import { ErroValidacao, opsDeLog, recentesPrimeiro } from "./base.js";
+import { mediaDoTema, normalizarTema } from "../redacao.js";
+import { playlistVisivelPara } from "../midia.js";
+
+export { playlistVisivelPara };
 
 const semId = ({ id: _i, ...resto }) => resto;
 
 /* ---------- Cursos em vídeo ---------- */
-
-// A playlist aparece para o aluno se publicada e se bate com o vestibular, o
-// curso e as matérias do plano dele (lista vazia = vale para todos).
-export function playlistVisivelPara(pl, aluno, materiasDoPlano = null) {
-  if (!pl.publicada) return false;
-  const vests = pl.vestibularIds || [];
-  const cursos = pl.cursoIds || [];
-  if (vests.length && !vests.includes(aluno?.vestibularId)) return false;
-  if (cursos.length && !cursos.includes(aluno?.cursoId)) return false;
-  if (pl.materiaId && materiasDoPlano && !materiasDoPlano.includes(pl.materiaId)) return false;
-  return true;
-}
 
 export function servicoPlaylists(ctx) {
   const { repo } = ctx;
@@ -101,7 +93,16 @@ export function servicoRedacao(ctx) {
       const atual = devolutiva.id ? await repo.obter("devolutivas", id) : null;
       const doc = { ...semId(devolutiva), tema: devolutiva.tema.trim(), atualizadaEm: carimbo() };
       if (doc.status === "enviada" && atual?.status !== "enviada") doc.lida = false;
+      // média do tema (só entre devolutivas enviadas): gravada em cada uma,
+      // para o aluno ver sem ter acesso às redações dos outros
+      const temas = new Set([doc.tema, atual?.tema].filter(Boolean).map(normalizarTema));
+      const todas = (await repo.listar("devolutivas")).filter((d) => d.id !== id).concat([{ ...doc, id }]);
+      const opsMedia = todas
+        .filter((d) => temas.has(normalizarTema(d.tema)) && d.id !== id)
+        .map((d) => ({ tipo: "atualizar", colecao: "devolutivas", id: d.id, dados: { mediaTema: d.status === "enviada" ? mediaDoTema(todas, d) : null } }));
+      doc.mediaTema = doc.status === "enviada" ? mediaDoTema(todas, { ...doc, id }) : null;
       await repo.lote([
+        ...opsMedia,
         { tipo: "definir", colecao: "devolutivas", id, dados: doc },
         ...(doc.status === "enviada" && atual?.status !== "enviada"
           ? opsDeLog(ctx, { alunoId: doc.alunoId, entidade: "redacao", entidadeId: id }, [{ tipo: "enviar", descricao: `Enviou a devolutiva "${doc.tema}"` }])

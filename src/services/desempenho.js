@@ -54,11 +54,13 @@ export function painelDoAluno({
   const ult30 = consistencia(dias, { inicio: somarDias(hojeIso, -29), fim: hojeIso });
 
   const itens = plano ? itensDoPlano(plano, ind) : [];
+  const agrupamento = agrupamentoPara(inicio || primeiro, fimCons);
   return {
     questoes: desempenhoQuestoes(qf),
     registrosQuestoes: qf,
     porMateria: desempenhoPorMateria(qf, ind),
-    evolucao: evolucaoQuestoes(qf, agrupamentoPara(inicio || primeiro, fimCons)),
+    agrupamento,
+    evolucao: evolucaoQuestoes(qf, agrupamento),
     simulados: desempenhoSimulados(sf, ind),
     registrosSimulados: sf,
     consistencia: cons,
@@ -85,6 +87,9 @@ export function metricasAluno({ aluno, plano, progresso = {}, questoes = [], ses
   const dias = diasComAtividade({ sessoes, questoes, simulados });
   const ult = [...dias].sort().pop() || null;
   const diasSemEstudar = ult ? diasEntre(ult, hojeIso) : null;
+  // sem nenhum estudo, conta desde o início do plano (aluno novo não é "crítico")
+  const referencia = ult || plano?.inicio || String(aluno.criadoEm || "").slice(0, 10) || null;
+  const diasParados = referencia ? Math.max(0, diasEntre(referencia, hojeIso)) : null;
   const c30 = consistencia(dias, { inicio: inicio30, fim: hojeIso });
   const itens = plano ? itensDoPlano(plano, ind) : [];
   const prog = plano ? calcularProgressoPlano(itens, progresso, plano.cronograma, hojeIso) : null;
@@ -93,8 +98,8 @@ export function metricasAluno({ aluno, plano, progresso = {}, questoes = [], ses
 
   let situacao = "em_dia";
   if (!plano) situacao = "sem_plano";
-  else if ((diasSemEstudar ?? 99) >= 7 || (atr?.maxDias || 0) >= 14) situacao = "critico";
-  else if ((diasSemEstudar ?? 99) >= 3 || (atr?.quantidade || 0) > 0) situacao = "atencao";
+  else if ((diasParados ?? 0) >= 7 || (atr?.maxDias || 0) >= 14) situacao = "critico";
+  else if ((diasParados ?? 0) >= 3 || (atr?.quantidade || 0) > 0) situacao = "atencao";
 
   return {
     alunoId: aluno.id,
@@ -109,6 +114,7 @@ export function metricasAluno({ aluno, plano, progresso = {}, questoes = [], ses
     diasEstudados30: c30.diasEstudados,
     ultimoEstudo: ult,
     diasSemEstudar,
+    diasParados,
     simulados: sim.quantidade,
     mediaSimulados: sim.mediaPct,
     situacao,

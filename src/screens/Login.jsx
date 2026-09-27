@@ -1,26 +1,35 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { Clock4, GraduationCap, Target } from "lucide-react";
-import { CICLO_TEMPLATES, VESTIBULARES, fmtMin } from "../core/nucleo.js";
-import { useApp, useFrases } from "../state/AppContext.jsx";
+import { useApp } from "../state/AppContext.jsx";
+import { useArquivoUrl, useBoasVindas, useConfigTextos } from "../state/hooks.js";
+import { SENHA_DEMO } from "../data/semente.js";
+import { BOAS_VINDAS_PADRAO } from "../data/semente.js";
+import { COR_DESTAQUE_PADRAO, textoDe } from "../textos.js";
 import { Cinema } from "../ui/Cinema.jsx";
-import { Barra, Botao, Dialogo, Estrela } from "../ui/ui.jsx";
+import { Botao, Dialogo, Estrela } from "../ui/ui.jsx";
 
 const ICONES_DESTAQUE = [GraduationCap, Target, Clock4];
 
-function ConteudoFolha({ folha, welcome, abrir }) {
+function Avatar({ hero }) {
+  const { url } = useArquivoUrl(hero.foto);
+  return <span className="avatar" style={{ "--cor": hero.cor }}>{url ? <img src={url} alt="" /> : (hero.nome || "?").charAt(0)}</span>;
+}
+
+function ConteudoFolha({ folha, welcome }) {
   const hero = welcome.hero || {};
   if (folha === "metodo") {
     const destaque = welcome.blocos.find((b) => b.tipo === "destaque");
     return (
       <>
-        {destaque && (
+        {destaque?.itens?.length > 0 && (
           <div className="destaques">
             {destaque.itens.map((d) => <div key={d.label}><strong>{d.valor}</strong><span>{d.label}</span></div>)}
           </div>
         )}
         {welcome.blocos.map((b) => {
           if (b.tipo === "titulo") return <h3 key={b.id}>{b.texto}</h3>;
-          if (b.tipo === "texto") return <p key={b.id}>{b.texto}</p>;
+          if (b.tipo === "texto") return <p key={b.id} style={{ whiteSpace: "pre-line" }}>{b.texto}</p>;
           return null;
         })}
       </>
@@ -29,9 +38,7 @@ function ConteudoFolha({ folha, welcome, abrir }) {
   if (folha === "professores") {
     return (
       <div className="professor">
-        <span className="avatar" style={{ "--cor": hero.cor }}>
-          {hero.foto ? <img src={hero.foto} alt="" /> : (hero.nome || "?").charAt(0)}
-        </span>
+        <Avatar hero={hero} />
         <div>
           <span className="eyebrow">Seus professores</span>
           <strong>{hero.nome}</strong>
@@ -40,60 +47,31 @@ function ConteudoFolha({ folha, welcome, abrir }) {
       </div>
     );
   }
-  if (folha === "acesso") {
-    return <p>O acesso é criado pelo seu professor. Entre com o e-mail cadastrado e a senha que você recebeu. Se esqueceu a senha, fale com a coordenação.</p>;
-  }
-  if (folha === "vestibulares") {
-    return (
-      <>
-        <p>Cada vestibular tem um ciclo de estudos próprio: quanto tempo por semana vai para cada matéria.</p>
-        <div className="lista-vest">
-          {VESTIBULARES.map((v) => (
-            <Botao key={v.id} variante="vidro" tamanho="sm" onClick={() => abrir(`vest:${v.id}`)}>
-              <i className="ponto" style={{ background: v.cor }} />{v.nome}
-            </Botao>
-          ))}
-        </div>
-      </>
-    );
-  }
-  const vest = VESTIBULARES.find((v) => `vest:${v.id}` === folha);
-  const tpl = vest && CICLO_TEMPLATES[vest.id];
-  if (!tpl) return null;
-  const maior = Math.max(...tpl.alocacoes.map((a) => a.minutosSemanais));
-  return (
-    <>
-      <p>{tpl.desc}</p>
-      <div style={{ display: "grid", gap: 10 }}>
-        {tpl.alocacoes.map((a) => (
-          <div key={a.materiaId} className="alocacao">
-            <span>{a.materiaNome}</span>
-            <Barra valor={(a.minutosSemanais / maior) * 100} cor="#ffffff" />
-            <span>{fmtMin(a.minutosSemanais)}/sem</span>
-          </div>
-        ))}
-      </div>
-      <Botao variante="vidro" tamanho="sm" onClick={() => abrir("vestibulares")}>Ver outros vestibulares</Botao>
-    </>
-  );
+  return <p>O acesso é criado pelo seu professor. Entre com o e-mail cadastrado e a senha que você recebeu. Se esqueceu a senha, fale com a coordenação.</p>;
 }
 
-const TITULOS_FOLHA = { metodo: "Método", professores: "Professores", vestibulares: "Vestibulares", acesso: "Acesso" };
+const TITULOS_FOLHA = { metodo: "Método", professores: "Professores", acesso: "Acesso" };
 
 export default function Login() {
-  const { db, entrar } = useApp();
-  const t = useFrases();
+  const { s, modo } = useApp();
+  const config = useConfigTextos();
+  const welcome = useBoasVindas() || BOAS_VINDAS_PADRAO;
   const [passo, setPasso] = useState("email");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState("");
+  const [enviando, setEnviando] = useState(false);
   const [folha, setFolha] = useState(null);
+  const [instalar, setInstalar] = useState(false);
   const campo = useRef(null);
+  const t = (chave) => textoDe(config, chave);
+
+  useEffect(() => { s.auth.precisaInstalar().then(setInstalar).catch(() => {}); }, [s]);
 
   const focar = () => setTimeout(() => campo.current?.focus(), 30);
   const irParaEmail = () => { setPasso("email"); setSenha(""); setErro(""); focar(); };
 
-  const enviar = (e) => {
+  const enviar = async (e) => {
     e.preventDefault();
     if (passo === "email") {
       if (!/.+@.+\..+/.test(email.trim())) { setErro("Digite um e-mail válido para continuar."); return; }
@@ -101,11 +79,16 @@ export default function Login() {
       return;
     }
     // se der certo, a rota /entrar redireciona para as boas-vindas
-    if (!entrar(email, senha)) setErro("E-mail ou senha não conferem. Confira os dados e tente de novo.");
+    setEnviando(true);
+    try {
+      await s.auth.entrar(email, senha);
+    } catch (err) {
+      setErro(err.codigo === "credenciais" ? "E-mail ou senha não conferem. Confira os dados e tente de novo." : err.message);
+      setEnviando(false);
+    }
   };
 
-  const destaque = db.welcome.blocos.find((b) => b.tipo === "destaque")?.itens || [];
-  const vestFolha = folha?.startsWith("vest:") ? VESTIBULARES.find((v) => `vest:${v.id}` === folha) : null;
+  const destaque = welcome.blocos.find((b) => b.tipo === "destaque")?.itens || [];
 
   return (
     <>
@@ -113,13 +96,12 @@ export default function Login() {
         nav={[
           { label: "Método", onClick: () => setFolha("metodo") },
           { label: "Professores", onClick: () => setFolha("professores") },
-          { label: "Vestibulares", onClick: () => setFolha("vestibulares") },
           { label: "Acesso", onClick: () => setFolha("acesso") },
         ]}
         acoes={<Botao variante="solido" className="aparece aparece--escala" style={{ "--d": "0.34s" }} onClick={irParaEmail}>Entrar</Botao>}
         selo={<span className="selo-topo aparece aparece--pop" style={{ "--d": "0.22s" }}><Estrela />{t("inicial.selo")}</span>}
         titulo={t("inicial.titulo")}
-        corDestaque={db.textos.corDestaque}
+        corDestaque={config?.corDestaque || COR_DESTAQUE_PADRAO}
         lede={t("inicial.lede")}
         stats={destaque.map((d, i) => {
           const Icone = ICONES_DESTAQUE[i % ICONES_DESTAQUE.length];
@@ -136,18 +118,18 @@ export default function Login() {
               placeholder="Sua senha" aria-label="Senha" value={senha}
               onChange={(e) => { setSenha(e.target.value); setErro(""); }} />
           )}
-          <Botao type="submit" variante="solido">{passo === "email" ? "Continuar" : "Entrar"}</Botao>
+          <Botao type="submit" variante="solido" disabled={enviando}>{passo === "email" ? "Continuar" : enviando ? "Entrando…" : "Entrar"}</Botao>
         </form>
         <p className="cine-dica" aria-live="polite">
           {erro ? <span className="erro">{erro}</span>
             : passo === "senha" ? <>{email} · <button type="button" onClick={irParaEmail}>trocar e-mail</button></>
-              : "Teste: aluno@curso.com ou moderador@curso.com · senha 123"}
+              : instalar ? <Link to="/instalar">Primeiro acesso: criar a conta do moderador</Link>
+                : modo === "local" ? `Demonstração: aluno@curso.com ou moderador@curso.com · senha ${SENHA_DEMO}` : "Entre com o e-mail cadastrado pelo seu professor."}
         </p>
       </Cinema>
 
-      <Dialogo className="folha" data-theme="dark" aberto={!!folha} aoFechar={() => setFolha(null)}
-        titulo={vestFolha ? vestFolha.nome : TITULOS_FOLHA[folha]}>
-        <ConteudoFolha folha={folha} welcome={db.welcome} abrir={setFolha} />
+      <Dialogo className="folha" data-theme="dark" aberto={!!folha} aoFechar={() => setFolha(null)} titulo={TITULOS_FOLHA[folha]}>
+        <ConteudoFolha folha={folha} welcome={welcome} />
       </Dialogo>
     </>
   );

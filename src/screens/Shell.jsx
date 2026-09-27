@@ -1,16 +1,28 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { ChevronDown, LogOut, Moon, RotateCcw, Sparkles, Sun } from "lucide-react";
+import { Bell, ChevronDown, LogOut, Moon, RotateCcw, Sparkles, Sun } from "lucide-react";
 import { useApp } from "../state/AppContext.jsx";
+import { useNotificacoes } from "../state/hooks.js";
 import { useTema } from "../state/tema.js";
 import { baseDoPapel } from "../navegacao.js";
 import { MenuCheio } from "../ui/Cinema.jsx";
 import { Botao, Grao, Marca } from "../ui/ui.jsx";
 
+// sino com os avisos não lidos (só aluno)
+function Sino({ alunoId, rota }) {
+  const avisos = useNotificacoes(alunoId) || [];
+  const novos = avisos.filter((n) => !n.lidaEm).length;
+  return (
+    <NavLink to={rota} className="icone-btn sino" aria-label={novos ? `${novos} ${novos === 1 ? "aviso novo" : "avisos novos"}` : "Avisos"} title="Avisos">
+      <Bell />{novos > 0 && <span className="sino-contador num" aria-hidden="true">{novos > 9 ? "9+" : novos}</span>}
+    </NavLink>
+  );
+}
+
 /* Moldura das telas internas: cabeçalho com pílulas de metal (quatro fixas +
    "Mais"), tema, conta; no celular, menu em tela cheia. */
 export default function Shell({ menu }) {
-  const { usuario, sair, restaurarExemplo } = useApp();
+  const { usuario, sair, recomecarDemonstracao, modo } = useApp();
   const [tema, alternarTema] = useTema();
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -38,13 +50,14 @@ export default function Shell({ menu }) {
   const extras = menu.slice(4);
   const extraAtivo = [...extras, principais[3]].some((i) => i && pathname.startsWith(rota(i)));
   const alternar = (qual) => setAberto((a) => (a === qual ? null : qual));
-  const primeiro = usuario.name.split(" ")[0];
+  const primeiro = (usuario.nome || "").split(" ")[0];
   const IconeTema = tema === "light" ? Moon : Sun;
 
-  const restaurar = () => {
-    restaurarExemplo();
+  const recomecar = async () => {
     setAberto(null);
-    navigate(base);
+    if (!window.confirm("Apagar todos os dados deste navegador e recomeçar a demonstração?")) return;
+    await recomecarDemonstracao();
+    navigate("/entrar");
   };
 
   return (
@@ -75,24 +88,25 @@ export default function Shell({ menu }) {
         </nav>
 
         <div className="app-acoes">
+          {usuario.role === "aluno" && <Sino alunoId={usuario.uid} rota={`${base}/avisos`} />}
           <button type="button" className="icone-btn opcional" onClick={alternarTema}
             aria-label={tema === "light" ? "Usar tema escuro" : "Usar tema claro"} title="Alternar tema">
             <IconeTema />
           </button>
           <div className="opcional" style={{ position: "relative" }}>
             <Botao variante="solido" tamanho="sm" aria-expanded={aberto === "conta"} onClick={() => alternar("conta")}>
-              <span className="conta-inicial" aria-hidden="true">{usuario.name.charAt(0)}</span>{primeiro}
+              <span className="conta-inicial" aria-hidden="true">{(usuario.nome || "?").charAt(0)}</span>{primeiro}
             </Botao>
             {aberto === "conta" && (
               <div className="painel">
                 <div className="painel-cabeca">
-                  <strong>{usuario.name}</strong>
+                  <strong>{usuario.nome}</strong>
                   <span>{usuario.email}</span>
                   <span>{usuario.role === "moderador" ? "Moderador" : "Aluno"}</span>
                 </div>
                 <hr />
                 <button type="button" onClick={() => navigate("/boas-vindas")}><Sparkles />Rever a tela de boas-vindas</button>
-                <button type="button" onClick={restaurar}><RotateCcw />Restaurar dados de exemplo</button>
+                {modo === "local" && <button type="button" onClick={recomecar}><RotateCcw />Recomeçar a demonstração</button>}
                 <button type="button" onClick={sair}><LogOut />Sair</button>
               </div>
             )}
@@ -120,6 +134,9 @@ export default function Shell({ menu }) {
       </MenuCheio>
 
       <main className="app-main" key={pathname}>
+        {modo === "local" && (
+          <p className="faixa-modo" role="note">Modo local de demonstração: os dados ficam só neste navegador. Configure o Firebase para uso real.</p>
+        )}
         <Outlet />
       </main>
       {/* grão só nas telas internas: sobre o vídeo, a mistura custa um quadro a cada quadro */}

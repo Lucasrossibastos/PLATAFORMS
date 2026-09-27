@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  CICLO_TEMPLATES, DIAS, DISP_PADRAO, MATERIAS_FLAT,
+  CICLO_TEMPLATES, DIAS, DISP_PADRAO, MATERIAS_FLAT, dividirSessoes,
   expandirAlocacoes, gerarSemana, recalcularPlanoInteligente, semanaKey, hojeISO,
 } from "./nucleo.js";
 
@@ -101,5 +101,20 @@ describe("prioridade das pendências no recálculo (correções 6, 7 e 8)", () =
     const { resumo } = recalcularPlanoInteligente(ciclo, DISP_PADRAO, semana, [grande], [], { hoje: "dom" });
     expect(resumo.minutosSemEspaco).toBe(300 - DISP_PADRAO.dom);
     expect(resumo.naoCouberam[0].materiaId).toBe("quimica");
+  });
+});
+
+describe("dividirSessoes (correção 11)", () => {
+  it("sessões equilibradas, no menor número possível, sem passar do máximo", () => {
+    expect(dividirSessoes(105, 90)).toEqual([55, 50]);
+    expect(dividirSessoes(180, 90)).toEqual([90, 90]);
+    expect(dividirSessoes(185, 90)).toEqual([65, 60, 60]);
+    expect(dividirSessoes(60, 90)).toEqual([60]);
+    expect(dividirSessoes(97, 45)).toEqual([33, 32, 32]);
+    [[105, 90], [185, 90], [97, 45], [240, 80]].forEach(([t, m]) => {
+      const s = dividirSessoes(t, m);
+      expect(s.reduce((a, b) => a + b, 0)).toBe(t);
+      expect(Math.max(...s)).toBeLessThanOrEqual(m);
+    });
   });
 });

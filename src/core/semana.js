@@ -40,8 +40,14 @@ function comDiaDaRevisao(metas, ctx, chave) {
   return metas;
 }
 
+/* Dias antes do início do plano (ctx.inicio) não recebem metas: quem começa
+   no meio da semana não nasce com atrasos de dias em que o plano nem existia. */
 export function gerarSemanaNova(ctx, chave) {
-  const bruta = gerarSemana(ctx.ciclo, ctx.disp, ctx.revisoes, { semana: chave, conteudoDaVez: ctx.conteudoDaVez });
+  const datas = datasDaSemana(chave);
+  const disp = ctx.inicio && ctx.inicio > chave
+    ? Object.fromEntries(DIAS.map((d) => [d.k, datas[d.k] < ctx.inicio ? 0 : Number(ctx.disp?.[d.k]) || 0]))
+    : ctx.disp;
+  const bruta = gerarSemana(ctx.ciclo, disp, ctx.revisoes, { semana: chave, conteudoDaVez: ctx.conteudoDaVez });
   comDiaDaRevisao(bruta, ctx, chave);
   const metas = vazia();
   DIAS.forEach((d) => { metas[d.k] = bruta[d.k].map((m) => limpa(m, `${chave}:`)); });

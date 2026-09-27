@@ -6,6 +6,7 @@ import "./styles/ui.css";
 import "./styles/hero.css";
 import "./styles/app.css";
 import "./styles/conteudo.css";
+import "./styles/plataforma.css";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>

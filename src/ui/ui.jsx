@@ -1,6 +1,5 @@
 import { useEffect, useId, useRef } from "react";
-import { X } from "lucide-react";
-import { MATERIAS_FLAT, topicosDaMateria } from "../core/nucleo.js";
+import { AlertCircle, Loader2, X } from "lucide-react";
 import { linhasDe, partesDe } from "../textos.js";
 
 export const APP_NOME = "aprova";
@@ -130,41 +129,61 @@ export function Dialogo({ aberto, aoFechar, titulo, largura = 480, children, cla
   );
 }
 
-export function Campo({ rotulo, ajuda, children }) {
+export function Campo({ rotulo, ajuda, erro, children }) {
   return (
-    <label className="campo">
+    <label className={`campo${erro ? " campo--erro" : ""}`}>
       <span>{rotulo}</span>
       {children}
-      {ajuda && <small>{ajuda}</small>}
+      {erro ? <small className="campo-erro" role="alert">{erro}</small> : ajuda && <small>{ajuda}</small>}
     </label>
   );
 }
 
-/* Matéria → tópico em cascata, por id. Mostra os subtópicos como guia. */
-export function MateriaTopico({ valor, aoMudar, rotuloTopico = "Tópico", topicoObrigatorio = false }) {
-  const topicos = topicosDaMateria(valor.materiaId);
-  const sel = topicos.find((t) => t.id === valor.topicoId);
+export function MensagemErro({ erro, className = "" }) {
+  if (!erro) return null;
+  const texto = typeof erro === "string" ? erro : erro.message || "Algo deu errado. Tente de novo.";
+  return <p className={`aviso aviso--erro ${className}`} role="alert"><AlertCircle aria-hidden="true" />{texto}</p>;
+}
+
+export function Carregando({ texto = "Carregando…" }) {
+  return <div className="carregando" role="status"><Loader2 aria-hidden="true" />{texto}</div>;
+}
+
+/* Abas simples: itens [{ k, label, icone? }] */
+export function Abas({ itens, ativa, aoMudar, rotulo }) {
   return (
-    <>
-      <Campo rotulo="Matéria">
-        <select className="entrada" value={valor.materiaId} onChange={(e) => aoMudar({ materiaId: e.target.value, topicoId: "" })}>
-          <option value="">Selecione…</option>
-          {MATERIAS_FLAT.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
-        </select>
-      </Campo>
-      <Campo rotulo={rotuloTopico}>
-        <select className="entrada" value={valor.topicoId} disabled={!valor.materiaId}
-          onChange={(e) => aoMudar({ ...valor, topicoId: e.target.value })}>
-          <option value="">{valor.materiaId ? (topicoObrigatorio ? "Selecione o tópico…" : "Tópico (opcional)") : "Escolha a matéria primeiro"}</option>
-          {topicos.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
-        </select>
-      </Campo>
-      {sel && (
-        <div className="guia">
-          <span className="eyebrow">Subtópicos</span>
-          <div>{sel.subs.map((s) => <span key={s}>{s}</span>)}</div>
+    <div className="abas abas--pagina" role="tablist" aria-label={rotulo}>
+      {itens.map((t) => (
+        <button key={t.k} type="button" role="tab" aria-selected={ativa === t.k} onClick={() => aoMudar(t.k)}>
+          {t.icone && <t.icone aria-hidden="true" />}{t.label}{t.contador != null && <span className="contador num">{t.contador}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* Confirmação com texto e ação; `perigo` pinta o botão de vermelho. */
+export function Confirmar({ aberto, titulo, children, rotulo = "Confirmar", perigo, ocupado, erro, aoConfirmar, aoFechar, largura = 460 }) {
+  return (
+    <Dialogo aberto={aberto} aoFechar={aoFechar} titulo={titulo} largura={largura}>
+      <div className="form">
+        {children}
+        <MensagemErro erro={erro} />
+        <div className="dialogo-acoes">
+          <Botao variante="vidro" onClick={aoFechar}>Cancelar</Botao>
+          <Botao variante={perigo ? "perigo" : "solido"} disabled={ocupado} onClick={aoConfirmar}>{ocupado ? "Salvando…" : rotulo}</Botao>
         </div>
-      )}
-    </>
+      </div>
+    </Dialogo>
+  );
+}
+
+export function Tile({ valor, rotulo, detalhe, tom }) {
+  return (
+    <div className={`stat-cartao${tom ? ` stat-cartao--${tom}` : ""}`}>
+      <strong className="num">{valor}</strong>
+      <span>{rotulo}</span>
+      {detalhe && <small>{detalhe}</small>}
+    </div>
   );
 }

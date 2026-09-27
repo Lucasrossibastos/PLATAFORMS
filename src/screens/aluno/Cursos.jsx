@@ -2,17 +2,26 @@ import { useMemo, useRef, useState } from "react";
 import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Check, ChevronRight, Video } from "lucide-react";
 import { CATEGORIAS_PLAYLIST } from "../../core/nucleo.js";
-import { useApp, useFrasesDoAluno } from "../../state/AppContext.jsx";
-import { playlistVisivel, progressoPlaylist } from "../../midia.js";
+import { useApp } from "../../state/AppContext.jsx";
+import { useAcao, useAluno, useAssistidos, useEu, useFrases, usePlano, usePlaylists } from "../../state/hooks.js";
+import { progressoPlaylist } from "../../midia.js";
+import { playlistVisivelPara } from "../../services/conteudo.js";
 import { CapaPlaylist, MiniaturaVideo, PlayerVideo, Relevancia, nomeCategoria } from "../../ui/Midia.jsx";
-import { Barra, Botao, TituloPagina, Vazio } from "../../ui/ui.jsx";
+import { Barra, Botao, Carregando, MensagemErro, TituloPagina, Vazio } from "../../ui/ui.jsx";
 
+// playlists publicadas que valem para o vestibular, o curso e o plano do aluno
 function usePlaylistsDoAluno() {
-  const { db, usuario } = useApp();
-  const vestibular = db.alunos.find((a) => a.id === usuario.uid)?.vestibular;
-  const assistidos = db.assistidos?.[usuario.uid] || {};
-  const playlists = (db.playlists || []).filter((pl) => playlistVisivel(pl, vestibular));
-  return { playlists, assistidos };
+  const eu = useEu();
+  const aluno = useAluno(eu.id);
+  const plano = usePlano(eu.id);
+  const todas = usePlaylists();
+  const assistidos = useAssistidos(eu.id) || {};
+  const playlists = useMemo(() => {
+    if (!todas || aluno === undefined || plano === undefined) return null;
+    const materias = plano ? plano.materias.map((m) => m.materiaId) : null;
+    return todas.filter((pl) => playlistVisivelPara(pl, aluno || eu, materias));
+  }, [todas, aluno, plano, eu]);
+  return { playlists, assistidos, aluno: aluno || eu };
 }
 
 function CartaoPlaylist({ playlist, assistidos }) {
@@ -34,9 +43,10 @@ function CartaoPlaylist({ playlist, assistidos }) {
 }
 
 export function CursosAluno() {
-  const { playlists, assistidos } = usePlaylistsDoAluno();
-  const t = useFrasesDoAluno();
+  const { playlists, assistidos, aluno } = usePlaylistsDoAluno();
+  const t = useFrases(aluno);
   const [params, setParams] = useSearchParams();
+  if (!playlists) return <Carregando />;
   const categoria = params.get("categoria") || "todas";
   const usadas = CATEGORIAS_PLAYLIST.filter((c) => playlists.some((pl) => pl.categoria === c.id));
   const lista = categoria === "todas" ? playlists : playlists.filter((pl) => pl.categoria === categoria);
@@ -65,9 +75,10 @@ export function CursosAluno() {
 
 export function PlaylistAluno() {
   const { id } = useParams();
-  const { usuario, mudar } = useApp();
+  const { s, usuario } = useApp();
   const { playlists, assistidos } = usePlaylistsDoAluno();
-  const playlist = playlists.find((pl) => pl.id === id);
+  const { executar, erro } = useAcao();
+  const playlist = playlists?.find((pl) => pl.id === id);
   const [videoId, setVideoId] = useState(null);
   const topo = useRef(null);
   const atual = useMemo(() => {
@@ -75,15 +86,13 @@ export function PlaylistAluno() {
     return playlist.videos.find((v) => v.id === videoId) || playlist.videos.find((v) => !assistidos[v.id]) || playlist.videos[0];
   }, [playlist, videoId, assistidos]);
 
+  if (!playlists) return <Carregando />;
   if (!playlist) return <Navigate to=".." relative="path" replace />;
   const p = progressoPlaylist(playlist, assistidos);
   const idx = atual ? playlist.videos.indexOf(atual) : -1;
   const proximo = playlist.videos[idx + 1];
 
-  const marcar = (video, valor) => mudar((d) => {
-    d.assistidos = d.assistidos || {};
-    d.assistidos[usuario.uid] = { ...(d.assistidos[usuario.uid] || {}), [video.id]: valor };
-  });
+  const marcar = (video, valor) => executar(() => s.playlists.marcarAssistido(usuario.uid, video.id, valor));
   const abrir = (v) => {
     setVideoId(v.id);
     topo.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -108,6 +117,7 @@ export function PlaylistAluno() {
         </div>
       </header>
 
+      <MensagemErro erro={erro} />
       <section className="palco" aria-label="Aula atual">
         <PlayerVideo video={atual} aoTerminar={() => atual && !assistidos[atual.id] && concluirEAvancar()} />
         {atual && (

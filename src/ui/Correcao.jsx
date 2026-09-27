@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { FileImage, Maximize2, ZoomIn, ZoomOut } from "lucide-react";
 import { COMPETENCIAS_ENEM, fmtData } from "../core/nucleo.js";
 import { COR_NA_FOLHA, TIPOS_MARCACAO, competencia } from "../redacao.js";
-import { useArquivoUrl } from "../state/arquivos.js";
+import { useArquivoUrl } from "../state/hooks.js";
 
 const TEXTO_NO_MARCADOR = { c1: "#fff", c2: "#111", c3: "#111", c4: "#111", c5: "#111" };
 const nomeTipo = (id) => TIPOS_MARCACAO.find((t) => t.id === id)?.nome || "";
@@ -24,7 +24,7 @@ export function FolhaCorrigida({ foto, marcacoes = [], ativa, aoSelecionar, edit
       <div className="folha-vazia">
         <FileImage aria-hidden="true" />
         <strong>{faltando ? "Foto indisponível neste aparelho" : "Sem foto da redação"}</strong>
-        <p>{faltando ? "A foto foi anexada em outro navegador. Enquanto a plataforma não tem servidor, ela só aparece onde foi enviada." : "O professor não anexou a foto desta redação."}</p>
+        <p>{faltando ? "Não foi possível carregar a foto. No modo local (sem servidor), ela só aparece no navegador onde foi enviada." : "O professor não anexou a foto desta redação."}</p>
       </div>
     );
   }

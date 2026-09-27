@@ -1,7 +1,7 @@
 import { ExternalLink, PlayCircle, VideoOff } from "lucide-react";
 import { CATEGORIAS_PLAYLIST } from "../core/nucleo.js";
 import { analisarLink, RELEVANCIAS } from "../midia.js";
-import { useArquivoUrl } from "../state/arquivos.js";
+import { useArquivoUrl } from "../state/hooks.js";
 
 export const nomeCategoria = (id) => CATEGORIAS_PLAYLIST.find((c) => c.id === id)?.nome || "Outros cursos";
 
@@ -67,8 +67,8 @@ function ArquivoLocal({ video, aoTerminar }) {
   const { url, carregando, faltando } = useArquivoUrl(video.arquivo);
   if (carregando) return <Aviso titulo="Carregando o vídeo…" />;
   if (faltando || !url) {
-    return <Aviso icone={VideoOff} titulo="Vídeo indisponível neste aparelho"
-      texto="O arquivo foi anexado em outro navegador. Enquanto a plataforma não tem servidor, arquivos enviados só tocam onde foram anexados. Links do YouTube, Vimeo ou Drive funcionam em qualquer aparelho." />;
+    return <Aviso icone={VideoOff} titulo="Vídeo indisponível"
+      texto="Não foi possível carregar o arquivo. No modo local (sem servidor), arquivos enviados só tocam no navegador onde foram anexados; links do YouTube, Vimeo ou Drive funcionam em qualquer aparelho." />;
   }
   return <video key={url} className="player" src={url} controls playsInline onEnded={aoTerminar} />;
 }
@@ -94,5 +94,5 @@ export function PlayerVideo({ video, aoTerminar }) {
       </Aviso>
     );
   }
-  return <Aviso titulo={video.titulo} texto="Vídeo de exemplo, ainda sem arquivo. O moderador anexa o arquivo ou o link em Cursos em vídeo." />;
+  return <Aviso titulo={video.titulo} texto="Esta aula ainda não tem arquivo nem link." />;
 }

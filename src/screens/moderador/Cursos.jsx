@@ -3,26 +3,51 @@ import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowDown, ArrowLeft, ArrowUp, Eye, EyeOff, ImagePlus, Link2, Paperclip, Pencil, Plus, Settings2, Trash2, UploadCloud, Video,
 } from "lucide-react";
-import { CATEGORIAS_PLAYLIST, CORES_PLAYLIST, VESTIBULARES, vestInfo } from "../../core/nucleo.js";
+import { CATEGORIAS_PLAYLIST, CORES_PLAYLIST } from "../../core/nucleo.js";
 import { useApp } from "../../state/AppContext.jsx";
-import { apagarArquivo, comprimirImagem, lerDuracaoVideo, salvarArquivo } from "../../state/arquivos.js";
+import { useAcao, usePlaylists } from "../../state/hooks.js";
+import { comprimirImagem, lerDuracaoVideo } from "../../state/arquivos.js";
 import { RELEVANCIAS, analisarLink, fmtDuracao } from "../../midia.js";
 import { CapaPlaylist, MiniaturaVideo, PlayerVideo, nomeCategoria } from "../../ui/Midia.jsx";
-import { Botao, Campo, Dialogo, TituloPagina, Vazio } from "../../ui/ui.jsx";
+import { Botao, Campo, Carregando, Dialogo, MensagemErro, TituloPagina, Vazio } from "../../ui/ui.jsx";
 
-const PLAYLIST_VAZIA = { titulo: "", descricao: "", categoria: "introducao", cor: CORES_PLAYLIST[0], para: "todos", capa: null };
-const publico = (pl) => (pl.para === "todos" ? "todos os alunos" : `só ${vestInfo(pl.para).nome}`);
+const PLAYLIST_VAZIA = { titulo: "", descricao: "", categoria: "introducao", cor: CORES_PLAYLIST[0], vestibularIds: [], cursoIds: [], materiaId: "", topicoId: "", capa: null };
 
-function CamposPlaylist({ form, setForm }) {
+function publico(pl, ind) {
+  const partes = [
+    (pl.vestibularIds || []).length ? pl.vestibularIds.map((id) => ind?.nomeVestibular(id)).join(", ") : null,
+    (pl.cursoIds || []).length ? pl.cursoIds.map((id) => ind?.nomeCurso(id)).join(", ") : null,
+    pl.materiaId ? `quem tem ${ind?.nomeMateria(pl.materiaId)} no plano` : null,
+  ].filter(Boolean);
+  return partes.length ? `só ${partes.join(" · ")}` : "todos os alunos";
+}
+
+function MultiSelecao({ rotulo, opcoes, valor, aoMudar, ajuda }) {
+  return (
+    <fieldset className="lista-checagem lista-checagem--linha">
+      <legend>{rotulo}</legend>
+      {opcoes.map((o) => (
+        <label key={o.id} className="checagem">
+          <input type="checkbox" checked={valor.includes(o.id)} onChange={(e) => aoMudar(e.target.checked ? [...valor, o.id] : valor.filter((x) => x !== o.id))} />{o.nome}
+        </label>
+      ))}
+      {ajuda && <small className="previa-linha">{ajuda}</small>}
+    </fieldset>
+  );
+}
+
+function CamposPlaylist({ form, setForm, playlistId }) {
+  const { s, ind } = useApp();
   const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState(null);
   const escolherCapa = async (e) => {
     const arquivo = e.target.files?.[0];
     if (!arquivo) return;
-    setEnviando(true);
+    setEnviando(true); setErro(null);
     try {
-      const ref = await salvarArquivo(await comprimirImagem(arquivo, 1280, 0.82));
+      const ref = await s.playlists.enviarArquivo(playlistId || "nova", await comprimirImagem(arquivo, 1280, 0.82), { tipo: "capa" });
       setForm((f) => ({ ...f, capa: ref }));
-    } finally { setEnviando(false); }
+    } catch (err) { setErro(err); } finally { setEnviando(false); e.target.value = ""; }
   };
   return (
     <div className="form">
@@ -38,13 +63,23 @@ function CamposPlaylist({ form, setForm }) {
             {CATEGORIAS_PLAYLIST.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
         </Campo>
-        <Campo rotulo="Visível para">
-          <select className="entrada" value={form.para} onChange={(e) => setForm((f) => ({ ...f, para: e.target.value }))}>
-            <option value="todos">Todos os alunos</option>
-            {VESTIBULARES.map((v) => <option key={v.id} value={v.id}>Só {v.nome}</option>)}
+        <Campo rotulo="Matéria (opcional)" ajuda="Com matéria, aparece só para quem a tem no plano.">
+          <select className="entrada" value={form.materiaId || ""} onChange={(e) => setForm((f) => ({ ...f, materiaId: e.target.value, topicoId: "" }))}>
+            <option value="">Nenhuma</option>{ind?.materias.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
           </select>
         </Campo>
       </div>
+      {form.materiaId && (
+        <Campo rotulo="Tópico (opcional)">
+          <select className="entrada" value={form.topicoId || ""} onChange={(e) => setForm((f) => ({ ...f, topicoId: e.target.value }))}>
+            <option value="">Nenhum</option>{ind?.topicosDaMateria(form.materiaId).map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
+          </select>
+        </Campo>
+      )}
+      <MultiSelecao rotulo="Vestibulares" opcoes={ind?.vestibulares || []} valor={form.vestibularIds || []} ajuda="Nenhum marcado: vale para todos."
+        aoMudar={(v) => setForm((f) => ({ ...f, vestibularIds: v }))} />
+      <MultiSelecao rotulo="Cursos" opcoes={ind?.cursos || []} valor={form.cursoIds || []} ajuda="Nenhum marcado: vale para todos."
+        aoMudar={(v) => setForm((f) => ({ ...f, cursoIds: v }))} />
       <div className="campo">
         <span>Cor</span>
         <div className="cores">
@@ -68,29 +103,31 @@ function CamposPlaylist({ form, setForm }) {
           </div>
         </div>
       </div>
+      <MensagemErro erro={erro} />
     </div>
   );
 }
 
 export function CursosModerador() {
-  const { db, mudar } = useApp();
+  const { s, ind } = useApp();
   const navigate = useNavigate();
   const [nova, setNova] = useState(false);
   const [form, setForm] = useState(PLAYLIST_VAZIA);
-  const playlists = db.playlists || [];
+  const playlists = usePlaylists();
+  const { executar, ocupado, erro } = useAcao();
+  if (!playlists) return <Carregando />;
 
-  const criar = () => {
-    const id = `pl-${Date.now()}`;
-    mudar((d) => { d.playlists = [...(d.playlists || []), { id, ...form, titulo: form.titulo.trim(), publicada: false, videos: [] }]; });
+  const criar = () => executar(async () => {
+    const id = await s.playlists.salvar({ ...form, publicada: false, videos: [], ordem: playlists.length });
     setNova(false);
     setForm(PLAYLIST_VAZIA);
     navigate(id);
-  };
+  });
 
   return (
     <>
       <TituloPagina eyebrow="Conteúdo" frase="Cursos em *vídeo*"
-        texto="Crie playlists e anexe as aulas. Só as playlists publicadas aparecem para os alunos."
+        texto="Crie playlists e anexe as aulas. Só as publicadas aparecem, e só para os alunos do vestibular, curso e plano escolhidos."
         direita={<Botao variante="solido" icone={Plus} onClick={() => setNova(true)}>Nova playlist</Botao>} />
 
       {CATEGORIAS_PLAYLIST.map((cat) => {
@@ -106,7 +143,7 @@ export function CursosModerador() {
                   <div className="cartao-curso-corpo">
                     <strong>{pl.titulo}</strong>
                     <span className={`etiqueta${pl.publicada ? " etiqueta--ok" : ""}`}>{pl.publicada ? "Publicada" : "Rascunho"}</span>
-                    <span className="cartao-curso-meta">{pl.videos.length} {pl.videos.length === 1 ? "vídeo" : "vídeos"} · {publico(pl)}</span>
+                    <span className="cartao-curso-meta">{pl.videos.length} {pl.videos.length === 1 ? "vídeo" : "vídeos"} · {publico(pl, ind)}</span>
                   </div>
                 </Link>
               ))}
@@ -120,40 +157,43 @@ export function CursosModerador() {
         <CamposPlaylist form={form} setForm={setForm} />
         <div className="dialogo-acoes">
           <Botao variante="vidro" onClick={() => setNova(false)}>Cancelar</Botao>
-          <Botao variante="solido" icone={Plus} disabled={!form.titulo.trim()} onClick={criar}>Criar e adicionar vídeos</Botao>
+          <Botao variante="solido" icone={Plus} disabled={!form.titulo.trim() || ocupado} onClick={criar}>Criar e adicionar vídeos</Botao>
         </div>
+        <MensagemErro erro={erro} />
       </Dialogo>
     </>
   );
 }
 
-function FormVideo({ inicial, aoSalvar, aoCancelar }) {
+function FormVideo({ inicial, playlistId, aoSalvar, aoCancelar }) {
+  const { s } = useApp();
   const [v, setV] = useState(inicial || { id: `v-${Date.now()}`, titulo: "", descricao: "", duracao: "", relevancia: "", fonte: "link", url: "", arquivo: null, arquivoNome: "" });
   const [enviando, setEnviando] = useState(false);
+  const [progresso, setProgresso] = useState(null);
   const [erro, setErro] = useState("");
   const link = v.fonte === "link" ? analisarLink(v.url) : null;
-  const valido = v.titulo.trim() && ((v.fonte === "link" && link) || (v.fonte === "arquivo" && v.arquivo) || v.fonte === "exemplo");
+  const valido = v.titulo.trim() && ((v.fonte === "link" && link) || (v.fonte === "arquivo" && v.arquivo));
 
   const escolherArquivo = async (e) => {
     const arquivo = e.target.files?.[0];
     if (!arquivo) return;
     setEnviando(true); setErro("");
     try {
-      const [ref, dur] = await Promise.all([salvarArquivo(arquivo), lerDuracaoVideo(arquivo)]);
+      const [ref, dur] = await Promise.all([s.playlists.enviarArquivo(playlistId, arquivo, { aoProgredir: setProgresso }), lerDuracaoVideo(arquivo)]);
       setV((x) => ({
         ...x, fonte: "arquivo", arquivo: ref, arquivoNome: arquivo.name,
         titulo: x.titulo || arquivo.name.replace(/\.[^.]+$/, ""), duracao: x.duracao || fmtDuracao(dur),
       }));
     } catch {
-      setErro("Não foi possível guardar o arquivo neste navegador. Tente um link do YouTube, Vimeo ou Drive.");
-    } finally { setEnviando(false); }
+      setErro("Não foi possível enviar o arquivo. Tente de novo ou use um link do YouTube, Vimeo ou Drive.");
+    } finally { setEnviando(false); setProgresso(null); }
   };
 
   return (
     <div className="form">
       <div className="abas" role="tablist">
         {[{ k: "link", label: "Colar link", icone: Link2 }, { k: "arquivo", label: "Enviar arquivo", icone: UploadCloud }].map((t) => (
-          <button key={t.k} type="button" role="tab" aria-selected={v.fonte === t.k || (t.k === "link" && v.fonte === "exemplo")}
+          <button key={t.k} type="button" role="tab" aria-selected={v.fonte === t.k}
             onClick={() => setV((x) => ({ ...x, fonte: t.k }))}><t.icone aria-hidden="true" />{t.label}</button>
         ))}
       </div>
@@ -161,8 +201,8 @@ function FormVideo({ inicial, aoSalvar, aoCancelar }) {
       {v.fonte === "arquivo" ? (
         <label className="soltar">
           <UploadCloud aria-hidden="true" />
-          <strong>{enviando ? "Guardando o vídeo…" : v.arquivoNome || "Escolher arquivo de vídeo (.mp4, .webm, .mov)"}</strong>
-          <small>Enquanto a plataforma não tem servidor, o arquivo fica só neste navegador. Para os alunos verem em outros aparelhos, use um link.</small>
+          <strong>{enviando ? `Enviando o vídeo…${progresso != null ? ` ${Math.round(progresso * 100)}%` : ""}` : v.arquivoNome || "Escolher arquivo de vídeo (.mp4, .webm, .mov)"}</strong>
+          <small>Com o Firebase configurado, o vídeo vai para o armazenamento de arquivos. No modo local, fica só neste navegador.</small>
           <input type="file" accept="video/*" className="sr-only" onChange={escolherArquivo} />
         </label>
       ) : (
@@ -202,15 +242,19 @@ function FormVideo({ inicial, aoSalvar, aoCancelar }) {
 
 export function PlaylistModerador() {
   const { id } = useParams();
-  const { db, mudar } = useApp();
+  const { s, ind } = useApp();
   const navigate = useNavigate();
-  const playlist = (db.playlists || []).find((pl) => pl.id === id);
+  const playlists = usePlaylists();
+  const playlist = playlists?.find((pl) => pl.id === id);
   const [dados, setDados] = useState(null); // formulário "Dados da playlist"
   const [video, setVideo] = useState(null); // null | "novo" | objeto do vídeo
   const [excluir, setExcluir] = useState(null); // "playlist" | id do vídeo
+  const { executar, erro } = useAcao();
 
+  if (!playlists) return <Carregando />;
   if (!playlist) return <Navigate to=".." relative="path" replace />;
-  const alterar = (fn) => mudar((d) => { fn(d.playlists.find((pl) => pl.id === id)); });
+  const alterar = (fn) => executar(() => { const copia = structuredClone(playlist); fn(copia); return s.playlists.salvar(copia); });
+  const apagarArquivo = (ref) => s.playlists.removerArquivo(ref);
 
   const mover = (i, passo) => alterar((pl) => {
     const j = i + passo;
@@ -233,12 +277,10 @@ export function PlaylistModerador() {
     alterar((pl) => { pl.videos = pl.videos.filter((x) => x.id !== v.id); });
     setExcluir(null);
   };
-  const excluirPlaylist = () => {
-    playlist.videos.forEach((v) => apagarArquivo(v.arquivo));
-    apagarArquivo(playlist.capa);
-    mudar((d) => { d.playlists = d.playlists.filter((pl) => pl.id !== id); });
+  const excluirPlaylist = () => executar(async () => {
+    await s.playlists.remover(id);
     navigate("..", { relative: "path" });
-  };
+  });
 
   return (
     <>
@@ -246,7 +288,7 @@ export function PlaylistModerador() {
       <div className="cartao cabeca-editor">
         <div className="cabeca-editor-capa"><CapaPlaylist playlist={playlist} /></div>
         <div className="cabeca-editor-texto">
-          <span className="eyebrow">{nomeCategoria(playlist.categoria)} · {publico(playlist)}</span>
+          <span className="eyebrow">{nomeCategoria(playlist.categoria)} · {publico(playlist, ind)}</span>
           <h1>{playlist.titulo}</h1>
           <span className={`etiqueta${playlist.publicada ? " etiqueta--ok" : ""}`}>{playlist.publicada ? "Publicada: os alunos já veem" : "Rascunho: só você vê"}</span>
         </div>
@@ -266,6 +308,7 @@ export function PlaylistModerador() {
         </div>
       </div>
 
+      <MensagemErro erro={erro} />
       <div className="linha-titulo-secao">
         <h2 className="subtitulo">Vídeos <span className="num">({playlist.videos.length})</span></h2>
         <Botao variante="solido" tamanho="sm" icone={Plus} onClick={() => setVideo("novo")}>Adicionar vídeo</Botao>
@@ -284,7 +327,6 @@ export function PlaylistModerador() {
               <span>
                 {v.fonte === "arquivo" && <><Paperclip aria-hidden="true" />{v.arquivoNome || "arquivo enviado"}</>}
                 {v.fonte === "link" && <><Link2 aria-hidden="true" />{analisarLink(v.url)?.provedor || "link"}</>}
-                {v.fonte === "exemplo" && "vídeo de exemplo, sem arquivo"}
                 {v.duracao && ` · ${v.duracao}`}
               </span>
             </div>
@@ -306,12 +348,12 @@ export function PlaylistModerador() {
       <Dialogo aberto={!!dados} aoFechar={() => setDados(null)} titulo="Dados da playlist" largura={520}>
         {dados && (
           <>
-            <CamposPlaylist form={dados} setForm={(fn) => setDados((f) => (typeof fn === "function" ? fn(f) : fn))} />
+            <CamposPlaylist form={dados} playlistId={playlist.id} setForm={(fn) => setDados((f) => (typeof fn === "function" ? fn(f) : fn))} />
             <div className="dialogo-acoes">
               <Botao variante="vidro" onClick={() => setDados(null)}>Cancelar</Botao>
               <Botao variante="solido" disabled={!dados.titulo.trim()} onClick={() => {
                 if (playlist.capa && playlist.capa !== dados.capa) apagarArquivo(playlist.capa);
-                alterar((pl) => { Object.assign(pl, { titulo: dados.titulo.trim(), descricao: dados.descricao, categoria: dados.categoria, cor: dados.cor, para: dados.para, capa: dados.capa }); });
+                alterar((pl) => { Object.assign(pl, { titulo: dados.titulo.trim(), descricao: dados.descricao, categoria: dados.categoria, cor: dados.cor, vestibularIds: dados.vestibularIds || [], cursoIds: dados.cursoIds || [], materiaId: dados.materiaId || null, topicoId: dados.topicoId || null, capa: dados.capa }); });
                 setDados(null);
               }}>Salvar</Botao>
             </div>
@@ -320,7 +362,7 @@ export function PlaylistModerador() {
       </Dialogo>
 
       <Dialogo aberto={!!video} aoFechar={() => setVideo(null)} titulo={video === "novo" ? "Adicionar vídeo" : "Editar vídeo"} largura={560}>
-        {video && <FormVideo inicial={video === "novo" ? null : video} aoSalvar={salvarVideo} aoCancelar={() => setVideo(null)} />}
+        {video && <FormVideo inicial={video === "novo" ? null : video} playlistId={playlist.id} aoSalvar={salvarVideo} aoCancelar={() => setVideo(null)} />}
       </Dialogo>
     </>
   );

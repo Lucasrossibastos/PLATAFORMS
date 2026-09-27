@@ -1,20 +1,22 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { ArrowLeft, ExternalLink, PenLine, PlayCircle, Send } from "lucide-react";
-import { fmtData, modeloInfo, notaDevolutiva } from "../../core/nucleo.js";
-import { useApp, useFrasesDoAluno } from "../../state/AppContext.jsx";
-import { useArquivoUrl } from "../../state/arquivos.js";
-import { devolutivasDoAluno, evolucao, mediaDoTema } from "../../redacao.js";
+import { notaDevolutiva } from "../../core/nucleo.js";
+import { fmtDataLonga } from "../../core/datas.js";
+import { useApp } from "../../state/AppContext.jsx";
+import { useAluno, useArquivoUrl, useConfigRedacao, useDevolutivas, useEu, useFrases, usePlaylists } from "../../state/hooks.js";
+import { evolucao } from "../../redacao.js";
 import { EvolucaoNotas, FolhaCorrigida, ItemMarcacao, NotasCompetencias } from "../../ui/Correcao.jsx";
-import { TituloPagina, Vazio } from "../../ui/ui.jsx";
+import { Carregando, TituloPagina, Vazio } from "../../ui/ui.jsx";
 
 function CapaRedacao({ d }) {
+  const { ind } = useApp();
   const { url } = useArquivoUrl(d.foto);
-  const v = modeloInfo(d.vestibular);
+  const v = ind?.vestibular(d.vestibularId);
   if (url) return <div className="capa capa--foto"><img src={url} alt="" loading="lazy" /></div>;
   return (
-    <div className="capa capa--gerada" style={{ "--cor": v.cor }} aria-hidden="true">
-      <span className="capa-categoria">{v.nome}</span>
+    <div className="capa capa--gerada" style={{ "--cor": v?.cor || "var(--muted)" }} aria-hidden="true">
+      <span className="capa-categoria">{v?.nome || "Redação"}</span>
       <strong>Redação</strong>
       <PenLine className="capa-icone" />
     </div>
@@ -22,11 +24,16 @@ function CapaRedacao({ d }) {
 }
 
 export function RedacoesAluno() {
-  const { db, usuario } = useApp();
-  const t = useFrasesDoAluno();
-  const minhas = devolutivasDoAluno(db.devolutivas, usuario.uid);
+  const eu = useEu();
+  const aluno = useAluno(eu.id);
+  const t = useFrases(aluno || eu);
+  const minhas = useDevolutivas(eu.id);
+  const config = useConfigRedacao();
+  const playlists = usePlaylists() || [];
+  const { ind } = useApp();
+  if (!minhas) return <Carregando />;
   const pontos = evolucao(minhas);
-  const temAulas = (db.playlists || []).some((pl) => pl.publicada && pl.categoria === "redacao");
+  const temAulas = playlists.some((pl) => pl.categoria === "redacao");
 
   return (
     <>
@@ -36,7 +43,7 @@ export function RedacoesAluno() {
         <Send aria-hidden="true" />
         <div>
           <span className="eyebrow">Como enviar sua redação</span>
-          <p>{db.instrucoesRedacao}</p>
+          <p>{config?.instrucoes || "Combine com o professor como enviar sua redação."}</p>
         </div>
         {temAulas && <Link className="btn btn--vidro btn--sm" to="/aluno/cursos?categoria=redacao"><PlayCircle />Aulas de redação</Link>}
       </div>
@@ -62,8 +69,8 @@ export function RedacoesAluno() {
                   <strong>{d.tema}</strong>
                   <div className="cartao-redacao-rodape">
                     <span>
-                      Corrigida em <b>{fmtData(d.enviadaEm)}</b><br />
-                      Vestibular <b>{modeloInfo(d.vestibular).nome}</b>
+                      Corrigida em <b>{fmtDataLonga(d.enviadaEm)}</b><br />
+                      Vestibular <b>{ind?.nomeVestibular(d.vestibularId) || "—"}</b>
                     </span>
                     <span className="nota-cartao"><small>Nota</small><b>{nota.texto}</b></span>
                   </div>
@@ -79,31 +86,29 @@ export function RedacoesAluno() {
 
 export function RedacaoAluno() {
   const { id } = useParams();
-  const { db, usuario, mudar } = useApp();
-  const d = devolutivasDoAluno(db.devolutivas, usuario.uid).find((x) => x.id === id);
+  const { s, ind } = useApp();
+  const eu = useEu();
+  const minhas = useDevolutivas(eu.id);
+  const playlists = usePlaylists() || [];
+  const d = minhas?.find((x) => x.id === id);
   const [ativa, setAtiva] = useState(null);
 
   useEffect(() => {
-    if (d && !d.lida) {
-      mudar((rascunho) => {
-        const alvo = rascunho.devolutivas.find((x) => x.id === d.id);
-        alvo.lida = true;
-        alvo.lidaEm = new Date().toISOString();
-      });
-    }
-  }, [d, mudar]);
+    if (d && !d.lida) s.redacao.marcarLida(d.id).catch(() => {});
+  }, [d, s]);
 
+  if (!minhas) return <Carregando />;
   if (!d) return <Navigate to=".." relative="path" replace />;
   const nota = notaDevolutiva(d);
-  const media = mediaDoTema(db.devolutivas, d);
+  const media = d.mediaTema || null;
   const marcacoes = d.marcacoes || [];
-  const aulasRedacao = (db.playlists || []).find((pl) => pl.publicada && pl.categoria === "redacao");
+  const aulasRedacao = playlists.find((pl) => pl.categoria === "redacao");
 
   return (
     <>
       <Link to=".." relative="path" className="voltar"><ArrowLeft aria-hidden="true" />Todas as redações</Link>
       <header className="cabeca-redacao">
-        <span className="eyebrow">{modeloInfo(d.vestibular).nome} · corrigida em {fmtData(d.enviadaEm)}</span>
+        <span className="eyebrow">{ind?.nomeVestibular(d.vestibularId) || "Redação"} · corrigida em {fmtDataLonga(d.enviadaEm)}</span>
         <h1>{d.tema}</h1>
       </header>
 

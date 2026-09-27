@@ -1,8 +1,10 @@
 /* Frases editáveis pelo moderador.
    Marcação: *palavra* vira destaque; Enter quebra a linha (títulos grandes);
    {nome}, {saudacao} e {vestibular} são trocados pelos dados do aluno.
-   Resolução: texto do aluno (se houver) → texto geral → padrão abaixo.
-   🔥 FIREBASE: /config/texts (geral) e /students/{uid}/texts (por aluno). */
+   Resolução, do mais específico ao geral: texto do aluno → do curso dele →
+   do vestibular dele → texto geral → padrão abaixo.
+   Dados: config/textos { geral, porGrupo: { "curso:ID" | "vestibular:ID" }, corDestaque }
+          textosAluno/{uid} { textos } */
 
 export const COR_DESTAQUE_PADRAO = "#D9B56B";
 
@@ -34,21 +36,40 @@ export const TEXTOS = {
   "boasvindas.comMetas": { grupo: "boasvindas", tipo: "cinema", rotulo: "Segunda linha, em dia com metas", padrao: "Suas metas de hoje *já estão prontas*." },
   "boasvindas.semMetas": { grupo: "boasvindas", tipo: "cinema", rotulo: "Segunda linha, em dia livre", padrao: "Hoje é dia *livre*." },
 
-  "painel.dashboard.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título do Dashboard", padrao: "Metas de *hoje*" },
+  "painel.dashboard.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título da tela inicial", padrao: "Metas de *hoje*" },
   "painel.dashboard.vazioTitulo": { grupo: "painel", tipo: "linha", rotulo: "Dia sem metas: título", padrao: "Nenhuma meta para hoje" },
   "painel.dashboard.vazioTexto": { grupo: "painel", tipo: "paragrafo", rotulo: "Dia sem metas: texto", padrao: "Dia livre no seu plano. Use para revisar ou registrar estudo por fora." },
   "painel.semana.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título da Semana", padrao: "Sua *semana*" },
   "painel.semana.texto": { grupo: "painel", tipo: "paragrafo", rotulo: "Instrução da Semana", padrao: "Arraste uma meta para outro dia, ou toque nela e depois no dia. Só vale para esta semana; as próximas continuam automáticas." },
   "painel.boasvindas.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título da página Boas-Vindas", padrao: "Boas-vindas ao *curso*" },
+  "painel.plano.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título de Meu plano", padrao: "Meu plano de *estudos*" },
+  "painel.questoes.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título de Questões", padrao: "Suas *questões*" },
+  "painel.simulados.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título de Simulados", padrao: "Seus *simulados*" },
+  "painel.desempenho.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título de Desempenho", padrao: "Seu *desempenho*" },
+  "painel.materiais.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título de Materiais", padrao: "Materiais de *estudo*" },
   "painel.cursos.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título de Cursos em vídeo", padrao: "Cursos em *vídeo*" },
   "painel.redacao.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título de Redação", padrao: "Suas *redações*" },
 };
 
-export const textosIniciais = () => ({ geral: {}, porAluno: {}, corDestaque: COR_DESTAQUE_PADRAO });
+export const grupoDoCurso = (id) => `curso:${id}`;
+export const grupoDoVestibular = (id) => `vestibular:${id}`;
+
+/* Camadas que valem para um aluno, da mais específica à mais geral. */
+export function camadasDoAluno(config, { doAluno, vestibularId, cursoId } = {}) {
+  return [
+    doAluno,
+    cursoId && config?.porGrupo?.[grupoDoCurso(cursoId)],
+    vestibularId && config?.porGrupo?.[grupoDoVestibular(vestibularId)],
+    config?.geral,
+  ].filter(Boolean);
+}
 
 // Texto efetivo de uma chave. Campo vazio conta como "sem personalização".
-export function textoDe(textos, chave, uid) {
-  return (uid && textos?.porAluno?.[uid]?.[chave]) || textos?.geral?.[chave] || TEXTOS[chave]?.padrao || "";
+export function textoDe(config, chave, contexto = {}) {
+  for (const camada of camadasDoAluno(config, contexto)) {
+    if (String(camada[chave] ?? "").trim()) return camada[chave];
+  }
+  return TEXTOS[chave]?.padrao || "";
 }
 
 export function preencher(texto, vars = {}) {

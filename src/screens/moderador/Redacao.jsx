@@ -1,40 +1,48 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Camera, PenLine, Plus, Save, Send, Trash2 } from "lucide-react";
-import {
-  CANAIS_ENVIO, COMPETENCIAS_ENEM, VESTIBULARES, fmtData, hojeISO, modeloInfo, notaDevolutiva, rubricaPadrao,
-} from "../../core/nucleo.js";
+import { CANAIS_ENVIO, COMPETENCIAS_ENEM, notaDevolutiva, rubricaPadrao } from "../../core/nucleo.js";
+import { fmtDataLonga } from "../../core/datas.js";
 import { useApp } from "../../state/AppContext.jsx";
-import { apagarArquivo, comprimirImagem, salvarArquivo } from "../../state/arquivos.js";
+import { useAcao, useAlunos, useConfigRedacao, useDevolutivas } from "../../state/hooks.js";
+import { comprimirImagem } from "../../state/arquivos.js";
 import { NOTAS_COMPETENCIA, TIPOS_MARCACAO, competencia, statusDevolutiva } from "../../redacao.js";
 import { FolhaCorrigida, ItemMarcacao } from "../../ui/Correcao.jsx";
-import { Botao, Campo, TituloPagina, Vazio } from "../../ui/ui.jsx";
+import { Botao, Campo, Carregando, MensagemErro, TituloPagina, Vazio } from "../../ui/ui.jsx";
 
 function InstrucoesEnvio() {
-  const { db, mudar } = useApp();
-  const [texto, setTexto] = useState(db.instrucoesRedacao);
+  const { s } = useApp();
+  const config = useConfigRedacao();
+  const [texto, setTexto] = useState(null);
   const [salvo, setSalvo] = useState(false);
-  const mudou = texto !== db.instrucoesRedacao;
+  const { executar, ocupado, erro } = useAcao();
+  if (config === undefined) return null;
+  const atual = texto ?? config.instrucoes ?? "";
+  const mudou = atual !== (config.instrucoes ?? "");
   return (
     <section className="cartao form" aria-labelledby="t-instrucoes">
       <h2 id="t-instrucoes" className="subtitulo">Instruções de envio <small>o aluno vê isto na tela de redação</small></h2>
-      <textarea className="entrada" rows={2} value={texto} onChange={(e) => { setTexto(e.target.value); setSalvo(false); }} aria-labelledby="t-instrucoes" />
+      <textarea className="entrada" rows={2} value={atual} onChange={(e) => { setTexto(e.target.value); setSalvo(false); }} aria-labelledby="t-instrucoes" />
+      <MensagemErro erro={erro} />
       <div className="linha-acoes">
         {salvo && <span className="retorno-curto" role="status">Instruções salvas.</span>}
-        <Botao variante="vidro" tamanho="sm" icone={Save} disabled={!mudou || !texto.trim()}
-          onClick={() => { mudar((d) => { d.instrucoesRedacao = texto.trim(); }); setSalvo(true); }}>Salvar instruções</Botao>
+        <Botao variante="vidro" tamanho="sm" icone={Save} disabled={!mudou || !atual.trim() || ocupado}
+          onClick={() => executar(async () => { await s.redacao.salvarInstrucoes(atual); setTexto(null); setSalvo(true); })}>Salvar instruções</Botao>
       </div>
     </section>
   );
 }
 
 export function RedacoesModerador() {
-  const { db } = useApp();
+  const { ind } = useApp();
   const navigate = useNavigate();
+  const devolutivas = useDevolutivas();
+  const alunos = useAlunos();
   const [aluno, setAluno] = useState("todos");
   const [status, setStatus] = useState("todas");
-  const nomeAluno = (id) => db.alunos.find((a) => a.id === id)?.nome || "Aluno removido";
-  const lista = db.devolutivas
+  if (!devolutivas || !alunos) return <Carregando />;
+  const nomeAluno = (id) => alunos.find((a) => a.id === id)?.nome || "Aluno removido";
+  const lista = devolutivas
     .filter((d) => (aluno === "todos" || d.alunoId === aluno) && (status === "todas" || (status === "rascunho" ? d.status === "rascunho" : d.status === "enviada")))
     .sort((a, b) => (b.enviadaEm || b.recebidaEm || "").localeCompare(a.enviadaEm || a.recebidaEm || ""));
 
@@ -49,7 +57,7 @@ export function RedacoesModerador() {
       <div className="filtros-linha">
         <select className="entrada" value={aluno} onChange={(e) => setAluno(e.target.value)} aria-label="Filtrar por aluno">
           <option value="todos">Todos os alunos</option>
-          {db.alunos.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
+          {alunos.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
         </select>
         <div className="filtros" role="tablist" aria-label="Situação">
           {[["todas", "Todas"], ["rascunho", "Rascunhos"], ["enviadas", "Enviadas"]].map(([k, nome]) => (
@@ -67,10 +75,10 @@ export function RedacoesModerador() {
               <Link to={d.id} className="cartao linha-devolutiva">
                 <span className="linha-devolutiva-aluno">{nomeAluno(d.alunoId)}</span>
                 <span className="linha-devolutiva-tema">{d.tema || "Sem tema"}</span>
-                <span className="etiqueta"><i style={{ "--cor": modeloInfo(d.vestibular).cor }} />{modeloInfo(d.vestibular).nome}</span>
+                <span className="etiqueta"><i style={{ "--cor": ind?.vestibular(d.vestibularId)?.cor }} />{ind?.nomeVestibular(d.vestibularId) || "—"}</span>
                 <span className="linha-devolutiva-nota num">{notaDevolutiva(d).texto}</span>
                 <span className={`etiqueta${d.status === "rascunho" ? "" : d.lida ? " etiqueta--ok" : " etiqueta--rev"}`}>{statusDevolutiva(d)}</span>
-                <span className="linha-devolutiva-data num">{fmtData(d.enviadaEm || d.recebidaEm)}</span>
+                <span className="linha-devolutiva-data num">{fmtDataLonga(d.enviadaEm || d.recebidaEm)}</span>
               </Link>
             </li>
           ))}
@@ -80,48 +88,53 @@ export function RedacoesModerador() {
   );
 }
 
-function novaDevolutiva(alunos) {
+function novaDevolutiva(alunos, hoje) {
   const aluno = alunos[0];
-  const vest = aluno?.vestibular || "enem";
+  const vest = aluno?.vestibularId || "enem";
   return {
-    id: `dv-${Date.now()}`, alunoId: aluno?.id || "", tema: "", vestibular: vest, rubrica: rubricaPadrao(vest),
-    notas: {}, notaLivre: "", escalaLivre: 10, recebidaEm: hojeISO(), canal: "whatsapp",
+    alunoId: aluno?.id || "", tema: "", vestibularId: vest, rubrica: rubricaPadrao(vest),
+    notas: {}, notaLivre: "", escalaLivre: 10, recebidaEm: hoje, canal: "whatsapp",
     comentario: "", pontosFortes: "", aMelhorar: "", foto: null, marcacoes: [], proposta: "",
     status: "rascunho", enviadaEm: null, lida: false,
   };
 }
 
-// Uma instância por devolutiva: trocar de id nunca reaproveita o rascunho anterior.
 export function RedacaoModerador() {
   const { id } = useParams();
-  return <EditorDevolutiva key={id} id={id} />;
+  const devolutivas = useDevolutivas();
+  const alunos = useAlunos();
+  if (!devolutivas || !alunos) return <Carregando />;
+  return <EditorDevolutiva key={id} id={id} devolutivas={devolutivas} alunos={alunos} />;
 }
 
-function EditorDevolutiva({ id }) {
-  const { db, mudar } = useApp();
+function EditorDevolutiva({ id, devolutivas, alunos }) {
+  const { s, ind, hoje } = useApp();
   const navigate = useNavigate();
-  const salva = db.devolutivas.find((d) => d.id === id);
-  const [original] = useState(() => (id === "nova" ? novaDevolutiva(db.alunos) : salva ? structuredClone(salva) : null));
+  const salva = devolutivas.find((d) => d.id === id);
+  const [original] = useState(() => (id === "nova" ? novaDevolutiva(alunos, hoje) : salva ? structuredClone(salva) : null));
   const [f, setF] = useState(original);
   const [ativa, setAtiva] = useState(null);
   const [enviandoFoto, setEnviandoFoto] = useState(false);
   const [erro, setErro] = useState("");
   const [excluir, setExcluir] = useState(false);
+  const { executar, ocupado, erro: erroGravar } = useAcao();
 
   if (!f) return <Navigate to=".." relative="path" replace />;
   const muda = (campos) => { setErro(""); setF((x) => ({ ...x, ...campos })); };
   const nota = notaDevolutiva(f);
+  const apagarArquivo = (ref) => s.redacao.removerArquivo(ref);
 
   const escolherFoto = async (e) => {
     const arquivo = e.target.files?.[0];
     if (!arquivo) return;
     setEnviandoFoto(true);
     try {
-      const ref = await salvarArquivo(await comprimirImagem(arquivo));
+      if (!f.alunoId) { setErro("Escolha o aluno antes de anexar a foto."); return; }
+      const ref = await s.redacao.enviarFoto(f.alunoId, await comprimirImagem(arquivo));
       if (f.foto && f.foto !== original.foto) apagarArquivo(f.foto);
       muda({ foto: ref });
-    } catch {
-      setErro("Não foi possível ler essa imagem. Envie uma foto em JPG ou PNG.");
+    } catch (err) {
+      setErro(err?.codigo === "permissao" ? err.message : "Não foi possível enviar essa imagem. Envie uma foto em JPG ou PNG.");
     } finally { setEnviandoFoto(false); e.target.value = ""; }
   };
 
@@ -146,14 +159,13 @@ function EditorDevolutiva({ id }) {
     if (problema) { setErro(problema); return; }
     const final = {
       ...f, tema: f.tema.trim(),
-      ...(enviar ? { status: "enviada", enviadaEm: f.enviadaEm || hojeISO() } : {}),
+      ...(enviar ? { status: "enviada", enviadaEm: f.enviadaEm || hoje } : {}),
     };
-    if (original.foto && original.foto !== final.foto) apagarArquivo(original.foto);
-    mudar((d) => {
-      const i = d.devolutivas.findIndex((x) => x.id === final.id);
-      if (i >= 0) d.devolutivas[i] = final; else d.devolutivas.push(final);
+    executar(async () => {
+      await s.redacao.salvar({ ...final, ...(id !== "nova" ? { id } : {}) });
+      if (original.foto && original.foto !== final.foto) apagarArquivo(original.foto);
+      navigate("..", { relative: "path" });
     });
-    navigate("..", { relative: "path" });
   };
 
   const descartar = () => {
@@ -161,20 +173,19 @@ function EditorDevolutiva({ id }) {
     navigate("..", { relative: "path" });
   };
 
-  const apagar = () => {
-    apagarArquivo(f.foto);
-    if (original.foto !== f.foto) apagarArquivo(original.foto);
-    mudar((d) => { d.devolutivas = d.devolutivas.filter((x) => x.id !== f.id); });
+  const apagar = () => executar(async () => {
+    if (original.foto !== f.foto) apagarArquivo(f.foto);
+    await s.redacao.remover(id);
     navigate("..", { relative: "path" });
-  };
+  });
 
-  const trocarVestibular = (vestibular) => muda({ vestibular, rubrica: f.rubrica && salva ? f.rubrica : rubricaPadrao(vestibular) });
+  const trocarVestibular = (vestibularId) => muda({ vestibularId, rubrica: f.rubrica && salva ? f.rubrica : rubricaPadrao(vestibularId) });
 
   return (
     <>
       <Link to=".." relative="path" className="voltar"><ArrowLeft aria-hidden="true" />Todas as devolutivas</Link>
       <header className="cabeca-redacao">
-        <span className="eyebrow">{id === "nova" ? "Nova devolutiva" : statusDevolutiva(f)}{f.lidaEm ? ` em ${fmtData(f.lidaEm.slice(0, 10))}` : ""}</span>
+        <span className="eyebrow">{id === "nova" ? "Nova devolutiva" : statusDevolutiva(f)}{f.lidaEm ? ` em ${fmtDataLonga(f.lidaEm.slice(0, 10))}` : ""}</span>
         <h1>{f.tema.trim() || "Sem tema"}</h1>
       </header>
 
@@ -203,14 +214,14 @@ function EditorDevolutiva({ id }) {
           <section className="cartao form">
             <div className="form-linha">
               <Campo rotulo="Aluno">
-                <select className="entrada" value={f.alunoId} onChange={(e) => muda({ alunoId: e.target.value })}>
+                <select className="entrada" value={f.alunoId} disabled={!!f.foto} title={f.foto ? "A foto fica na pasta do aluno: tire a foto para trocar o aluno" : undefined} onChange={(e) => muda({ alunoId: e.target.value })}>
                   <option value="">Selecione…</option>
-                  {db.alunos.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
+                  {alunos.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
                 </select>
               </Campo>
               <Campo rotulo="Vestibular">
-                <select className="entrada" value={f.vestibular} onChange={(e) => trocarVestibular(e.target.value)}>
-                  {VESTIBULARES.map((v) => <option key={v.id} value={v.id}>{v.nome}</option>)}
+                <select className="entrada" value={f.vestibularId || ""} onChange={(e) => trocarVestibular(e.target.value)}>
+                  {ind?.vestibulares.map((v) => <option key={v.id} value={v.id}>{v.nome}</option>)}
                 </select>
               </Campo>
             </div>
@@ -289,13 +300,13 @@ function EditorDevolutiva({ id }) {
       </div>
 
       <div className="barra-mover barra-salvar" role="status">
-        <span>{erro || (f.status === "enviada" ? "Já enviada: salvar atualiza o que o aluno vê." : "Rascunho: o aluno ainda não vê.")}</span>
+        <span>{erro || erroGravar?.message || (f.status === "enviada" ? "Já enviada: salvar atualiza o que o aluno vê." : "Rascunho: o aluno ainda não vê.")}</span>
         {id !== "nova" && (excluir
           ? <><Botao variante="perigo" tamanho="sm" onClick={apagar}>Excluir de vez</Botao><Botao variante="texto" tamanho="sm" onClick={() => setExcluir(false)}>Cancelar</Botao></>
           : <Botao variante="texto" tamanho="sm" icone={Trash2} onClick={() => setExcluir(true)}>Excluir</Botao>)}
         <Botao variante="vidro" tamanho="sm" onClick={descartar}>Descartar</Botao>
-        {f.status !== "enviada" && <Botao variante="vidro" tamanho="sm" icone={Save} onClick={() => gravar(false)}>Salvar rascunho</Botao>}
-        <Botao variante="solido" tamanho="sm" icone={Send} onClick={() => gravar(true)}>{f.status === "enviada" ? "Salvar alterações" : "Enviar para o aluno"}</Botao>
+        {f.status !== "enviada" && <Botao variante="vidro" tamanho="sm" icone={Save} disabled={ocupado} onClick={() => gravar(false)}>Salvar rascunho</Botao>}
+        <Botao variante="solido" tamanho="sm" icone={Send} disabled={ocupado} onClick={() => gravar(true)}>{f.status === "enviada" ? "Salvar alterações" : "Enviar para o aluno"}</Botao>
       </div>
     </>
   );

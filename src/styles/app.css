@@ -334,13 +334,6 @@
 .bloco-divisor { height: 1px; background: var(--border); }
 .bloco-foto img { width: 100%; border-radius: 12px; }
 
-/* ---------- Em construção ---------- */
-
-.em-breve { max-width: 720px; }
-.em-breve ul { display: grid; gap: 10px; margin-top: 18px; list-style: none; }
-.em-breve li { display: flex; gap: 12px; color: var(--text-soft); line-height: 1.55; }
-.em-breve li svg { width: 16px; height: 16px; margin-top: 3px; flex: none; color: var(--faint); }
-
 /* ---------- Moderador: textos ---------- */
 
 .textos-barra { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px 24px; margin-bottom: 16px; }

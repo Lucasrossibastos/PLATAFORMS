@@ -25,6 +25,12 @@ describe("semana", () => {
     expect(min(todas(est).filter((m) => m.materiaId === "biologia"))).toBe(240);
   });
 
+  it("quem começa no meio da semana não recebe metas nos dias que já passaram", () => {
+    const { est } = semanaVigente(null, { ...ctx, inicio: "2026-10-01" }, "2026-10-01"); // quinta
+    expect(["seg", "ter", "qua"].every((k) => est.metas[k].length === 0)).toBe(true);
+    expect(todas(est).length).toBeGreaterThan(0);
+  });
+
   it("reorganizar mantém dias passados e metas feitas e desconta o que já foi feito", () => {
     const { est } = semanaVigente(null, ctx, "2026-09-28");
     const feita = est.metas.seg[0];

@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { analisarLink, fmtDuracao, playlistVisivel, progressoPlaylist } from "./midia.js";
-import { DEVOLUTIVAS_INICIAIS } from "./core/nucleo.js";
+import { analisarLink, fmtDuracao, playlistVisivelPara, progressoPlaylist } from "./midia.js";
 import { competencia, devolutivasDoAluno, evolucao, mediaDoTema } from "./redacao.js";
+
+// fixture: três devolutivas (duas enviadas da mesma aluna, um rascunho)
+const DEVOLUTIVAS_INICIAIS = [
+  { id: "dv1", alunoId: "alu1", tema: "Desafios para a valorização de comunidades e povos tradicionais", rubrica: "enem",
+    notas: { c1: 160, c2: 120, c3: 120, c4: 160, c5: 160 }, recebidaEm: "2026-08-28", status: "enviada", enviadaEm: "2026-09-02", lida: true },
+  { id: "dv2", alunoId: "alu1", tema: "Os impactos da inteligência artificial no mercado de trabalho", rubrica: "enem",
+    notas: { c1: 160, c2: 160, c3: 160, c4: 160, c5: 200 }, recebidaEm: "2026-09-16", status: "enviada", enviadaEm: "2026-09-20", lida: false },
+  { id: "dv3", alunoId: "alu3", tema: "Tema livre: o papel da universidade pública", rubrica: "livre",
+    notas: {}, notaLivre: 9, escalaLivre: 12, recebidaEm: "2026-09-22", status: "rascunho", enviadaEm: null, lida: false },
+];
 
 describe("links de vídeo", () => {
   it("reconhece os formatos de link do YouTube", () => {
@@ -23,12 +32,17 @@ describe("links de vídeo", () => {
     expect(fmtDuracao(NaN)).toBe("");
   });
 
-  it("progresso e visibilidade das playlists", () => {
-    const pl = { publicada: true, para: "fuvest", videos: [{ id: "a" }, { id: "b" }, { id: "c" }] };
+  it("progresso e visibilidade das playlists (vestibular, curso e plano)", () => {
+    const pl = { publicada: true, vestibularIds: ["fuvest"], cursoIds: [], materiaId: null, videos: [{ id: "a" }, { id: "b" }, { id: "c" }] };
+    const ana = { vestibularId: "fuvest", cursoId: "medicina" };
     expect(progressoPlaylist(pl, { a: true })).toEqual({ total: 3, feitos: 1, pct: 33 });
-    expect(playlistVisivel(pl, "fuvest")).toBe(true);
-    expect(playlistVisivel(pl, "enem")).toBe(false);
-    expect(playlistVisivel({ ...pl, publicada: false }, "fuvest")).toBe(false);
+    expect(playlistVisivelPara(pl, ana)).toBe(true);
+    expect(playlistVisivelPara(pl, { vestibularId: "enem" })).toBe(false);
+    expect(playlistVisivelPara({ ...pl, publicada: false }, ana)).toBe(false);
+    expect(playlistVisivelPara({ ...pl, cursoIds: ["direito"] }, ana)).toBe(false);
+    expect(playlistVisivelPara({ ...pl, materiaId: "quimica" }, ana, ["biologia"])).toBe(false);
+    expect(playlistVisivelPara({ ...pl, materiaId: "biologia" }, ana, ["biologia"])).toBe(true);
+    expect(playlistVisivelPara({ publicada: true, videos: [] }, { vestibularId: "enem" })).toBe(true); // sem restrição
   });
 });
 

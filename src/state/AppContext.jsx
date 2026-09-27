@@ -1,69 +1,65 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { MOCK_USERS, vestInfo } from "../core/nucleo.js";
-import { carregarDados, carregarSessao, dadosIniciais, salvarDados, salvarSessao } from "./dados.js";
-import { estudoAtual } from "./estudo.js";
-import { limparArquivos } from "./arquivos.js";
-import { preencher, primeiroNome, saudacao, textoDe } from "../textos.js";
+/* Estado global da interface: os serviços (única porta para os dados), o
+   usuário logado e a estrutura acadêmica. As telas leem pelos hooks de
+   state/hooks.js e escrevem pelos serviços; nenhuma fala com o banco. */
+
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { criarRepositorio } from "../data/index.js";
+import { semearDemonstracao } from "../data/semente.js";
+import { criarServicos } from "../services/index.js";
 
 const Ctx = createContext(null);
 
-// Contas de teste do núcleo + alunos cadastrados (que também entram com e-mail e senha).
-// 🔥 FIREBASE: signInWithEmailAndPassword + /users/{uid}.role
-function acharConta(db, email, senha) {
-  const e = email.trim().toLowerCase();
-  const mock = MOCK_USERS.find((u) => u.email === e && u.password === senha);
-  if (mock) return { uid: mock.uid, name: mock.name, email: mock.email, role: mock.role };
-  const aluno = db.alunos.find((a) => a.email === e && a.senha === senha);
-  return aluno ? { uid: aluno.id, name: aluno.nome, email: aluno.email, role: "aluno" } : null;
-}
-
-function contaPorUid(db, uid) {
-  const mock = MOCK_USERS.find((u) => u.uid === uid);
-  if (mock) return { uid, name: mock.name, email: mock.email, role: mock.role };
-  const aluno = db.alunos.find((a) => a.id === uid);
-  return aluno ? { uid, name: aluno.nome, email: aluno.email, role: "aluno" } : null;
+// um repositório por página (o Firebase não aceita inicializar duas vezes)
+let iniciando = null;
+function iniciar() {
+  iniciando ||= (async () => {
+    const repo = await criarRepositorio();
+    if (repo.modo === "local") await semearDemonstracao(repo);
+    return criarServicos(repo);
+  })();
+  return iniciando;
 }
 
 export function AppProvider({ children }) {
-  const [db, setDb] = useState(carregarDados);
-  const [sessao, setSessao] = useState(carregarSessao);
-  const dbRef = useRef(db);
+  const [s, setS] = useState(null);
+  const [erro, setErro] = useState(null);
+  const [usuario, setUsuario] = useState(undefined); // undefined: carregando; null: sem sessão
+  const [ind, setInd] = useState(null);
 
   useEffect(() => {
-    const t = setTimeout(() => salvarDados(db), 250);
-    return () => clearTimeout(t);
-  }, [db]);
-  useEffect(() => salvarSessao(sessao), [sessao]);
-
-  // Aplica `fn` num rascunho e devolve o que `fn` devolver. Usa a ref para
-  // encadear chamadas no mesmo evento sem perder alterações.
-  const mudar = useCallback((fn) => {
-    const rascunho = structuredClone(dbRef.current);
-    const retorno = fn(rascunho);
-    dbRef.current = rascunho;
-    setDb(rascunho);
-    return retorno;
+    let parar = () => {};
+    let vivo = true;
+    iniciar()
+      .then((servicos) => {
+        if (!vivo) return;
+        setS(servicos);
+        parar = servicos.auth.observar(setUsuario);
+      })
+      .catch((e) => vivo && setErro(e));
+    return () => { vivo = false; parar(); };
   }, []);
 
-  const usuario = useMemo(() => (sessao ? contaPorUid(db, sessao.uid) : null), [db, sessao]);
+  const logado = !!usuario?.role && !usuario.bloqueado;
+  useEffect(() => {
+    if (!s || !logado) { setInd(null); return undefined; }
+    return s.estrutura.observar(setInd);
+  }, [s, logado, usuario?.uid]);
 
-  const entrar = useCallback((email, senha) => {
-    const conta = acharConta(dbRef.current, email, senha);
-    if (conta) setSessao({ uid: conta.uid });
-    return conta;
-  }, []);
-  const sair = useCallback(() => setSessao(null), []);
-  const restaurarExemplo = useCallback(() => {
-    limparArquivos();
-    const novo = dadosIniciais();
-    dbRef.current = novo;
-    setDb(novo);
-  }, []);
+  const sair = useCallback(() => s?.auth.sair(), [s]);
 
-  const valor = useMemo(
-    () => ({ db, usuario, mudar, entrar, sair, restaurarExemplo }),
-    [db, usuario, mudar, entrar, sair, restaurarExemplo],
-  );
+  // modo local: apaga os dados deste navegador e recria a demonstração
+  const recomecarDemonstracao = useCallback(async () => {
+    if (s?.modo !== "local") return;
+    s.repo.apagarTudo();
+    const { limparArquivos } = await import("./arquivos.js");
+    await limparArquivos();
+    await semearDemonstracao(s.repo);
+  }, [s]);
+
+  const valor = useMemo(() => ({
+    s, erro, usuario, ind, modo: s?.modo, sair, recomecarDemonstracao,
+    hoje: s ? s.ctx.hoje() : null,
+  }), [s, erro, usuario, ind, sair, recomecarDemonstracao]);
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;
 }
 
@@ -71,51 +67,4 @@ export function useApp() {
   return useContext(Ctx);
 }
 
-/* Frases editáveis já resolvidas para o aluno (ou gerais, sem uid) e com as
-   variáveis preenchidas. Uso: const t = useFrases(uid, vars); t("chave"). */
-export function useFrases(uid, vars) {
-  const { db } = useApp();
-  return (chave) => preencher(textoDe(db.textos, chave, uid), vars);
-}
-
-// Valores de {nome}, {saudacao} e {vestibular} para um aluno.
-export function varsDoAluno(db, uid, nomeCompleto = "") {
-  const aluno = db.alunos.find((a) => a.id === uid);
-  return {
-    nome: primeiroNome(nomeCompleto || aluno?.nome),
-    saudacao: saudacao(),
-    vestibular: vestInfo(aluno?.vestibular).nome,
-  };
-}
-
-export function useFrasesDoAluno() {
-  const { db, usuario } = useApp();
-  return useFrases(usuario.uid, varsDoAluno(db, usuario.uid, usuario.name));
-}
-
-export const rotaInicial = (usuario) => (usuario?.role === "moderador" ? "/moderador/alunos" : "/aluno/dashboard");
-
-/* Estudo do aluno logado, sempre válido para hoje. Se for o primeiro acesso ou
-   a semana virou, calcula o novo estado e grava logo depois do render. */
-export function useEstudo() {
-  const { db, usuario, mudar } = useApp();
-  const uid = usuario.uid;
-
-  // se o app ficar aberto na virada do dia, recalcula ao voltar para a aba
-  const [tique, setTique] = useState(0);
-  useEffect(() => {
-    const ver = () => { if (!document.hidden) setTique((n) => n + 1); };
-    document.addEventListener("visibilitychange", ver);
-    return () => document.removeEventListener("visibilitychange", ver);
-  }, []);
-
-  const salvo = db.estudo[uid];
-  const est = useMemo(() => estudoAtual(db, uid), [db, uid, tique]); // tique: nova data ao voltar
-  const precisaGravar = est !== salvo;
-
-  useEffect(() => {
-    if (precisaGravar) mudar((d) => { d.estudo[uid] = structuredClone(est); });
-  }, [precisaGravar, est, uid, mudar]);
-
-  return est;
-}
+export const rotaInicial = (usuario) => (usuario?.role === "moderador" ? "/moderador/alunos" : "/aluno/inicio");

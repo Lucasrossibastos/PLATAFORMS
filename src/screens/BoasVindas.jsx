@@ -1,92 +1,100 @@
 import { useNavigate } from "react-router-dom";
-import { CalendarCheck, FileText, Flame, PenLine, Target, Trophy, Users } from "lucide-react";
-import { fmtMin, vestInfo } from "../core/nucleo.js";
-import { useApp, useEstudo, useFrasesDoAluno } from "../state/AppContext.jsx";
-import { resumoAluno } from "../state/estudo.js";
+import { AlertTriangle, CalendarCheck, Flame, PenLine, Target, UserX, Users } from "lucide-react";
+import { fmtMin } from "../core/nucleo.js";
+import { useApp } from "../state/AppContext.jsx";
+import { useAlunos, useBoasVindas, useConfigTextos, useDevolutivas, useEu, useFrases, useNotificacoes, useTodosPlanos } from "../state/hooks.js";
+import { useVisaoAluno } from "../state/aluno.js";
+import { COR_DESTAQUE_PADRAO, primeiroNome, saudacao } from "../textos.js";
 import { Cinema } from "../ui/Cinema.jsx";
 import { Botao, Estrela } from "../ui/ui.jsx";
-import { primeiroNome, saudacao } from "../textos.js";
 
 const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
 
-/* Gate pós-login do aluno. */
+/* Tela de entrada do aluno: saudação, indicadores reais e a próxima meta. */
 function GateAluno() {
-  const { db, usuario, sair } = useApp();
-  const est = useEstudo();
+  const { sair, ind } = useApp();
+  const eu = useEu();
+  const v = useVisaoAluno(eu.id);
   const navigate = useNavigate();
-  const r = resumoAluno(db, usuario.uid, est);
-  const aluno = db.alunos.find((a) => a.id === usuario.uid);
-  const vest = vestInfo(aluno?.vestibular);
-  const hero = db.welcome.hero || {};
+  const config = useConfigTextos();
+  const hero = useBoasVindas()?.hero || {};
+  const avisos = useNotificacoes(eu.id) || [];
+  const t = useFrases(v.aluno || eu);
   const ir = (tela) => navigate(`/aluno/${tela}`);
-  const meta = r.proximaMeta;
-  const recado = r.ultimoRecado;
-  const t = useFrasesDoAluno();
+  const proxima = [...(v.atrasadas || []), ...(v.metasHoje || [])].find((m) => !m.done);
+  const aviso = avisos.find((n) => !n.lidaEm);
+  const cor = ind?.vestibular(v.aluno?.vestibularId)?.cor;
+  const c30 = v.consistencia30;
 
   return (
     <Cinema
       nav={[
-        { label: "Metas de hoje", onClick: () => ir("dashboard") },
-        { label: "Semana", onClick: () => ir("semana") },
+        { label: "Metas de hoje", onClick: () => ir("inicio") },
+        { label: "Meu plano", onClick: () => ir("plano") },
         { label: "Estudar", submenu: [
-          { label: "Cursos em vídeo", onClick: () => ir("cursos") },
-          { label: "Banco de Questões", onClick: () => ir("questoes") },
+          { label: "Questões", onClick: () => ir("questoes") },
           { label: "Simulados", onClick: () => ir("simulados") },
+          { label: "Materiais", onClick: () => ir("materiais") },
+          { label: "Cursos em vídeo", onClick: () => ir("cursos") },
           { label: "Redação", onClick: () => ir("redacao") },
         ] },
-        { label: "Conquistas", onClick: () => ir("conquistas") },
+        { label: "Desempenho", onClick: () => ir("desempenho") },
       ]}
       acoes={<>
         <Botao variante="vidro" className="opcional aparece aparece--escala" style={{ "--d": "0.3s" }} onClick={sair}>Sair</Botao>
-        <Botao variante="solido" className="aparece aparece--escala" style={{ "--d": "0.34s" }} onClick={() => ir("dashboard")}>Acessar a plataforma</Botao>
+        <Botao variante="solido" className="aparece aparece--escala" style={{ "--d": "0.34s" }} onClick={() => ir("inicio")}>Acessar a plataforma</Botao>
       </>}
       rodapeMenu={<Botao variante="vidro" onClick={sair}>Sair</Botao>}
-      selo={<span className="selo-topo aparece aparece--pop" style={{ "--d": "0.22s", "--cor": vest.cor }}><i />{t("boasvindas.selo")}</span>}
-      titulo={`${t("boasvindas.saudacao")}\n${t(r.metasHoje.length ? "boasvindas.comMetas" : "boasvindas.semMetas")}`}
-      corDestaque={db.textos.corDestaque}
-      lede={recado
-        ? <>“{recado.texto}”<cite>{hero.nome} · recado do instrutor</cite></>
-        : hero.subtitulo}
-      stats={[
-        { icone: <Flame aria-hidden="true" />, texto: <><b>{plural(r.streak, "dia", "dias")}</b> de sequência cumprindo as metas</> },
-        { icone: <Target aria-hidden="true" />, texto: <><b>{r.progresso}%</b> do programa concluído</> },
-        { icone: <CalendarCheck aria-hidden="true" />, texto: <><b>{r.aderencia ?? "–"}{r.aderencia != null && "%"}</b> de aderência no mês</> },
-        ...(r.proximaConquista ? [{ icone: <Trophy aria-hidden="true" />, texto: <>Próxima conquista: <b>{r.proximaConquista.titulo}</b></> }] : []),
+      selo={<span className="selo-topo aparece aparece--pop" style={{ "--d": "0.22s", "--cor": cor }}><i />{t("boasvindas.selo")}</span>}
+      titulo={`${t("boasvindas.saudacao")}\n${t(v.metasHoje?.length ? "boasvindas.comMetas" : "boasvindas.semMetas")}`}
+      corDestaque={config?.corDestaque || COR_DESTAQUE_PADRAO}
+      lede={aviso ? <>“{aviso.titulo}”<cite>{aviso.autorNome || hero.nome} · aviso novo</cite></> : hero.subtitulo}
+      stats={v.carregando ? [] : [
+        { icone: <CalendarCheck aria-hidden="true" />, texto: <>Você estudou <b>{c30?.diasEstudados ?? 0} dos últimos 30 dias</b></> },
+        { icone: <Flame aria-hidden="true" />, texto: <><b>{plural(c30?.sequenciaAtual ?? 0, "dia", "dias")}</b> seguidos estudando</> },
+        ...(v.progressoPlano ? [{ icone: <Target aria-hidden="true" />, texto: <><b>{String(v.progressoPlano.pct).replace(".", ",")}%</b> do plano concluído</> }] : []),
+        ...(v.atrasos?.quantidade ? [{ icone: <AlertTriangle aria-hidden="true" />, texto: <><b>{plural(v.atrasos.quantidade, "conteúdo", "conteúdos")}</b> em atraso</> }] : []),
       ]}
     >
       <div className="capsula">
         <div className="capsula-texto">
-          {meta ? <><span>Próxima meta ·</span>{meta.materia} · {fmtMin(meta.minutos)}</> : "Nenhuma meta pendente hoje"}
+          {proxima ? <><span>Próxima meta ·</span>{ind?.nomeMateria(proxima.materiaId)} · {fmtMin(proxima.minutos)}</> : v.plano === null ? "Seu plano ainda não foi criado" : "Nenhuma meta pendente hoje"}
         </div>
-        <Botao variante="solido" onClick={() => ir("dashboard")}>{meta ? "Começar" : "Ver o painel"}</Botao>
+        <Botao variante="solido" onClick={() => ir("inicio")}>{proxima ? "Começar" : "Ver o painel"}</Botao>
       </div>
-      <p className="cine-dica">{plural(r.total - r.feitas, "meta aberta", "metas abertas")} hoje{r.atrasadas.some((m) => !m.done) ? ", incluindo atrasadas" : ""}</p>
+      {!v.carregando && v.totalHoje > 0 && (
+        <p className="cine-dica">{plural(v.totalHoje - v.feitasHoje, "meta aberta", "metas abertas")} hoje{v.atrasadas.some((m) => !m.done) ? ", incluindo atrasadas" : ""}</p>
+      )}
     </Cinema>
   );
 }
 
-/* Gate pós-login do moderador. */
+/* Tela de entrada do moderador. */
 function GateModerador() {
-  const { db, usuario, sair } = useApp();
+  const { usuario, sair } = useApp();
   const navigate = useNavigate();
+  const config = useConfigTextos();
+  const hero = useBoasVindas()?.hero || {};
+  const alunos = (useAlunos() || []).filter((a) => a.ativo !== false);
+  const planos = useTodosPlanos() || [];
+  const devolutivas = useDevolutivas() || [];
   const ir = (tela) => navigate(`/moderador/${tela}`);
-  const hero = db.welcome.hero || {};
-  const pendentes = db.envios.filter((e) => e.status === "pendente").length;
-  const rascunhos = db.devolutivas.filter((d) => d.status === "rascunho").length;
+  const semPlano = alunos.filter((a) => !planos.some((p) => p.id === a.id)).length;
+  const rascunhos = devolutivas.filter((d) => d.status === "rascunho").length;
 
   return (
     <Cinema
       nav={[
         { label: "Alunos", onClick: () => ir("alunos") },
-        { label: "Redação", onClick: () => ir("redacao") },
+        { label: "Planos gerais", onClick: () => ir("planos") },
         { label: "Conteúdo", submenu: [
-          { label: "Textos da plataforma", onClick: () => ir("textos") },
-          { label: "Cursos em vídeo", onClick: () => ir("cursos") },
-          { label: "Simulados", onClick: () => ir("simulados") },
+          { label: "Estrutura acadêmica", onClick: () => ir("estrutura") },
           { label: "Materiais", onClick: () => ir("materiais") },
-          { label: "Boas-Vindas", onClick: () => ir("boas-vindas") },
+          { label: "Cursos em vídeo", onClick: () => ir("cursos") },
+          { label: "Redação", onClick: () => ir("redacao") },
+          { label: "Textos e boas-vindas", onClick: () => ir("textos") },
         ] },
-        { label: "Plano de Estudos", onClick: () => ir("plano") },
+        { label: "Avisos", onClick: () => ir("avisos") },
       ]}
       acoes={<>
         <Botao variante="vidro" className="opcional aparece aparece--escala" style={{ "--d": "0.3s" }} onClick={sair}>Sair</Botao>
@@ -94,17 +102,17 @@ function GateModerador() {
       </>}
       rodapeMenu={<Botao variante="vidro" onClick={sair}>Sair</Botao>}
       selo={<span className="selo-topo aparece aparece--pop" style={{ "--d": "0.22s" }}><Estrela />Painel do professor</span>}
-      titulo={`${saudacao()}, ${primeiroNome(usuario.name)}.\nSua turma *está esperando*.`}
-      corDestaque={db.textos.corDestaque}
+      titulo={`${saudacao()}, ${primeiroNome(usuario.nome)}.\nSua turma *está esperando*.`}
+      corDestaque={config?.corDestaque || COR_DESTAQUE_PADRAO}
       lede={hero.subtitulo}
       stats={[
-        { icone: <Users aria-hidden="true" />, texto: <><b>{db.alunos.length}</b> alunos na plataforma</> },
-        { icone: <FileText aria-hidden="true" />, texto: <><b>{pendentes}</b> {pendentes === 1 ? "simulado" : "simulados"} para classificar</> },
+        { icone: <Users aria-hidden="true" />, texto: <><b>{alunos.length}</b> {alunos.length === 1 ? "aluno ativo" : "alunos ativos"}</> },
+        { icone: <UserX aria-hidden="true" />, texto: <><b>{semPlano}</b> sem plano de estudos</> },
         { icone: <PenLine aria-hidden="true" />, texto: <><b>{rascunhos}</b> {rascunhos === 1 ? "devolutiva" : "devolutivas"} em rascunho</> },
       ]}
     >
       <div className="capsula">
-        <div className="capsula-texto"><span>Para classificar ·</span>{plural(pendentes, "simulado", "simulados")}</div>
+        <div className="capsula-texto"><span>Acompanhamento ·</span>{plural(alunos.length, "aluno", "alunos")}</div>
         <Botao variante="solido" onClick={() => ir("alunos")}>Ver alunos</Botao>
       </div>
     </Cinema>

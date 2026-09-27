@@ -30,6 +30,7 @@ export function indiceEstrutura({ areas = [], materias = [], topicos = [], subto
     vestibulares: ativos(vestibulares).sort(porOrdem),
     cursos: ativos(cursos).sort(porOrdem),
     vazio: !materias.length,
+    arquivados: { areas: areas.filter((x) => x.arquivado), materias: materias.filter((x) => x.arquivado), topicos: topicos.filter((x) => x.arquivado), subtopicos: subtopicos.filter((x) => x.arquivado), vestibulares: vestibulares.filter((x) => x.arquivado), cursos: cursos.filter((x) => x.arquivado) },
     area: (id) => A.get(id),
     materia: (id) => M.get(id),
     topico: (id) => T.get(id),

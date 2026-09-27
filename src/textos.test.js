@@ -1,16 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { linhasDe, partesDe, preencher, primeiroNome, textoDe, textosIniciais } from "./textos.js";
+import { linhasDe, partesDe, preencher, primeiroNome, textoDe } from "./textos.js";
 
 describe("frases editáveis", () => {
   it("o padrão da página inicial é a frase pedida pelo cliente", () => {
-    expect(textoDe(textosIniciais(), "inicial.titulo")).toBe("Bem-vindo à *elite*.");
+    expect(textoDe({}, "inicial.titulo")).toBe("Bem-vindo à *elite*.");
   });
 
-  it("aluno > geral > padrão, e campo vazio volta para o nível de cima", () => {
-    const t = { geral: { "painel.semana.titulo": "Semana *focada*" }, porAluno: { alu1: { "painel.semana.titulo": "Bora, *Ana*" }, alu2: { "painel.semana.titulo": "" } } };
-    expect(textoDe(t, "painel.semana.titulo", "alu1")).toBe("Bora, *Ana*");
-    expect(textoDe(t, "painel.semana.titulo", "alu2")).toBe("Semana *focada*");
-    expect(textoDe({ geral: {}, porAluno: {} }, "painel.semana.titulo", "alu1")).toBe("Sua *semana*");
+  it("aluno > curso > vestibular > geral > padrão; campo vazio volta para o nível de cima", () => {
+    const c = {
+      geral: { "painel.semana.titulo": "Semana *focada*" },
+      porGrupo: { "curso:medicina": { "painel.semana.titulo": "Rumo ao *jaleco*" }, "vestibular:fuvest": { "painel.semana.titulo": "Semana *FUVEST*" } },
+    };
+    const k = "painel.semana.titulo";
+    expect(textoDe(c, k, { doAluno: { [k]: "Bora, *Ana*" }, cursoId: "medicina", vestibularId: "fuvest" })).toBe("Bora, *Ana*");
+    expect(textoDe(c, k, { doAluno: { [k]: "  " }, cursoId: "medicina", vestibularId: "fuvest" })).toBe("Rumo ao *jaleco*");
+    expect(textoDe(c, k, { cursoId: "direito", vestibularId: "fuvest" })).toBe("Semana *FUVEST*");
+    expect(textoDe(c, k, { vestibularId: "enem" })).toBe("Semana *focada*");
+    expect(textoDe({}, k)).toBe("Sua *semana*");
   });
 
   it("marca o destaque e quebra linhas", () => {

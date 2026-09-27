@@ -35,6 +35,7 @@ export function servicoEstudo(ctx) {
       motor: {
         ciclo: plano ? cicloDoPlano(plano, ind) : { alocacoes: [] },
         disp: plano?.disponibilidade || DISP_PADRAO,
+        inicio: plano?.inicio || null,
         revisoes,
         conteudoDaVez: (materiaId) => conteudoDaVez(itens, prog, materiaId, ind),
       },
