@@ -13,9 +13,7 @@ import {
   ArrowRight, Zap, PlusCircle, Save, Image as ImageIcon, Minus,
   PlayCircle, PenLine, Video, ArrowUp, ArrowDown, Link2, Send, Paperclip, ExternalLink, EyeOff
 } from "lucide-react";
-import HeroArcadas from "./HeroArcadas.jsx";
-import { HeroCinema, Capsula, CampoCapsula, PilulaCTA, CartaoNumero, CartaoRecado, FolhaVidro, GavetaMobile, BotaoMenu, Logo, Marca, GRADIENTE, PIXEL } from "./Cinema.jsx";
-import arteFundoUrl from "./assets/arcadas.webp";
+import { HeroCinema, Capsula, CampoCapsula, PilulaCTA, CartaoNumero, CartaoRecado, FolhaVidro, GavetaMobile, BotaoMenu, Logo, Marca, GRADIENTE, PIXEL, FundoCinema, VIDEO_FUNDO } from "./Cinema.jsx";
 
 /* ============================================================================
    PLATAFORMA PRÉ-VESTIBULAR — PROTÓTIPO VISUAL COMPLETO (MOCK)
@@ -1023,7 +1021,7 @@ function WelcomePage({ welcome, onEnter, isStandalone, alunoStats }) {
   return (
     <div style={{ maxWidth: 1040, margin: "0 auto", animation: "fadeIn .4s ease" }}>
       <div className="cine" style={{ position: "relative", borderRadius: 24, overflow: "hidden", marginBottom: 20, height: "clamp(360px, 50vw, 520px)", background: "#0B1116" }}>
-        <HeroArcadas style={{ position: "absolute", inset: 0 }} />
+        <FundoCinema />
         <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "clamp(20px, 4vw, 40px)", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
           <h1 className="max-w-xl text-3xl font-semibold leading-[1.1] tracking-tight text-white sm:text-4xl lg:text-[3.2rem]">{hero.nome}</h1>
           {hero.subtitulo && <div className="max-w-xs rounded-2xl bg-white/10 p-5 text-sm leading-relaxed text-white/80 backdrop-blur-lg">{hero.subtitulo}</div>}
@@ -4906,7 +4904,6 @@ function Wordmark({ claro }) {
   return <Marca className={claro ? "" : ""} />;
 }
 
-/* Fundo fixo das telas internas: a cena das Arcadas desfocada, escurecida (ou clareada) */
 
 function WelcomeConteudo({ welcome, alunoStats }) {
   const p = usePalette();
@@ -4944,12 +4941,30 @@ function estiloCampo(p) {
   };
 }
 
+/* Fundo fixo das telas internas: o mesmo vídeo do hero, desfocado e escurecido (ou clareado) */
 function FundoApp() {
   const { dark } = useTheme();
+  const ref = useRef(null);
+  const [falhou, setFalhou] = useState(false);
+  useEffect(() => {
+    // em celular e com "reduzir movimento" o vídeo fica parado num quadro, para poupar bateria
+    const v = ref.current;
+    if (!v) return undefined;
+    let parado = false;
+    try { parado = window.matchMedia("(pointer: coarse)").matches || window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { parado = false; }
+    const pronto = () => { if (parado) { try { v.currentTime = 1; v.pause(); } catch (e) { /* ignora */ } } };
+    v.addEventListener("loadeddata", pronto);
+    const vis = () => { if (document.hidden) v.pause(); else if (!parado) v.play().catch(() => {}); };
+    document.addEventListener("visibilitychange", vis);
+    return () => { v.removeEventListener("loadeddata", pronto); document.removeEventListener("visibilitychange", vis); };
+  }, []);
   return (
     <div aria-hidden="true" style={{ position: "fixed", inset: 0, zIndex: 0, overflow: "hidden", background: dark ? "#0A0B0D" : "#E9E9EC" }}>
-      <img src={arteFundoUrl} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", transform: "scale(1.25)",
-        filter: dark ? "blur(56px) brightness(.62) saturate(1.25)" : "blur(56px) brightness(1.35) saturate(.8)" }} />
+      {!falhou && (
+        <video ref={ref} src={VIDEO_FUNDO} autoPlay loop muted playsInline preload="auto" onError={() => setFalhou(true)}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", transform: "scale(1.2)",
+            filter: dark ? "blur(48px) brightness(.55) saturate(1.2)" : "blur(48px) brightness(1.3) saturate(.8)" }} />
+      )}
       <div style={{ position: "absolute", inset: 0, background: dark ? "rgba(8,9,11,.5)" : "rgba(233,233,236,.7)" }} />
     </div>
   );

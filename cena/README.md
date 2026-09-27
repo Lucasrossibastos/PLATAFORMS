@@ -1,4 +1,8 @@
-# Cena 3D do hero (Arcadas)
+# Cena 3D das Arcadas (não usada no momento)
+
+> O fundo da plataforma agora é o vídeo de referência (`src/Cinema.jsx`, `VIDEO_FUNDO`).
+> Esta cena fica guardada caso você queira voltar a ela; o componente `HeroArcadas.jsx`
+> e as imagens estão no histórico do git (commit `32f3056`).
 
 A arte da página inicial é um render do Blender (Cycles) de um claustro neocolonial
 **inspirado** nas Arcadas do Largo de São Francisco. Não é uma réplica fiel do prédio:

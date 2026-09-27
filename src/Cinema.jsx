@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ChevronDown, Menu, X } from "lucide-react";
-import HeroArcadas from "./HeroArcadas.jsx";
 
 /* ============================================================================
    LAYOUT CINEMATOGRÁFICO — vídeo em tela cheia, navegação e cartões de vidro
@@ -10,10 +9,12 @@ import HeroArcadas from "./HeroArcadas.jsx";
    tudo e Silkscreen só nos números de destaque.
 ============================================================================ */
 
-// Vídeo de fundo da referência. Se não carregar (bloqueio de rede, link expirado,
-// ambiente de teste), entra a cena 3D das Arcadas renderizada para a plataforma.
+// Vídeo de fundo (a animação da referência).
+// VITE_VIDEO_FUNDO permite apontar para uma cópia hospedada junto com o site
+// (recomendado: links de ferramentas de geração de vídeo podem expirar).
 export const VIDEO_REFERENCIA =
   "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260803_192301_9231ed6b-c55c-4a48-909c-4ebe11cf2e11.mp4";
+export const VIDEO_FUNDO = import.meta.env.VITE_VIDEO_FUNDO || VIDEO_REFERENCIA;
 
 export const GRADIENTE = { background: "linear-gradient(to bottom, #2B2B2B, #101010)" };
 export const PIXEL = "'Silkscreen', cursive";
@@ -37,27 +38,26 @@ export function Marca({ claroNoMobile = false, className = "" }) {
   );
 }
 
-/* Fundo em movimento: tenta o vídeo; se falhar, usa a cena das Arcadas (WebGL) */
-export function FundoCinema({ videoUrl = VIDEO_REFERENCIA, onModo, rolagem = false }) {
-  const [modo, setModo] = useState(videoUrl ? "video" : "arcadas");
+/* Fundo em movimento: o vídeo em tela cheia, em loop e sem som.
+   Se o vídeo não carregar, fica o fundo escuro (e o texto volta a ser branco). */
+export function FundoCinema({ videoUrl = VIDEO_FUNDO, onModo }) {
+  const [modo, setModo] = useState(videoUrl ? "video" : "escuro");
   const ref = useRef(null);
   useEffect(() => { if (onModo) onModo(modo); }, [modo]);
   useEffect(() => {
     if (modo !== "video") return undefined;
-    // se em 4 s o vídeo não tiver dados para tocar, troca pela cena
-    const t = setTimeout(() => { const v = ref.current; if (!v || v.readyState < 2) setModo("arcadas"); }, 4000);
+    // sem dados para tocar em 6 s (rede bloqueada, link expirado): desiste do vídeo
+    const t = setTimeout(() => { const v = ref.current; if (!v || v.readyState < 2) setModo("escuro"); }, 6000);
     return () => clearTimeout(t);
   }, [modo]);
-  if (modo === "video") {
-    return (
-      <video
-        ref={ref} src={videoUrl} autoPlay loop muted playsInline
-        onError={() => setModo("arcadas")}
-        className="absolute inset-0 h-full w-full object-cover"
-      />
-    );
-  }
-  return <HeroArcadas style={{ position: "absolute", inset: 0 }} rolagem={rolagem} />;
+  if (modo !== "video") return <div className="absolute inset-0 bg-[#0B0B0D]" />;
+  return (
+    <video
+      ref={ref} src={videoUrl} autoPlay loop muted playsInline preload="auto"
+      onError={() => setModo("escuro")}
+      className="absolute inset-0 h-full w-full object-cover"
+    />
+  );
 }
 
 /* Botão com o degradê escuro da referência */
