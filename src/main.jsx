@@ -5,6 +5,7 @@ import "./styles/base.css";
 import "./styles/ui.css";
 import "./styles/hero.css";
 import "./styles/app.css";
+import "./styles/conteudo.css";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>

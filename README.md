@@ -38,7 +38,10 @@ desatualizado.
 ## Estado atual
 
 Prontas: login, boas-vindas (aluno e moderador), dashboard do aluno, semana,
-página de boas-vindas e, no moderador, **Textos**: edita as frases da página
+página de boas-vindas, **Cursos em vídeo** (moderador cria playlists e anexa
+vídeos por link ou arquivo; aluno assiste e marca aulas), **Redação**
+(moderador registra a devolutiva com foto, marcações no texto e notas por
+competência; aluno vê a lista, a evolução e a correção) e, no moderador, **Textos**: edita as frases da página
 inicial, das boas-vindas e do painel do aluno, para todos ou só para um aluno
 (`*palavra*` destaca, Enter quebra a linha, `{nome}`, `{saudacao}` e
 `{vestibular}` são preenchidos). As demais telas mostram o que vão fazer
@@ -46,6 +49,11 @@ inicial, das boas-vindas e do painel do aluno, para todos ou só para um aluno
 
 O vídeo de fundo toca sempre, mesmo com "reduzir movimento" ligado no
 sistema. Para testar com outro vídeo: `VITE_VIDEO_FUNDO=./video.webm npm run build`.
+
+Arquivos (fotos de redação, vídeos enviados, capas) ficam no IndexedDB do
+navegador, com a foto comprimida para ~300 KB. Vídeo por link (YouTube, Vimeo,
+Drive, Panda) funciona em qualquer aparelho; arquivo enviado só toca no
+navegador onde foi anexado, até existir servidor.
 
 Os dados ficam no `localStorage` do navegador: recarregar não perde nada, mas
 cada aparelho tem a sua cópia. Os pontos de troca pelo Firebase estão marcados

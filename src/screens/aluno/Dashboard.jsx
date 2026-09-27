@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { BookOpen, Check, CheckCircle2, Clock4, FileQuestion, RefreshCw, TrendingUp, X, Zap } from "lucide-react";
+import { Link } from "react-router-dom";
+import { BookOpen, Check, CheckCircle2, Clock4, FileQuestion, PenLine, RefreshCw, TrendingUp, X, Zap } from "lucide-react";
 import { DIAS, fmtMin, vestInfo } from "../../core/nucleo.js";
 import { useApp, useEstudo, useFrasesDoAluno } from "../../state/AppContext.jsx";
 import {
@@ -276,6 +277,7 @@ export default function Dashboard() {
     setReplan(false);
   };
 
+  const redacoesNovas = db.devolutivas.filter((d) => d.alunoId === uid && d.status === "enviada" && !d.lida).length;
   const dataHoje = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
   const atrasadasAbertas = r.atrasadas.filter((m) => !m.done).length;
 
@@ -304,6 +306,14 @@ export default function Dashboard() {
           </div>
           <button type="button" className="icone-btn" aria-label="Dispensar recado"
             onClick={() => mudar((d) => { d.estudo[uid].recadosVistos.push(r.recado.id); })}><X /></button>
+        </div>
+      )}
+
+      {redacoesNovas > 0 && (
+        <div className="aviso">
+          <PenLine aria-hidden="true" />
+          {redacoesNovas === 1 ? "Sua redação foi corrigida." : `${redacoesNovas} redações corrigidas esperando você.`}
+          <Link className="btn btn--solido btn--sm" to="/aluno/redacao">Ver a correção</Link>
         </div>
       )}
 

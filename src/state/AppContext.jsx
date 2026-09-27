@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { MOCK_USERS, vestInfo } from "../core/nucleo.js";
 import { carregarDados, carregarSessao, dadosIniciais, salvarDados, salvarSessao } from "./dados.js";
 import { estudoAtual } from "./estudo.js";
+import { limparArquivos } from "./arquivos.js";
 import { preencher, primeiroNome, saudacao, textoDe } from "../textos.js";
 
 const Ctx = createContext(null);
@@ -53,6 +54,7 @@ export function AppProvider({ children }) {
   }, []);
   const sair = useCallback(() => setSessao(null), []);
   const restaurarExemplo = useCallback(() => {
+    limparArquivos();
     const novo = dadosIniciais();
     dbRef.current = novo;
     setDb(novo);

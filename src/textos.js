@@ -40,6 +40,8 @@ export const TEXTOS = {
   "painel.semana.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título da Semana", padrao: "Sua *semana*" },
   "painel.semana.texto": { grupo: "painel", tipo: "paragrafo", rotulo: "Instrução da Semana", padrao: "Arraste uma meta para outro dia, ou toque nela e depois no dia. Só vale para esta semana; as próximas continuam automáticas." },
   "painel.boasvindas.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título da página Boas-Vindas", padrao: "Boas-vindas ao *curso*" },
+  "painel.cursos.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título de Cursos em vídeo", padrao: "Cursos em *vídeo*" },
+  "painel.redacao.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título de Redação", padrao: "Suas *redações*" },
 };
 
 export const textosIniciais = () => ({ geral: {}, porAluno: {}, corDestaque: COR_DESTAQUE_PADRAO });

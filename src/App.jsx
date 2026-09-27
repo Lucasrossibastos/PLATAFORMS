@@ -8,6 +8,10 @@ import Dashboard from "./screens/aluno/Dashboard.jsx";
 import Semana from "./screens/aluno/Semana.jsx";
 import { BoasVindasPagina, EmBreve } from "./screens/Paginas.jsx";
 import Textos from "./screens/moderador/Textos.jsx";
+import { CursosAluno, PlaylistAluno } from "./screens/aluno/Cursos.jsx";
+import { RedacaoAluno, RedacoesAluno } from "./screens/aluno/Redacao.jsx";
+import { CursosModerador, PlaylistModerador } from "./screens/moderador/Cursos.jsx";
+import { RedacaoModerador, RedacoesModerador } from "./screens/moderador/Redacao.jsx";
 
 function Protegida({ papel, children }) {
   const { usuario } = useApp();
@@ -39,12 +43,20 @@ export default function App() {
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="semana" element={<Semana />} />
+            <Route path="cursos" element={<CursosAluno />} />
+            <Route path="cursos/:id" element={<PlaylistAluno />} />
+            <Route path="redacao" element={<RedacoesAluno />} />
+            <Route path="redacao/:id" element={<RedacaoAluno />} />
             <Route path="boas-vindas" element={<BoasVindasPagina />} />
             <Route path=":tela" element={<EmBreve menu={MENU_ALUNO} />} />
           </Route>
           <Route path="/moderador" element={<Protegida papel="moderador"><Shell menu={MENU_MODERADOR} /></Protegida>}>
             <Route index element={<Navigate to="alunos" replace />} />
             <Route path="textos" element={<Textos />} />
+            <Route path="cursos" element={<CursosModerador />} />
+            <Route path="cursos/:id" element={<PlaylistModerador />} />
+            <Route path="redacao" element={<RedacoesModerador />} />
+            <Route path="redacao/:id" element={<RedacaoModerador />} />
             <Route path=":tela" element={<EmBreve menu={MENU_MODERADOR} />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
