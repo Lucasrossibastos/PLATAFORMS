@@ -234,8 +234,12 @@ export function servicoPlanos(ctx, servicos) {
       if (!plano) throw new ErroDados("Este aluno ainda não tem plano.", "sem-plano");
       ctx.exigir("alterar:plano", { alunoId, plano, permissao: "recalcular" });
       const previa = recalcularPlano(plano, ind, prog, ctx.hoje()).resumo;
+      // o recálculo remarca as datas: o atraso que havia fica registrado aqui
+      const atrasados = previa.atrasadosAntes;
       return gravarPlano(alunoId, plano, prog, ind, [{
-        tipo: "recalcular", descricao: "Recalculou o plano", antes: plano.fimPrevisto || null, depois: previa.fimPrevisto || null,
+        tipo: "recalcular",
+        descricao: `Recalculou o plano${atrasados ? ` (${atrasados} ${atrasados === 1 ? "conteúdo estava atrasado" : "conteúdos estavam atrasados"})` : ""}`,
+        antes: plano.fimPrevisto || null, depois: previa.fimPrevisto || null,
       }], { motivo });
     },
 
