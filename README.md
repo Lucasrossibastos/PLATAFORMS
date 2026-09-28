@@ -10,6 +10,10 @@ React 19 + Vite. Dois papéis, **aluno** e **moderador**, sobre dados reais.
   metas e matérias visíveis só para ele, redações, registros, histórico).
   No geral: Jornadas (o conteúdo programático de cada vestibular/curso),
   Materiais em PDF e Aulas em vídeo, filtráveis por programa.
+- **Entrada**: login num cartão branco sobre um fundo de cores parado; quem
+  entra vai direto para o Dashboard (aluno) ou para Alunos (moderador). A
+  frase, o texto e a foto do professor do lado direito se editam em Textos.
+  Uma fonte só (Inter); tema claro por padrão, com o escuro no botão de tema.
 
 ## Rodar
 

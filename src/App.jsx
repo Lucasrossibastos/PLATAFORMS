@@ -4,7 +4,6 @@ import { AppProvider, rotaInicial, useApp } from "./state/AppContext.jsx";
 import { MENU_ALUNO, MENU_MODERADOR } from "./navegacao.js";
 import { Carregando } from "./ui/ui.jsx";
 import Login from "./screens/Login.jsx";
-import BoasVindas from "./screens/BoasVindas.jsx";
 import Shell from "./screens/Shell.jsx";
 import { AcessoBloqueado, Instalacao } from "./screens/Acesso.jsx";
 import { BoasVindasPagina } from "./screens/Paginas.jsx";
@@ -51,11 +50,11 @@ function Raiz() {
   return <Navigate to={usuario?.role ? rotaInicial(usuario) : "/entrar"} replace />;
 }
 
-// Logou (ou já estava logado): a primeira tela é a de boas-vindas.
+// Logou (ou já estava logado): vai direto para a primeira tela do papel.
 function Entrada() {
   const { usuario } = useApp();
   if (usuario?.semPerfil || usuario?.bloqueado) return <AcessoBloqueado />;
-  return usuario ? <Navigate to="/boas-vindas" replace /> : <Login />;
+  return usuario ? <Navigate to={rotaInicial(usuario)} replace /> : <Login />;
 }
 
 export default function App() {
@@ -67,7 +66,7 @@ export default function App() {
             <Route path="/" element={<Raiz />} />
             <Route path="/entrar" element={<Entrada />} />
             <Route path="/instalar" element={<Instalacao />} />
-            <Route path="/boas-vindas" element={<Protegida><BoasVindas /></Protegida>} />
+            <Route path="/boas-vindas" element={<Raiz />} />
             <Route path="/aluno" element={<Protegida papel="aluno"><Shell menu={MENU_ALUNO} /></Protegida>}>
               <Route index element={<Navigate to="inicio" replace />} />
               <Route path="inicio" element={<Inicio />} />

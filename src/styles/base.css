@@ -5,26 +5,17 @@
   font-display: swap;
   src: url("../assets/fonts/inter.woff2") format("woff2");
 }
-@font-face {
-  font-family: "Instrument Serif";
-  font-style: italic;
-  font-weight: 400;
-  font-display: swap;
-  src: url("../assets/fonts/instrument-serif-italic.woff2") format("woff2");
-}
 
 /* ---------- Tokens ----------
-   Escuro é o padrão (a arte nasce do preto). O claro inverte os papéis:
-   metal claro, botão sólido preto. As cores de área/vestibular vêm do núcleo. */
+   Claro é o padrão; o escuro fica no botão de tema. Uma fonte só (Inter);
+   o destaque dos títulos é a cor de acento, não outra fonte. As cores de
+   área/vestibular vêm do núcleo. */
 
 :root {
   --font-ui: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-serif: "Instrument Serif", "Times New Roman", Times, serif;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* [data-theme="dark"] também vale dentro do tema claro: as telas de cinema
-   (login e boas-vindas) ficam sempre escuras por causa do vídeo. */
 :root, [data-theme="dark"] {
   color-scheme: dark;
   --bg: #000000;
@@ -67,6 +58,7 @@
   --ok: #5bd69a;
   --rev: #8fb3ff;
   --focus: rgba(220, 230, 255, 0.85);
+  --acento: #a3adff;
 
   /* competências ENEM C1–C5 (paleta categórica validada para o tema escuro) */
   --c1: #3987e5;
@@ -98,12 +90,13 @@
   --metal-text: #111111;
   --metal-glow: 0 4px 14px rgba(0, 0, 0, 0.1);
 
-  --solid: linear-gradient(180deg, #3a3a3a 0%, #151515 52%, #000000 100%);
-  --solid-hover: linear-gradient(180deg, #4a4a4a 0%, #1c1c1c 48%, #000000 100%);
-  --solid-border: #000000;
+  /* botão principal no azul-violeta da entrada */
+  --solid: linear-gradient(180deg, #5f6bf8 0%, #4a56ef 100%);
+  --solid-hover: linear-gradient(180deg, #6a75fa 0%, #3f4be4 100%);
+  --solid-border: #4a56ef;
   --solid-text: #ffffff;
-  --solid-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
-  --solid-shadow-hover: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 8px 20px rgba(0, 0, 0, 0.22);
+  --solid-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  --solid-shadow-hover: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 8px 20px rgba(79, 92, 246, 0.28);
 
   --glass: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.55) 50%, rgba(220, 225, 235, 0.6));
   --glass-hover: linear-gradient(135deg, #ffffff, rgba(255, 255, 255, 0.75) 48%, rgba(225, 232, 245, 0.8));
@@ -112,12 +105,13 @@
   --glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
   --glass-shadow-hover: inset 0 1px 0 #fff, 0 6px 16px rgba(0, 0, 0, 0.1);
 
-  --check-on: #0b0b0c;
+  --check-on: #4f5cf6;
   --check-on-text: #ffffff;
   --danger: #c0392b;
   --ok: #1d7a49;
   --rev: #2f5db8;
   --focus: rgba(20, 30, 60, 0.75);
+  --acento: #4f5cf6;
 
   --c1: #2a78d6;
   --c2: #eb6834;
@@ -151,13 +145,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 button { background: none; border: 0; cursor: pointer; }
 img, svg, video { display: block; max-width: 100%; }
 h1, h2, h3, h4 { text-wrap: balance; font-weight: 500; }
-em.serif, .serif {
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-weight: 400;
-  letter-spacing: -0.02em;
-  color: var(--muted);
-}
+/* *palavra* nos títulos: mesma fonte, na cor de acento */
+em.destaque { font-style: normal; color: var(--acento); }
+.login em.destaque { color: var(--destaque); }
 
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 ::selection { background: rgba(170, 190, 230, 0.35); }
@@ -169,57 +159,12 @@ em.serif, .serif {
 
 .num { font-variant-numeric: tabular-nums; }
 
-/* Grão global (SVG inline, sem imagem). Em overlay: não altera o preto puro. */
-.grao {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  pointer-events: none;
-  opacity: 0.1;
-  mix-blend-mode: overlay;
-}
-.grao svg { width: 100%; height: 100%; }
+/* ---------- Animações de entrada ---------- */
 
-/* ---------- Entrada (mesmo vocabulário da landing) ---------- */
-
-.aparece {
-  opacity: 1;
-  animation-duration: 1.05s;
-  animation-fill-mode: both;
-  animation-timing-function: var(--ease-out);
-  animation-delay: var(--d, 0.08s);
-}
-.aparece--escala { animation-name: in-scale; }
-.aparece--suave  { animation-name: in-soft; }
-.aparece--mascara{ animation-name: in-mask; }
-.aparece--pop    { animation-name: in-pop; }
-.aparece--botao  { animation-name: in-btn; }
-.aparece--lado   { animation-name: in-side; }
-.aparece--stat   { animation-name: in-stat; }
-
-@keyframes in-scale { from { opacity: 0; transform: scale(0.84); } to { opacity: 1; transform: none; } }
-@keyframes in-soft  { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-@keyframes in-mask  { from { opacity: 0; transform: translateY(40%); } to { opacity: 1; transform: none; } }
-@keyframes in-pop {
-  0%   { opacity: 0; transform: scale(0.9); }
-  70%  { opacity: 1; transform: scale(1.03); }
-  100% { opacity: 1; transform: scale(1); }
-}
-@keyframes in-btn   { from { opacity: 0; transform: translateY(18px) scale(0.94); } to { opacity: 1; transform: none; } }
-@keyframes in-side  { from { opacity: 0; transform: translateX(22px); } to { opacity: 1; transform: none; } }
-@keyframes in-stat  { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
-@keyframes in-star {
-  0%   { transform: scale(0.2) rotate(-50deg); }
-  65%  { transform: scale(1.2) rotate(8deg); }
-  100% { transform: none; }
-}
-@keyframes in-em    { from { opacity: 0.35; filter: blur(4px); } to { opacity: 1; filter: blur(0); } }
-@keyframes in-photo { from { opacity: 0; transform: scale(1.04); } to { opacity: 1; transform: none; } }
 @keyframes entra-tela { from { opacity: 0.001; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes pop-in { from { opacity: 0; transform: translateY(16px) scale(0.98); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
-  .aparece { opacity: 1; transform: none; filter: none; }
 }
