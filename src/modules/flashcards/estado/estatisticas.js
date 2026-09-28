@@ -7,8 +7,6 @@
 import { ESTADOS } from "../dados/modelo.js";
 import { chaveDia, somarDias } from "../dados/datas.js";
 
-const DIA_MS = 86400000;
-
 // em que "grupo" entra uma resposta, pelo estado do cartão antes dela
 export function grupoDaResposta(estadoAntes) {
   if (estadoAntes === ESTADOS.novo) return "novos";
