@@ -47,6 +47,8 @@
    movimento. */
 .fundo-revelar { --luz-x: -999px; --luz-y: -999px; position: absolute; inset: 0; background: #000; }
 .fundo-revelar-img { position: absolute; inset: 0; background: center / cover no-repeat; }
+/* crescimento automático: a máscara (os tufos) vem do Cinema.jsx */
+.fundo-crescer { position: absolute; inset: 0; }
 .fundo-revelar-mascara {
   position: absolute;
   inset: 0;

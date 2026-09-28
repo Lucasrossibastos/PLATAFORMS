@@ -55,12 +55,69 @@ function VideoFundo() {
   );
 }
 
-/* Arte "galho que floresce": duas fotos do mesmo enquadramento; um círculo
-   de luz que segue o ponteiro mostra a segunda (o galho com folhas) sobre a
-   primeira. A luz anda suavizada (10% da distância por quadro) e para de
-   calcular quando alcança o ponteiro. Máscara em CSS: o mesmo degradê de uma
-   máscara desenhada em canvas, sem gerar uma imagem nova a cada quadro. */
+/* Arte "galho que floresce": duas fotos do mesmo enquadramento; a segunda
+   (o galho com folhas) aparece sobre a primeira de dois jeitos:
+   · crescimento: em ciclo, tufos sobem do chão, um após o outro, da
+     esquerda para a direita, até cobrir a cena; fica florido, esmaece e
+     recomeça. É o que garante a experiência no celular, sem mouse;
+   · luz: um círculo que segue o ponteiro (ou o dedo), suavizado (10% da
+     distância por quadro), que para de calcular quando alcança o ponteiro.
+   As duas são máscaras em CSS (degradês), sem gerar imagem a cada quadro. */
 const RAIO_LUZ = 260;
+const TUFOS = 7;
+const CICLO = { espera: 900, crescer: 7000, pleno: 3500, sumir: 1600, vazio: 1400 }; // ms
+const ALTURA_TUFO = 190; // % da altura: com o degradê, o tufo sólido passa do topo
+const MASCARA_TUFOS = Array.from({ length: TUFOS }, (_, i) =>
+  `radial-gradient(ellipse 22% var(--t${i}, 0.1%) at ${(((i + 0.5) / TUFOS) * 100).toFixed(2)}% 100%, `
+  + "#fff 0%, #fff 55%, rgba(255, 255, 255, 0.6) 72%, rgba(255, 255, 255, 0.2) 86%, transparent 100%)").join(", ");
+
+function useCrescimento(ref) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const vazios = Array(TUFOS).fill(0);
+    const cheios = Array(TUFOS).fill(ALTURA_TUFO);
+    const pintar = (alturas, opacidade) => {
+      alturas.forEach((a, i) => el.style.setProperty(`--t${i}`, `${Math.max(0.1, a).toFixed(2)}%`));
+      el.style.opacity = String(opacidade);
+    };
+    // "reduzir movimento": nada se mexe; a cena já aparece florida
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      pintar(cheios, 1);
+      return undefined;
+    }
+    const { espera, crescer, pleno, sumir, vazio } = CICLO;
+    const total = crescer + pleno + sumir + vazio;
+    const entre = (crescer * 0.45) / (TUFOS - 1); // um tufo começa depois do outro
+    const duracao = crescer - entre * (TUFOS - 1);
+    const suave = (p) => 1 - (1 - Math.min(1, Math.max(0, p))) ** 3;
+    const inicio = performance.now() + espera;
+    let quadro = 0;
+    let pausa = 0;
+    const depois = (ms) => { pausa = setTimeout(() => { quadro = requestAnimationFrame(passo); }, ms); };
+    function passo() {
+      const t = performance.now() - inicio;
+      if (t < 0) { pintar(vazios, 1); depois(-t); return; }
+      const c = t % total;
+      if (c < crescer) {
+        pintar(vazios.map((_, i) => suave((c - i * entre) / duracao) * ALTURA_TUFO), 1);
+        quadro = requestAnimationFrame(passo);
+      } else if (c < crescer + pleno) { // florido e parado: nada a calcular até esmaecer
+        pintar(cheios, 1);
+        depois(crescer + pleno - c);
+      } else if (c < crescer + pleno + sumir) { // esmaecer é só opacidade
+        pintar(cheios, 1 - (c - crescer - pleno) / sumir);
+        quadro = requestAnimationFrame(passo);
+      } else {
+        pintar(vazios, 1);
+        depois(total - c);
+      }
+    }
+    passo();
+    return () => { cancelAnimationFrame(quadro); clearTimeout(pausa); };
+  }, [ref]);
+}
+
 const ARTE_GALHO = {
   base: "https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20260609_195923_b0ba8ace-1d1d-4f2c-9a28-1ab84b330680.png&w=1280&q=85",
   revelada: "https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20260609_201152_bba90a12-bf12-459f-91f0-51f237dbaf3b.png&w=1280&q=85",
@@ -68,6 +125,8 @@ const ARTE_GALHO = {
 
 function FundoRevelar({ base, revelada }) {
   const ref = useRef(null);
+  const tufos = useRef(null);
+  useCrescimento(tufos);
   useEffect(() => {
     const el = ref.current;
     if (!el) return undefined;
@@ -108,6 +167,9 @@ function FundoRevelar({ base, revelada }) {
   return (
     <div ref={ref} className="fundo-revelar" style={{ "--luz-r": `${RAIO_LUZ}px` }}>
       <div className="fundo-revelar-img fundo-zoom" style={{ backgroundImage: `url("${base}")` }} />
+      <div ref={tufos} className="fundo-crescer" style={{ WebkitMaskImage: MASCARA_TUFOS, maskImage: MASCARA_TUFOS }}>
+        <div className="fundo-revelar-img fundo-zoom" style={{ backgroundImage: `url("${revelada}")` }} />
+      </div>
       <div className="fundo-revelar-mascara">
         <div className="fundo-revelar-img fundo-zoom" style={{ backgroundImage: `url("${revelada}")` }} />
       </div>
