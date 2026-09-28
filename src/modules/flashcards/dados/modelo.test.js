@@ -91,6 +91,7 @@ describe("cartões e fila", () => {
     expect(comFila({ ...estudado, enterradoAte: amanha }).fila).toEqual(due); // já vence depois
     expect(comFila({ ...estudado, suspenso: true })).toMatchObject({ fila: null, ordemNovo: null });
     expect(comFila({ ...base, suspenso: true })).toMatchObject({ fila: null, ordemNovo: null });
+    expect(comFila({ ...base, enterradoAte: amanha })).toMatchObject({ fila: null, ordemNovo: null }); // novo adiado sai da fila de novos
   });
   it("estado FSRS vai e volta do documento sem perder nada", () => {
     const c = cartaoNovo({ nota, notaId: "n1", ordinal: "1", agora, posicaoNovo: 1 });

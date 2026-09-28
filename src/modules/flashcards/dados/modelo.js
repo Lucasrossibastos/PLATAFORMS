@@ -8,8 +8,11 @@
 
    Fila (para a consulta "pendentes hoje" usar só índices de um campo):
      fila       data em que o cartão (já estudado) volta; null se novo ou suspenso
-     ordemNovo  posição na fila de novos; null se já estudado ou suspenso
-   Enterrado: fila = a virada do dia seguinte (o cartão some até lá). */
+     ordemNovo  posição na fila de novos; null se já estudado, suspenso,
+                enterrado ou adiado
+   Enterrado/adiado (enterradoAte): o estudado volta na fila só a partir
+   dessa data; o novo sai da fila de novos até lá (desenterrarVencidos
+   devolve os que já passaram da data). */
 
 import { createEmptyCard } from "ts-fsrs";
 import { ErroFlashcards } from "./contrato.js";
@@ -233,7 +236,7 @@ export function comFila(cartao) {
   let fila = null;
   let ordemNovo = null;
   if (!cartao.suspenso) {
-    if (novo) ordemNovo = cartao.posicaoNovo;
+    if (novo) ordemNovo = cartao.enterradoAte ? null : cartao.posicaoNovo;
     else {
       const due = new Date(cartao.fsrs.due);
       const enterrado = cartao.enterradoAte ? new Date(cartao.enterradoAte) : null;
