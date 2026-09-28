@@ -1,10 +1,11 @@
-/* Ajustes do aluno (as "opções do baralho" do Anki), salvos no banco, na
-   conta do aluno: limites por dia, retenção-alvo e intervalo máximo do FSRS,
-   passos de aprendizado e a hora da virada do dia. Mudar a retenção ou o
-   intervalo máximo pode reagendar os cartões já estudados (opcional). */
+/* Ajustes do aluno, salvos no banco, na conta dele. À vista: de quanto em
+   quanto tempo, no máximo, cada cartão volta (intervalo máximo) e os limites
+   por dia. Em "Avançado": retenção-alvo do FSRS, passos de aprendizado e a
+   hora em que o dia começa. Mudar a retenção ou o intervalo máximo pode
+   valer também para os cartões já estudados (reagendar, opcional). */
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, RotateCcw } from "lucide-react";
+import { AlertTriangle, ChevronRight, RotateCcw } from "lucide-react";
 import { useLoja } from "../estado/hooks.js";
 import { CONFIG_PADRAO, normalizarConfig } from "../dados/modelo.js";
 import { criarAgendador } from "../motor/agendador.js";
@@ -35,11 +36,11 @@ const paraConfig = (f) => ({
 });
 
 const PRESETS_INTERVALO = [
+  { dias: 14, rotulo: "2 semanas" },
   { dias: 30, rotulo: "1 mês" },
   { dias: 90, rotulo: "3 meses" },
   { dias: 180, rotulo: "6 meses" },
   { dias: 365, rotulo: "1 ano" },
-  { dias: 36500, rotulo: "Sem limite" },
 ];
 
 const um = (x) => x.toLocaleString("pt-BR", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
@@ -78,6 +79,7 @@ export default function Configuracoes() {
   const [reagendarJa, setReagendarJa] = useState(null); // null = a sugestão automática
   const [salvando, setSalvando] = useState(false);
   const [padroes, setPadroes] = useState(false);
+  const [avancado, setAvancado] = useState(false);
 
   const mudou = JSON.stringify(f) !== JSON.stringify(inicial);
   // mudou em outro aparelho enquanto o formulário estava intacto: acompanha
@@ -109,6 +111,8 @@ export default function Configuracoes() {
     let config;
     try { config = normalizarConfig(novo); } catch (err) {
       setErros(err.campos || {});
+      // erro num campo do Avançado: abre a seção para ele aparecer
+      if (["retencao", "passosAprendizado", "passosReaprendizado", "viradaDoDia"].some((k) => err.campos?.[k])) setAvancado(true);
       avisar("Confira os campos marcados.", { tipo: "erro" });
       return;
     }
@@ -126,34 +130,68 @@ export default function Configuracoes() {
     } finally { setSalvando(false); }
   }
 
+  const intervaloAtual = inteiro(f.intervaloMaximo);
+  const escolhido = PRESETS_INTERVALO.find((p) => p.dias === intervaloAtual);
   return (
     <form className="fc-ajustes" onSubmit={salvar} noValidate>
-      <header className="fc-pagina-topo">
-        <h1>Ajustes</h1>
-        <Botao variante="fantasma" icone={RotateCcw} onClick={() => setPadroes(true)}>Restaurar padrões</Botao>
-      </header>
+      <header className="fc-pagina-topo"><h1>Ajustes</h1></header>
+
+      <section className="fc-ajustes-grupo" aria-labelledby="aj-revisao">
+        <h2 id="aj-revisao">Reaparição dos cartões</h2>
+        <div className={`fc-ajuste fc-ajuste--largo${erros.intervaloMaximo ? " fc-ajuste--erro" : ""}`}>
+          <div className="fc-ajuste-texto">
+            <label htmlFor="aj-intervalo">Cada cartão volta pelo menos a cada</label>
+            <p id="aj-intervalo-dica">Mesmo o que você sabe bem não fica mais tempo que isso sem aparecer. Menor = revisa com mais frequência. Para rever antes, use “Rever antes do prazo” em Baralhos.</p>
+          </div>
+          <div className="fc-ajuste-controle">
+            <div className="fc-escolhas" role="radiogroup" aria-label="Intervalo máximo">
+              {PRESETS_INTERVALO.map((p) => (
+                <button key={p.dias} type="button" className="fc-escolha" role="radio" aria-checked={intervaloAtual === p.dias}
+                  onClick={() => { setF((x) => ({ ...x, intervaloMaximo: String(p.dias) })); setErros((x) => ({ ...x, intervaloMaximo: undefined })); }}>
+                  {p.rotulo}{p.dias === CONFIG_PADRAO.intervaloMaximo ? " (padrão)" : ""}
+                </button>
+              ))}
+            </div>
+            <div className="fc-intervalo">
+              <span className="fc-unidade">{escolhido ? "ou outro:" : "Personalizado:"}</span>
+              <input id="aj-intervalo" className="fc-entrada fc-entrada--num" inputMode="numeric" value={f.intervaloMaximo} onChange={mudar("intervaloMaximo")} aria-describedby="aj-intervalo-dica" />
+              <span className="fc-unidade">dias</span>
+            </div>
+            {erros.intervaloMaximo && <small className="fc-campo-erro" role="alert">{erros.intervaloMaximo}</small>}
+          </div>
+        </div>
+        {mudouAgenda && (
+          <label className="fc-ajuste-reagendar">
+            <input type="checkbox" checked={vaiReagendar} onChange={(e) => setReagendarJa(e.target.checked)} />
+            <span>
+              <strong>Aplicar também aos cartões já estudados</strong>
+              Recalcula agora a próxima revisão de cada um{novo.retencao !== salvo.retencao ? " com a nova retenção" : ""}{novo.intervaloMaximo !== salvo.intervaloMaximo ? " dentro do novo limite" : ""}, contando da última vez que você o viu (o que já passou do prazo vence hoje). Sem isso, a mudança vale para cada cartão a partir da próxima resposta.
+            </span>
+          </label>
+        )}
+      </section>
 
       <section className="fc-ajustes-grupo" aria-labelledby="aj-limites">
         <h2 id="aj-limites">Limites por dia</h2>
         <Campo id="aj-novos" rotulo="Cartões novos por dia" erro={erros.novosPorDia}
-          dica="Quantos cartões você vê pela primeira vez a cada dia. Cada novo volta várias vezes nas semanas seguintes.">
+          dica="Quantos cartões você vê pela primeira vez a cada dia.">
           <input id="aj-novos" className="fc-entrada fc-entrada--num" inputMode="numeric" value={f.novosPorDia} onChange={mudar("novosPorDia")} aria-describedby="aj-novos-dica" />
         </Campo>
         <Campo id="aj-revisoes" rotulo="Revisões por dia" erro={erros.revisoesPorDia}
-          dica="O máximo de revisões por dia; o que passar fica para o dia seguinte. Aprendizado não conta no limite.">
+          dica="O que passar fica para o dia seguinte. Rever antes do prazo não conta aqui.">
           <input id="aj-revisoes" className="fc-entrada fc-entrada--num" inputMode="numeric" value={f.revisoesPorDia} onChange={mudar("revisoesPorDia")} aria-describedby="aj-revisoes-dica" />
         </Campo>
         {poucasRevisoes && (
           <p className="fc-ajuste-aviso" role="status"><AlertTriangle aria-hidden="true" />
-            Regra prática do Anki: o limite de revisões deve ser pelo menos 10× o de novos ({(novos * 10).toLocaleString("pt-BR")} aqui). Com menos, as revisões se acumulam e os cartões voltam atrasados.
+            Regra prática do Anki: revisões por dia de pelo menos 10× os novos ({(novos * 10).toLocaleString("pt-BR")} aqui). Com menos, as revisões se acumulam.
           </p>
         )}
       </section>
 
-      <section className="fc-ajustes-grupo" aria-labelledby="aj-memoria">
-        <h2 id="aj-memoria">Memória (FSRS)</h2>
+      <details className="fc-ajustes-grupo fc-avancado" open={avancado} onToggle={(e) => setAvancado(e.currentTarget.open)}>
+        <summary><ChevronRight aria-hidden="true" />Avançado<small>retenção-alvo, passos de aprendizado, início do dia</small></summary>
         <Campo id="aj-retencao" rotulo="Retenção-alvo" erro={erros.retencao}
-          dica="A chance de você lembrar de um cartão no dia em que ele volta. Quanto maior, mais curtos os intervalos e mais revisões.">
+          dica="A chance de lembrar no dia em que o cartão volta. Maior = intervalos mais curtos e mais revisões.">
           <div className="fc-retencao">
             <input id="aj-retencao" type="range" min="70" max="99" step="1" value={f.retencao} onChange={mudar("retencao")}
               aria-valuetext={`${f.retencao}%`} aria-describedby="aj-retencao-dica aj-retencao-efeito" style={{ "--p": `${((f.retencao - 70) / 29) * 100}%` }} />
@@ -164,52 +202,25 @@ export default function Configuracoes() {
           </div>
           <p id="aj-retencao-efeito" className={`fc-ajuste-efeito fc-ajuste-efeito--${ret.tom}`}>{ret.texto}</p>
         </Campo>
-        <Campo id="aj-intervalo" rotulo="Intervalo máximo" erro={erros.intervaloMaximo}
-          dica="Nenhum cartão fica mais do que isso sem voltar. Útil perto da prova: com 30 dias, tudo o que você estudou passa de novo pelo menos uma vez por mês.">
-          <div className="fc-intervalo">
-            <input id="aj-intervalo" className="fc-entrada fc-entrada--num" inputMode="numeric" value={f.intervaloMaximo} onChange={mudar("intervaloMaximo")} aria-describedby="aj-intervalo-dica" />
-            <span className="fc-unidade">dias</span>
-          </div>
-          <div className="fc-escolhas fc-escolhas--compactas" role="group" aria-label="Atalhos de intervalo máximo">
-            {PRESETS_INTERVALO.map((p) => (
-              <button key={p.dias} type="button" className="fc-escolha" aria-checked={String(inteiro(f.intervaloMaximo) === p.dias)} role="radio"
-                onClick={() => { setF((x) => ({ ...x, intervaloMaximo: String(p.dias) })); setErros((x) => ({ ...x, intervaloMaximo: undefined })); }}>{p.rotulo}</button>
-            ))}
-          </div>
-        </Campo>
-        {mudouAgenda && (
-          <label className="fc-ajuste-reagendar">
-            <input type="checkbox" checked={vaiReagendar} onChange={(e) => setReagendarJa(e.target.checked)} />
-            <span>
-              <strong>Reagendar os cartões já estudados agora</strong>
-              Recalcula a próxima revisão de cada cartão em revisão com {novo.retencao !== salvo.retencao ? "a nova retenção" : ""}{novo.retencao !== salvo.retencao && novo.intervaloMaximo !== salvo.intervaloMaximo ? " e " : ""}{novo.intervaloMaximo !== salvo.intervaloMaximo ? "o novo intervalo máximo" : ""}, contando da última revisão (o que já passou do prazo vence hoje). Sem isso, a mudança vale para cada cartão a partir da próxima resposta.
-            </span>
-          </label>
-        )}
-        <p className="fc-dica">Parâmetros do modelo: os padrões do FSRS-6, ajustados em milhões de revisões. A otimização com o seu próprio histórico (como no Anki) ainda não está disponível.</p>
-      </section>
-
-      <section className="fc-ajustes-grupo" aria-labelledby="aj-passos">
-        <h2 id="aj-passos">Aprendizado</h2>
         <Campo id="aj-passos-a" rotulo="Passos de aprendizado" erro={erros.passosAprendizado}
-          dica="Intervalos curtos para o cartão novo antes de entrar em revisão, separados por espaço (m = minutos, h = horas, d = dias). Com o FSRS, mantenha abaixo de 1 dia.">
+          dica="Quando um cartão novo volta antes de entrar em revisão, separados por espaço (m = minutos, h = horas, d = dias).">
           <input id="aj-passos-a" className="fc-entrada" value={f.passosAprendizado} onChange={mudar("passosAprendizado")} placeholder="1m 10m" aria-describedby="aj-passos-a-dica" />
         </Campo>
         <Campo id="aj-passos-r" rotulo="Passos de reaprendizado" erro={erros.passosReaprendizado}
-          dica="Quando você erra um cartão em revisão (Novamente): quando ele volta antes de ser reagendado.">
+          dica="Quando um cartão esquecido (Novamente) volta.">
           <input id="aj-passos-r" className="fc-entrada" value={f.passosReaprendizado} onChange={mudar("passosReaprendizado")} placeholder="10m" aria-describedby="aj-passos-r-dica" />
         </Campo>
-      </section>
-
-      <section className="fc-ajustes-grupo" aria-labelledby="aj-dia">
-        <h2 id="aj-dia">Dia de estudo</h2>
         <Campo id="aj-virada" rotulo="O dia começa às" erro={erros.viradaDoDia}
-          dica="Quem estuda de madrugada continua no dia anterior até essa hora (limites, sequência e estatísticas).">
+          dica="Quem estuda de madrugada continua no dia anterior até essa hora.">
           <select id="aj-virada" className="fc-entrada fc-entrada--num" value={f.viradaDoDia} onChange={mudar("viradaDoDia")} aria-describedby="aj-virada-dica">
             {Array.from({ length: 24 }, (_, h) => <option key={h} value={String(h)}>{`${h}h${h === CONFIG_PADRAO.viradaDoDia ? " (padrão)" : ""}`}</option>)}
           </select>
         </Campo>
-      </section>
+        <div className="fc-avancado-rodape">
+          <p className="fc-dica">Algoritmo: FSRS-6 com os parâmetros padrão (sem otimização pelo seu histórico).</p>
+          <Botao variante="fantasma" tamanho="sm" icone={RotateCcw} onClick={() => setPadroes(true)}>Restaurar padrões</Botao>
+        </div>
+      </details>
 
       <div className={`fc-ajustes-barra${mudou ? " fc-ajustes-barra--ativa" : ""}`} aria-hidden={!mudou}>
         <span>{mudou ? "Alterações não salvas" : "Tudo salvo"}</span>
@@ -220,7 +231,7 @@ export default function Configuracoes() {
       <Confirmar aberto={padroes} titulo="Restaurar os padrões?" rotulo="Restaurar"
         aoConfirmar={() => { setF(formDe(normalizarConfig({}))); setErros({}); setPadroes(false); }}
         aoFechar={() => setPadroes(false)}>
-        <p>Retenção 90%, intervalo máximo de 365 dias, 20 novos e 200 revisões por dia, passos 1m 10m e 10m, dia começando às 4h. Nada é salvo até você clicar em Salvar.</p>
+        <p>Cartões voltam pelo menos a cada 3 meses, 20 novos e 200 revisões por dia, retenção 90%, passos 1m 10m e 10m, dia começando às 4h. Nada é salvo até você clicar em Salvar.</p>
       </Confirmar>
     </form>
   );

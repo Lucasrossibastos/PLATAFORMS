@@ -662,6 +662,19 @@ select.fc-entrada { padding-right: 30px; }
 .fc-ajuste-efeito--alerta { background: color-mix(in srgb, var(--fc-dificil) 12%, transparent); }
 .fc-ajuste-aviso { display: flex; gap: 10px; margin: 0 0 12px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--fc-dificil) 12%, transparent); color: var(--fc-texto-2); font-size: 13px; line-height: 1.5; }
 .fc-ajuste-aviso svg { width: 16px; height: 16px; margin-top: 2px; color: var(--fc-dificil); flex: none; }
+/* item largo: texto em cima, opções embaixo (o intervalo máximo) */
+.fc-ajuste--largo { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.fc-ajuste--largo .fc-intervalo .fc-entrada { max-width: 110px; }
+.fc-avancado { padding-top: 0; padding-bottom: 0; }
+.fc-avancado > summary { display: flex; align-items: center; gap: 8px; padding: 16px 0; list-style: none; font-size: 15px; font-weight: 600; cursor: pointer; }
+.fc-avancado > summary::-webkit-details-marker { display: none; }
+.fc-avancado > summary svg { width: 16px; height: 16px; color: var(--fc-suave); transition: transform 0.2s var(--fc-ease); }
+.fc-avancado[open] > summary svg { transform: rotate(90deg); }
+.fc-avancado > summary small { margin-left: 4px; color: var(--fc-suave); font-size: 12.5px; font-weight: 400; }
+.fc-avancado[open] > summary { border-bottom: 1px solid var(--fc-borda); }
+.fc-avancado-rodape { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 0 14px; }
+.fc-avancado .fc-ajuste:last-of-type { border-bottom: 1px solid var(--fc-borda); }
+.fc-avancado-rodape .fc-dica { margin: 0; font-size: 12.5px; }
 .fc-ajuste-reagendar { display: flex; gap: 12px; margin: 0 0 12px; padding: 12px 14px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--fc-acento) 35%, transparent); background: color-mix(in srgb, var(--fc-acento) 7%, transparent); color: var(--fc-texto-2); font-size: 13px; line-height: 1.5; cursor: pointer; }
 .fc-ajuste-reagendar input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--fc-acento); flex: none; }
 .fc-ajuste-reagendar strong { display: block; margin-bottom: 2px; color: var(--fc-texto); font-size: 14px; font-weight: 600; }

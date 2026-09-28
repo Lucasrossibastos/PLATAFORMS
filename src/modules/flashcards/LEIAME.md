@@ -46,12 +46,13 @@ flashcards_alunos/{uid}                      configurações (retenção, limite
 
 | Rota | Tela |
 |---|---|
-| (início) | Baralhos: o que há para hoje, árvore Matéria → Tópico com contagens, arrastar para reordenar, estudo por recorte e por tag |
+| (início) | Baralhos: o que há para hoje, "Rever antes do prazo", árvore Matéria → Tópico com contagens, arrastar para reordenar, estudo por recorte e por tag |
 | `estudar?materia=…\|topico=…\|tag=…` | Estudo em tela cheia: espaço revela, 1–4 avaliam, Z desfaz, `-` enterra, `@` suspende, E edita, I informações |
-| `novo`, `nota/:id` | Editor: básico, cloze (Ctrl+Shift+C) e oclusão de imagem, com prévia ao vivo |
-| `navegar` | Navegar: busca, filtros, seleção em lote, arrastar cartões para um tópico |
-| `estatisticas` | Estatísticas: hoje, sequência, retenção real e estimada, revisões por dia, previsão, curva de retenção, estados por matéria, calendário |
-| `configuracoes` | Ajustes: limites por dia, retenção-alvo, intervalo máximo, passos, virada do dia; reagendar opcional |
+| `estudar?…&rever=1` | Rever antes do prazo: todos os já estudados do recorte, os menos lembrados primeiro (não gasta o limite do dia) |
+| `novo`, `nota/:id` | Editor único (Frente/Verso): "Esconder" um trecho da frente vira lacuna (cloze); "Esconder partes de uma imagem" vira oclusão; prévia ao vivo |
+| `navegar` | Navegar: busca, filtros, seleção em lote ("Rever hoje", mover, tags, suspender), arrastar cartões para um tópico |
+| `estatisticas` | Estatísticas: hoje, sequência, acerto nas revisões, aprendidos, últimos 30 dias, progresso por matéria, próximos 7 dias |
+| `configuracoes` | Ajustes: intervalo máximo (padrão 90 dias) e limites por dia; em "Avançado", retenção-alvo, passos e início do dia; reagendar opcional |
 
 ## Arquivos
 
@@ -84,6 +85,7 @@ estado/hooks.js            ganchos do React
 
 ui/                        telas (Inicio, Estudo, Editor, Navegar, Estatisticas, Configuracoes)
                            e peças (comum, Cartao, CampoRico, EditorOclusao, graficos, html, imagens)
+                           html.js também converte a lacuna marcada no editor para {{cN::…}} e de volta
 ```
 
 Testes (`npm test`): modelo, adaptadores (mesma bateria de contrato),
@@ -120,6 +122,6 @@ regras, o perfil ativo em `usuarios/{uid}` (`fcPerfilAtivo()`).
 - Parâmetros do FSRS: os padrões do FSRS-6. Não há otimizador com o
   histórico do aluno (o Anki tem).
 - Busca e Navegar leem todos os cartões e notas do aluno no aparelho; as
-  estatísticas leem os cartões e os últimos 12 meses de resumos de dias.
+  estatísticas leem os cartões e os últimos 120 dias de resumos de dias.
   Para coleções de dezenas de milhares de cartões, vale paginar.
 - Mover é por nota: os cartões irmãos (cloze, oclusão) vão juntos.
