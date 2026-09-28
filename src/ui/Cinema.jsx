@@ -56,66 +56,41 @@ function VideoFundo() {
 }
 
 /* Arte "galho que floresce": duas fotos do mesmo enquadramento; a segunda
-   (o galho com folhas) aparece sobre a primeira de dois jeitos:
-   · crescimento: em ciclo, tufos sobem do chão, um após o outro, da
-     esquerda para a direita, até cobrir a cena; fica florido, esmaece e
-     recomeça. É o que garante a experiência no celular, sem mouse;
-   · luz: um círculo que segue o ponteiro (ou o dedo), suavizado (10% da
-     distância por quadro), que para de calcular quando alcança o ponteiro.
-   As duas são máscaras em CSS (degradês), sem gerar imagem a cada quadro. */
-const RAIO_LUZ = 260;
+   (o galho florido) aparece sobre a primeira de dois jeitos, ao mesmo tempo:
+   · ciclo: em movimento harmônico, sem pausas, a floração sobe do chão em
+     onda (sete tufos, da esquerda para a direita), cobre a cena, cai de volta
+     e reflore. É o que garante a experiência no celular, sem mouse;
+   · toque: um círculo de luz segue o mouse ou o dedo (suavizado) e faz florir
+     onde passa. Enquanto alguém mexe, o ciclo recolhe para a floração sob o
+     ponteiro aparecer; parado por um instante, o ciclo volta.
+   Tudo são máscaras em CSS (degradês) reescritas por um laço só, sem gerar
+   imagem a cada quadro. Toca sempre, como o vídeo: é a identidade visual. */
+const RAIO_LUZ = 260; // px no computador; no celular acompanha o tamanho da tela
 const TUFOS = 7;
-const CICLO = { espera: 900, crescer: 7000, pleno: 3500, sumir: 1600, vazio: 1400 }; // ms
+const PERIODO = 11000; // ms de uma floração mais uma queda
+const ONDA = 0.03; // atraso de um tufo para o seguinte, em fração do período
 const ALTURA_TUFO = 190; // % da altura: com o degradê, o tufo sólido passa do topo
-const MASCARA_TUFOS = Array.from({ length: TUFOS }, (_, i) =>
-  `radial-gradient(ellipse 22% var(--t${i}, 0.1%) at ${(((i + 0.5) / TUFOS) * 100).toFixed(2)}% 100%, `
-  + "#fff 0%, #fff 55%, rgba(255, 255, 255, 0.6) 72%, rgba(255, 255, 255, 0.2) 86%, transparent 100%)").join(", ");
+const OCIOSO = 1600; // ms sem mexer até o ciclo voltar
+const X_TUFOS = Array.from({ length: TUFOS }, (_, i) => (((i + 0.5) / TUFOS) * 100).toFixed(2));
+const NADA = "linear-gradient(transparent, transparent)";
 
-function useCrescimento(ref) {
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return undefined;
-    const vazios = Array(TUFOS).fill(0);
-    const cheios = Array(TUFOS).fill(ALTURA_TUFO);
-    const pintar = (alturas, opacidade) => {
-      alturas.forEach((a, i) => el.style.setProperty(`--t${i}`, `${Math.max(0.1, a).toFixed(2)}%`));
-      el.style.opacity = String(opacidade);
-    };
-    // "reduzir movimento": nada se mexe; a cena já aparece florida
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-      pintar(cheios, 1);
-      return undefined;
-    }
-    const { espera, crescer, pleno, sumir, vazio } = CICLO;
-    const total = crescer + pleno + sumir + vazio;
-    const entre = (crescer * 0.45) / (TUFOS - 1); // um tufo começa depois do outro
-    const duracao = crescer - entre * (TUFOS - 1);
-    const suave = (p) => 1 - (1 - Math.min(1, Math.max(0, p))) ** 3;
-    const inicio = performance.now() + espera;
-    let quadro = 0;
-    let pausa = 0;
-    const depois = (ms) => { pausa = setTimeout(() => { quadro = requestAnimationFrame(passo); }, ms); };
-    function passo() {
-      const t = performance.now() - inicio;
-      if (t < 0) { pintar(vazios, 1); depois(-t); return; }
-      const c = t % total;
-      if (c < crescer) {
-        pintar(vazios.map((_, i) => suave((c - i * entre) / duracao) * ALTURA_TUFO), 1);
-        quadro = requestAnimationFrame(passo);
-      } else if (c < crescer + pleno) { // florido e parado: nada a calcular até esmaecer
-        pintar(cheios, 1);
-        depois(crescer + pleno - c);
-      } else if (c < crescer + pleno + sumir) { // esmaecer é só opacidade
-        pintar(cheios, 1 - (c - crescer - pleno) / sumir);
-        quadro = requestAnimationFrame(passo);
-      } else {
-        pintar(vazios, 1);
-        depois(total - c);
-      }
-    }
-    passo();
-    return () => { cancelAnimationFrame(quadro); clearTimeout(pausa); };
-  }, [ref]);
+const degradeTufo = (altura, i) => `radial-gradient(ellipse 22% ${Math.max(0.1, altura).toFixed(2)}% at ${X_TUFOS[i]}% 100%, `
+  + "#fff 0%, #fff 55%, rgba(255, 255, 255, 0.6) 72%, rgba(255, 255, 255, 0.2) 86%, transparent 100%)";
+const degradeLuz = (x, y, r) => `radial-gradient(circle ${r.toFixed(1)}px at ${x.toFixed(1)}px ${y.toFixed(1)}px, `
+  + "#fff 0%, #fff 40%, rgba(255, 255, 255, 0.75) 60%, rgba(255, 255, 255, 0.4) 75%, rgba(255, 255, 255, 0.12) 88%, transparent 100%)";
+const mascarar = (el, valor) => {
+  if (el.dataset.mascara === valor) return;
+  el.dataset.mascara = valor;
+  el.style.setProperty("-webkit-mask-image", valor);
+  el.style.setProperty("mask-image", valor);
+};
+const entre0e1 = (v) => Math.min(1, Math.max(0, v));
+// florescer de 0 a 1 ao longo do período: cosseno (harmônico), com um respiro curto em cima e embaixo
+function floracao(fase) {
+  if (fase < 0) return 0;
+  const s = (1 - Math.cos(2 * Math.PI * fase)) / 2;
+  const g = entre0e1((s - 0.06) / 0.88);
+  return g * g * (3 - 2 * g);
 }
 
 const ARTE_GALHO = {
@@ -124,53 +99,74 @@ const ARTE_GALHO = {
 };
 
 function FundoRevelar({ base, revelada }) {
-  const ref = useRef(null);
-  const tufos = useRef(null);
-  useCrescimento(tufos);
+  const raiz = useRef(null);
+  const ciclo = useRef(null);
+  const toque = useRef(null);
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return undefined;
+    const el = raiz.current;
+    const camadaCiclo = ciclo.current;
+    const camadaToque = toque.current;
+    if (!el || !camadaCiclo || !camadaToque) return undefined;
     const alvo = { x: 0, y: 0 };
     const luz = { x: 0, y: 0 };
-    let primeiro = true;
+    let tocou = false;
+    let ultimoToque = -Infinity;
+    let calma = 1; // 1: o ciclo floresce sozinho; 0: quem faz florir é o ponteiro
+    const inicio = performance.now() + 700;
+    let anterior = performance.now();
     let quadro = 0;
-    const pintar = () => {
-      el.style.setProperty("--luz-x", `${luz.x}px`);
-      el.style.setProperty("--luz-y", `${luz.y}px`);
+
+    const passo = (agora) => {
+      quadro = requestAnimationFrame(passo);
+      const mexendo = agora - ultimoToque < OCIOSO;
+      const dt = agora - anterior;
+      if (!mexendo && dt < 32) return; // só o ciclo, que é lento: 30 quadros por segundo bastam
+      anterior = agora;
+      const k = (fator) => 1 - fator ** (Math.min(dt, 100) / 16.7); // suavização que independe da taxa de quadros
+      calma += ((mexendo ? 0 : 1) - calma) * k(0.95);
+      const t = (agora - inicio) / PERIODO;
+      mascarar(camadaCiclo, X_TUFOS.map((_, i) => degradeTufo(ALTURA_TUFO * calma * floracao(t - i * ONDA), i)).join(", "));
+      if (tocou) {
+        luz.x += (alvo.x - luz.x) * k(0.9);
+        luz.y += (alvo.y - luz.y) * k(0.9);
+        const r = Math.min(RAIO_LUZ, Math.min(window.innerWidth, window.innerHeight) * 0.42);
+        mascarar(camadaToque, degradeLuz(luz.x, luz.y, r));
+      }
     };
-    const passo = () => {
-      luz.x += (alvo.x - luz.x) * 0.1;
-      luz.y += (alvo.y - luz.y) * 0.1;
-      pintar();
-      quadro = Math.abs(alvo.x - luz.x) + Math.abs(alvo.y - luz.y) > 0.5 ? requestAnimationFrame(passo) : 0;
-    };
-    const mover = (e) => {
+    const mover = (x, y) => {
       const r = el.getBoundingClientRect();
-      alvo.x = e.clientX - r.left;
-      alvo.y = e.clientY - r.top;
-      if (primeiro) { // a luz nasce no ponteiro, em vez de atravessar a tela vindo do canto
-        primeiro = false;
+      alvo.x = x - r.left;
+      alvo.y = y - r.top;
+      if (!tocou) { // a luz nasce no ponteiro, em vez de atravessar a tela vindo do canto
+        tocou = true;
         luz.x = alvo.x;
         luz.y = alvo.y;
-        pintar();
       }
-      if (!quadro) quadro = requestAnimationFrame(passo);
+      ultimoToque = performance.now();
     };
-    window.addEventListener("pointermove", mover, { passive: true });
-    window.addEventListener("pointerdown", mover, { passive: true });
+    const aoPonteiro = (e) => mover(e.clientX, e.clientY);
+    // o dedo: toques continuam chegando mesmo quando o navegador rola a página
+    const aoDedo = (e) => { const d = e.touches?.[0]; if (d) mover(d.clientX, d.clientY); };
+    window.addEventListener("pointermove", aoPonteiro, { passive: true });
+    window.addEventListener("pointerdown", aoPonteiro, { passive: true });
+    window.addEventListener("touchstart", aoDedo, { passive: true });
+    window.addEventListener("touchmove", aoDedo, { passive: true });
+    quadro = requestAnimationFrame(passo);
     return () => {
-      window.removeEventListener("pointermove", mover);
-      window.removeEventListener("pointerdown", mover);
       cancelAnimationFrame(quadro);
+      window.removeEventListener("pointermove", aoPonteiro);
+      window.removeEventListener("pointerdown", aoPonteiro);
+      window.removeEventListener("touchstart", aoDedo);
+      window.removeEventListener("touchmove", aoDedo);
     };
   }, []);
   return (
-    <div ref={ref} className="fundo-revelar" style={{ "--luz-r": `${RAIO_LUZ}px` }}>
+    <div ref={raiz} className="fundo-revelar">
       <div className="fundo-revelar-img fundo-zoom" style={{ backgroundImage: `url("${base}")` }} />
-      <div ref={tufos} className="fundo-crescer" style={{ WebkitMaskImage: MASCARA_TUFOS, maskImage: MASCARA_TUFOS }}>
+      <div ref={ciclo} className="fundo-revelar-camada" style={{ WebkitMaskImage: NADA, maskImage: NADA }}>
         <div className="fundo-revelar-img fundo-zoom" style={{ backgroundImage: `url("${revelada}")` }} />
       </div>
-      <div className="fundo-revelar-mascara">
+      <div ref={toque} className="fundo-revelar-camada" style={{ WebkitMaskImage: NADA, maskImage: NADA }}>
         <div className="fundo-revelar-img fundo-zoom" style={{ backgroundImage: `url("${revelada}")` }} />
       </div>
     </div>

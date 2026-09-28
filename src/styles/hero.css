@@ -42,22 +42,13 @@
   background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.55));
 }
 
-/* Arte que se revela sob o ponteiro (Cinema.jsx › FundoRevelar). A luz é um
-   círculo de raio --luz-r em (--luz-x, --luz-y); fora da tela até o primeiro
-   movimento. */
-.fundo-revelar { --luz-x: -999px; --luz-y: -999px; position: absolute; inset: 0; background: #000; }
+/* Arte que floresce (Cinema.jsx › FundoRevelar): a foto de base e, por cima,
+   duas camadas com a foto florida, cada uma com a sua máscara (o ciclo e o
+   toque), escritas pelo JavaScript. */
+.fundo-revelar { position: absolute; inset: 0; background: #000; }
 .fundo-revelar-img { position: absolute; inset: 0; background: center / cover no-repeat; }
-/* crescimento automático: a máscara (os tufos) vem do Cinema.jsx */
-.fundo-crescer { position: absolute; inset: 0; }
-.fundo-revelar-mascara {
-  position: absolute;
-  inset: 0;
-  -webkit-mask-image: radial-gradient(circle var(--luz-r) at var(--luz-x) var(--luz-y),
-    #fff 0%, #fff 40%, rgba(255, 255, 255, 0.75) 60%, rgba(255, 255, 255, 0.4) 75%, rgba(255, 255, 255, 0.12) 88%, transparent 100%);
-  mask-image: radial-gradient(circle var(--luz-r) at var(--luz-x) var(--luz-y),
-    #fff 0%, #fff 40%, rgba(255, 255, 255, 0.75) 60%, rgba(255, 255, 255, 0.4) 75%, rgba(255, 255, 255, 0.12) 88%, transparent 100%);
-}
-/* as duas fotos fazem o mesmo zoom de entrada, para não desalinharem */
+.fundo-revelar-camada { position: absolute; inset: 0; }
+/* as fotos fazem o mesmo zoom de entrada, para não desalinharem */
 .fundo-zoom { animation: fundo-zoom 1.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
 @keyframes fundo-zoom { from { transform: scale(1.12); } to { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .fundo-zoom { animation: none; } }
