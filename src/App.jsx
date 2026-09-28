@@ -32,6 +32,8 @@ const Textos = sob(() => import("./screens/moderador/Textos.jsx"));
 const CursosModerador = sob(() => import("./screens/moderador/Cursos.jsx"), "CursosModerador");
 const PlaylistModerador = sob(() => import("./screens/moderador/Cursos.jsx"), "PlaylistModerador");
 const RedacaoModerador = sob(() => import("./screens/moderador/Redacao.jsx"), "RedacaoModerador");
+// módulo isolado de flashcards (src/modules/flashcards): baixado só quando o aluno abre
+const Flashcards = lazy(() => import("./modules/flashcards/index.jsx"));
 
 function Tela({ children }) {
   const { usuario, erro, s } = useApp();
@@ -88,6 +90,7 @@ export default function App() {
                 <Route path="redacao" element={<RedacoesAluno />} />
                 <Route path="redacao/:id" element={<RedacaoAluno />} />
                 <Route path="boas-vindas" element={<BoasVindasPagina />} />
+                <Route path="flashcards/*" element={<Flashcards />} />
                 <Route path="*" element={<Navigate to="inicio" replace />} />
               </Route>
               <Route path="/moderador" element={<Protegida papel="moderador"><Shell menu={MENU_MODERADOR} /></Protegida>}>

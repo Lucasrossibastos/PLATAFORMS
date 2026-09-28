@@ -196,6 +196,9 @@ export function ordinaisDaNota(nota) {
 
 export const idCartao = (notaId, ordinal) => `${notaId}__${ordinal}`;
 
+// filtro "está na fila de novos" (adiantar para hoje usa posições negativas)
+export const FILTRO_NOVOS = Object.freeze(["ordemNovo", ">=", -Number.MAX_SAFE_INTEGER]);
+
 /* ---------- cartões ---------- */
 
 // estado FSRS do ts-fsrs → documento (sem undefined; datas como Date)
