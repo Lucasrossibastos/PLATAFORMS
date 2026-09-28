@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ArrowDown, ArrowUp, ImagePlus, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useApp } from "../../state/AppContext.jsx";
-import { useAcao, useAlunos, useArquivoUrl, useBoasVindas, useConfigTextos, useTextosDeTodos } from "../../state/hooks.js";
+import { useAcao, useAlunos, useArquivoUrl, useBoasVindas, useConfigRedacao, useConfigTextos, useTextosDeTodos } from "../../state/hooks.js";
 import { comprimirImagem } from "../../state/arquivos.js";
 import { BOAS_VINDAS_PADRAO } from "../../data/semente.js";
 import {
@@ -250,14 +250,40 @@ function BoasVindasEditor() {
   );
 }
 
+// o aluno vê na tela de Redação
+function InstrucoesRedacao() {
+  const { s } = useApp();
+  const config = useConfigRedacao();
+  const [texto, setTexto] = useState(null);
+  const [salvo, setSalvo] = useState(false);
+  const { executar, ocupado, erro } = useAcao();
+  if (config === undefined) return <Carregando />;
+  const atual = texto ?? config.instrucoes ?? "";
+  const mudou = atual !== (config.instrucoes ?? "");
+  return (
+    <section className="cartao form" aria-labelledby="t-instrucoes">
+      <h2 id="t-instrucoes" className="subtitulo">Como enviar a redação <small>o aluno vê isto na tela de Redação</small></h2>
+      <textarea className="entrada" rows={3} value={atual} onChange={(e) => { setTexto(e.target.value); setSalvo(false); }} aria-labelledby="t-instrucoes" />
+      <MensagemErro erro={erro} />
+      <div className="linha-acoes">
+        {salvo && <span className="retorno-curto" role="status">Instruções salvas.</span>}
+        <Botao variante="solido" tamanho="sm" disabled={!mudou || !atual.trim() || ocupado}
+          onClick={() => executar(async () => { await s.redacao.salvarInstrucoes(atual); setTexto(null); setSalvo(true); })}>Salvar instruções</Botao>
+      </div>
+    </section>
+  );
+}
+
 export default function Textos() {
   const [aba, setAba] = useState("frases");
   return (
     <>
       <TituloPagina eyebrow="Conteúdo" frase="Textos e *boas-vindas*"
         texto="Frases da página inicial, das boas-vindas e do painel, para todos, um grupo ou um aluno. Coloque uma palavra entre *asteriscos* para destacá-la; Enter quebra a linha nos títulos." />
-      <Abas rotulo="Seções" ativa={aba} aoMudar={setAba} itens={[{ k: "frases", label: "Frases" }, { k: "pagina", label: "Página de boas-vindas" }]} />
-      {aba === "frases" ? <Frases /> : <BoasVindasEditor />}
+      <Abas rotulo="Seções" ativa={aba} aoMudar={setAba} itens={[{ k: "frases", label: "Frases" }, { k: "pagina", label: "Página de boas-vindas" }, { k: "redacao", label: "Instruções de redação" }]} />
+      {aba === "frases" && <Frases />}
+      {aba === "pagina" && <BoasVindasEditor />}
+      {aba === "redacao" && <InstrucoesRedacao />}
     </>
   );
 }

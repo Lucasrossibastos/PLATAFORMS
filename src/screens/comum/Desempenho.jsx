@@ -55,17 +55,13 @@ export function PainelDesempenho({ v }) {
   const c = p.consistencia;
   return (
     <>
-      <BarraFiltros filtros={filtros} campos={["periodo", "conteudo", "vestibular"]} />
+      <BarraFiltros filtros={filtros} campos={["periodo", "conteudo"]} />
 
       <div className="stats-grid stats-grid--4">
-        <Tile valor={q.total} rotulo="questões" detalhe={`${q.registros} ${q.registros === 1 ? "registro" : "registros"}`} />
-        <Tile valor={q.acertos} rotulo="acertos" tom="ok" />
-        <Tile valor={q.erros} rotulo="erros" tom="perigo" detalhe={q.emBranco ? `${q.emBranco} em branco` : null} />
+        <Tile valor={q.total} rotulo="questões" detalhe={q.total ? `${q.acertos} acertos · ${q.erros} erros${q.emBranco ? ` · ${q.emBranco} em branco` : ""}` : null} />
         <Tile valor={q.total ? fmtPct(q.pct) : "–"} rotulo="de acerto" />
-        <Tile valor={p.simulados.quantidade} rotulo="simulados" detalhe={p.simulados.quantidade ? `média ${fmtPct(p.simulados.mediaPct)}` : null} />
-        <Tile valor={c.diasEstudados} rotulo="dias estudados" detalhe={`${c.diasEmBranco} em branco de ${c.totalDias}`} />
-        <Tile valor={fmtMin(p.minutosEstudados) || "0min"} rotulo="de estudo registrado" detalhe={`${p.sessoes} ${p.sessoes === 1 ? "sessão" : "sessões"}`} />
-        <Tile valor={p.metas.cumpridas} rotulo="metas cumpridas" detalhe={`${p.metas.naoCumpridas} não cumpridas · ${p.metas.atrasadasAgora} atrasadas agora`} tom={p.metas.atrasadasAgora ? "perigo" : undefined} />
+        <Tile valor={c.diasEstudados} rotulo="dias estudados" detalhe={`de ${c.totalDias} no período`} />
+        <Tile valor={fmtMin(p.minutosEstudados)} rotulo="de estudo" detalhe={`${p.metas.cumpridas} ${p.metas.cumpridas === 1 ? "meta cumprida" : "metas cumpridas"}${p.metas.atrasadasAgora ? ` · ${p.metas.atrasadasAgora} atrasadas` : ""}`} tom={p.metas.atrasadasAgora ? "perigo" : undefined} />
       </div>
 
       <section className="cartao consistencia" aria-labelledby="t-30">

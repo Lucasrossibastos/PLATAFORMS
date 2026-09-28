@@ -8,7 +8,7 @@ import { PERIODOS, datasDoPeriodo } from "../core/datas.js";
 import { useApp } from "../state/AppContext.jsx";
 import { Botao } from "./ui.jsx";
 
-export const FILTROS_VAZIOS = { periodo: "tudo", inicio: "", fim: "", materiaId: "", topicoId: "", subtopicoId: "", vestibularId: "", ano: "", cursoId: "", tipo: "", busca: "" };
+export const FILTROS_VAZIOS = { periodo: "tudo", inicio: "", fim: "", materiaId: "", topicoId: "", subtopicoId: "", vestibularId: "", ano: "", cursoId: "", tipo: "", programaId: "", busca: "" };
 
 export function useFiltros(inicial = {}) {
   const base = useMemo(() => ({ ...FILTROS_VAZIOS, ...inicial }), []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -41,8 +41,8 @@ function Seletor({ rotulo, valor, aoMudar, opcoes, todos = "Todos", desativado }
   );
 }
 
-/* campos: lista do que mostrar — "periodo", "conteudo", "vestibular", "ano", "curso", "tipo", "busca" */
-export function BarraFiltros({ filtros, campos, anos = [], tipos = [], rotuloBusca = "Buscar" }) {
+/* campos: lista do que mostrar — "periodo", "conteudo", "vestibular", "ano", "curso", "tipo", "programa", "busca" */
+export function BarraFiltros({ filtros, campos, anos = [], tipos = [], programas = [], rotuloBusca = "Buscar" }) {
   const { ind } = useApp();
   const { f, mudar, limpar, ativo } = filtros;
   if (!ind) return null;
@@ -84,6 +84,7 @@ export function BarraFiltros({ filtros, campos, anos = [], tipos = [], rotuloBus
       {tem("vestibular") && <Seletor rotulo="Vestibular" valor={f.vestibularId} opcoes={ind.vestibulares} aoMudar={(v) => mudar({ vestibularId: v })} />}
       {tem("ano") && <Seletor rotulo="Ano" valor={f.ano} opcoes={anos.map((a) => ({ id: String(a), nome: String(a) }))} aoMudar={(v) => mudar({ ano: v })} />}
       {tem("curso") && <Seletor rotulo="Curso" valor={f.cursoId} opcoes={ind.cursos} aoMudar={(v) => mudar({ cursoId: v })} />}
+      {tem("programa") && <Seletor rotulo="Programa" valor={f.programaId} opcoes={programas} aoMudar={(v) => mudar({ programaId: v })} />}
       {tem("tipo") && <Seletor rotulo="Tipo" valor={f.tipo} opcoes={tipos} aoMudar={(v) => mudar({ tipo: v })} />}
       {ativo && <Botao variante="texto" tamanho="sm" icone={X} className="filtro-limpar" onClick={limpar}>Limpar filtros</Botao>}
     </div>

@@ -394,6 +394,69 @@ describe("jornadas práticas e edital por aluno", () => {
     expect((await t.repo.obter("planos", ana)).materias.find((m) => m.materiaId === "historia").ativa).toBe(false);
   });
 
+  it("levar a mudança da jornada aos alunos mantém o ajuste individual de cada um", async () => {
+    const ana = await t.uidDe("aluno@curso.com");
+    await t.entrar("moderador@curso.com");
+    // Ana ganhou um ajuste próprio em Biologia; História segue igual à jornada
+    await t.s.planos.alterar(ana, { tipo: "definirMateria", materiaId: "biologia", campos: { minutosSemanais: 300 } });
+    const r = await t.s.planos.alterarJornada("modelo-fuvest", [
+      { tipo: "definirMateria", materiaId: "biologia", campos: { minutosSemanais: 90 } },
+      { tipo: "definirMateria", materiaId: "historia", campos: { minutosSemanais: 45, maxSessao: 45, ativa: false } },
+      { tipo: "moverTopico", materiaId: "geografia", topicoId: "g2", passo: -1 },
+    ], { propagar: true });
+    expect(r).toMatchObject({ mudou: true, alunos: 1 });
+    const modelo = await t.repo.obter("modelosPlano", "modelo-fuvest");
+    const plano = await t.repo.obter("planos", ana);
+    const m = (p, id) => p.materias.find((x) => x.materiaId === id);
+    expect(m(modelo, "biologia").minutosSemanais).toBe(90);
+    expect(m(plano, "biologia").minutosSemanais).toBe(300); // ajuste da Ana fica
+    expect(m(plano, "historia")).toMatchObject({ minutosSemanais: 45, maxSessao: 45, ativa: false });
+    expect(m(modelo, "geografia").topicos[0].topicoId).toBe("g2");
+    expect(m(plano, "geografia").topicos[0].topicoId).toBe("g1"); // ordem fica só na jornada
+    const logs = await t.repo.listar("logs", [["alunoId", "==", ana], ["motivo", "==", "Levado pela jornada"]]);
+    expect(logs.length).toBeGreaterThan(0);
+  });
+
+  it("sem levar aos alunos, a jornada muda sozinha", async () => {
+    const ana = await t.uidDe("aluno@curso.com");
+    await t.entrar("moderador@curso.com");
+    const antes = await t.repo.obter("planos", ana);
+    const r = await t.s.planos.alterarJornada("modelo-fuvest", { tipo: "definirMateria", materiaId: "fisica", campos: { prioridade: 1 } });
+    expect(r).toEqual({ mudou: true, alunos: 0 });
+    expect((await t.repo.obter("planos", ana)).materias).toEqual(antes.materias);
+  });
+
+  it("devolutiva com textos anexados: PDF ou imagem; o resto é recusado", async () => {
+    const ana = await t.uidDe("aluno@curso.com");
+    await t.entrar("moderador@curso.com");
+    const anexo = await t.s.redacao.enviarAnexo(ana, pdf("proposta.pdf"));
+    expect(anexo).toMatchObject({ nome: "proposta.pdf", tipo: "application/pdf" });
+    await expect(t.s.redacao.enviarAnexo(ana, new File(["x"], "nota.txt", { type: "text/plain" }))).rejects.toThrow(ErroValidacao);
+    await expect(t.s.redacao.enviarAnexo(ana, pdf("falso.pdf", "nada"))).rejects.toThrow(ErroValidacao);
+    const id = await t.s.redacao.salvar({ alunoId: ana, tema: "Tema", status: "enviada", enviadaEm: "2026-09-28", anexos: [anexo] });
+    await t.entrar("aluno@curso.com");
+    let minhas;
+    t.s.redacao.observar(ana, (l) => { minhas = l; });
+    await esperar();
+    expect(minhas.find((d) => d.id === id).anexos[0].nome).toBe("proposta.pdf");
+    await t.entrar("aluno@curso.com");
+    await expect(t.s.redacao.enviarAnexo(ana, pdf())).rejects.toThrow(ErroPermissao);
+  });
+
+  it("aluno muda a ordem dos tópicos sem tocar nas matérias do edital", async () => {
+    const ana = await t.uidDe("aluno@curso.com");
+    await t.entrar("aluno@curso.com");
+    const antes = await t.repo.obter("planos", ana);
+    await t.s.planos.alterar(ana, { tipo: "moverTopico", materiaId: "geografia", topicoId: "g2", passo: -1 });
+    const depois = await t.repo.obter("planos", ana);
+    expect(depois.materias).toEqual(antes.materias);
+    expect(depois.ordemTopicos.geografia).toEqual(["g2", "g1"]);
+    const ind = await t.s.ctx.indice();
+    expect(itensDoPlano(depois, ind).filter((it) => it.materiaId === "geografia").map((it) => it.topicoId)).toEqual(["g2", "g1"]);
+    await expect(t.s.planos.alterar(ana, { tipo: "moverMateria", materiaId: "historia", passo: -1 })).rejects.toThrow(ErroPermissao);
+    await expect(t.s.planos.alterar(ana, { tipo: "definirMateria", materiaId: "historia", campos: { ativa: false } })).rejects.toThrow(ErroPermissao);
+  });
+
   it("aluno marca subtópico como visto (se pode concluir conteúdos)", async () => {
     const ana = await t.uidDe("aluno@curso.com");
     await t.entrar("aluno@curso.com");

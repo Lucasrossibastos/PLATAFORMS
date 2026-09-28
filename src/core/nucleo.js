@@ -257,10 +257,10 @@ const DIAS = [
   { k: "qui", nome: "Quinta" }, { k: "sex", nome: "Sexta" }, { k: "sab", nome: "Sábado" }, { k: "dom", nome: "Domingo" },
 ];
 
-// formata minutos → "4h30" / "45min" / "0"
+// formata minutos → "4h30" / "45min" / "0min"
 
 const fmtMin = (min) => {
-  if (!min) return "0";
+  if (!min) return "0min";
   const h = Math.floor(min / 60), m = min % 60;
   if (h && m) return `${h}h${String(m).padStart(2, "0")}`;
   if (h) return `${h}h`;

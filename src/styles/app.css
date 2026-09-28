@@ -100,10 +100,7 @@
   animation: entra-tela 0.6s var(--ease-out);
 }
 
-@media (max-width: 1180px) {
-  .app-nav .so-largo { display: none; }
-}
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   .app-topo { grid-template-columns: 1fr auto auto; }
   .app-nav, .app-acoes .opcional { display: none; }
   .app .burger { display: grid; }

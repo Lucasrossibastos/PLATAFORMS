@@ -97,7 +97,7 @@ export function MenuCheio({ aberto, aoFechar, id, children, rodape, escuro, clas
   useEffect(() => {
     if (!aberto) return undefined;
     const esc = (e) => { if (e.key === "Escape") aoFechar(); };
-    const largo = window.matchMedia("(min-width: 901px)");
+    const largo = window.matchMedia("(min-width: 1101px)");
     const mudou = (e) => { if (e.matches) aoFechar(); };
     document.addEventListener("keydown", esc);
     largo.addEventListener("change", mudou);

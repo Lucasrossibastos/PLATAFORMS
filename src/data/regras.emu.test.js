@@ -162,6 +162,15 @@ describe("plano e progresso", () => {
     await assertSucceeds(ok.commit());
 
     await assertFails(updateDoc(doc(a, "planos/ana"), { ritmo: 1.5 })); // sem log
+    // a ordem dos tópicos é dela; as matérias (incidência, visibilidade) não
+    const ordem = writeBatch(a);
+    ordem.set(doc(a, "logs/p5"), log("ana", "ana"));
+    ordem.update(doc(a, "planos/ana"), { ordemTopicos: { biologia: ["bi2", "bi1"] }, cronograma: { y: { fim: "2027-02-01" } }, ultimoLogId: "p5" });
+    await assertSucceeds(ordem.commit());
+    const materias = writeBatch(a);
+    materias.set(doc(a, "logs/p6"), log("ana", "ana"));
+    materias.update(doc(a, "planos/ana"), { materias: [{ materiaId: "biologia", ativa: true, minutosSemanais: 900 }], ultimoLogId: "p6" });
+    await assertFails(materias.commit());
     const perm = writeBatch(a);
     perm.set(doc(a, "logs/p2"), log("ana", "ana"));
     perm.update(doc(a, "planos/ana"), { permissoesAluno: { ...PERM, ritmo: true }, dataAlvo: "2030-01-01", ultimoLogId: "p2" });
@@ -208,6 +217,16 @@ describe("plano e progresso", () => {
   });
 });
 
+describe("subtópicos vistos", () => {
+  it("o aluno marca os próprios (se pode concluir); não mexe nos de outro", async () => {
+    await assertSucceeds(setDoc(doc(db("ana"), "vistos/ana"), { alunoId: "ana", subtopicos: { s1: true } }));
+    await assertFails(setDoc(doc(db("ana"), "vistos/carlos"), { alunoId: "carlos", subtopicos: { s1: true } }));
+    await assertFails(setDoc(doc(db("ana"), "vistos/ana"), { alunoId: "carlos", subtopicos: {} }));
+    await assertFails(getDoc(doc(db("carlos"), "vistos/ana")));
+    await assertSucceeds(getDoc(doc(db("mod"), "vistos/ana")));
+  });
+});
+
 describe("notificações", () => {
   it("só o destinatário marca como lida, uma vez, sem mexer no resto", async () => {
     await assertFails(setDoc(doc(db("ana"), "notificacoes/n2"), { alunoId: "ana", titulo: "x", autorId: "ana", lidaEm: null }));
@@ -225,6 +244,12 @@ describe("arquivos (Storage)", () => {
     await assertSucceeds(uploadBytes(ref(st("ana"), "simulados/ana/s1.pdf"), pdf, { contentType: "application/pdf" }));
     await assertFails(uploadBytes(ref(st("ana"), "simulados/carlos/s1.pdf"), pdf, { contentType: "application/pdf" }));
     await assertFails(uploadBytes(ref(st("ana"), "simulados/ana/foto.png"), pdf, { contentType: "image/png" }));
+  });
+  it("redação: moderador anexa foto ou PDF na pasta do aluno; o aluno só lê a própria", async () => {
+    await assertSucceeds(uploadBytes(ref(st("mod"), "redacoes/ana/anexo-1.pdf"), pdf, { contentType: "application/pdf" }));
+    await assertSucceeds(uploadBytes(ref(st("mod"), "redacoes/ana/foto.jpg"), pdf, { contentType: "image/jpeg" }));
+    await assertFails(uploadBytes(ref(st("mod"), "redacoes/ana/nota.txt"), pdf, { contentType: "text/plain" }));
+    await assertFails(uploadBytes(ref(st("ana"), "redacoes/ana/anexo-2.pdf"), pdf, { contentType: "application/pdf" }));
   });
   it("materiais: só o moderador envia", async () => {
     await assertFails(uploadBytes(ref(st("ana"), "materiais/m1/a.pdf"), pdf, { contentType: "application/pdf" }));

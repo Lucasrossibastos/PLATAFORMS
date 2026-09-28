@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle, BellRing, BookOpen, Check, CheckCircle2, Clock4, FileQuestion, ListChecks, PenLine, RefreshCw, Zap,
 } from "lucide-react";
@@ -8,7 +8,8 @@ import { useApp } from "../../state/AppContext.jsx";
 import { errosDeCampo, useAcao, useDevolutivas, useEu, useFrases, useNotificacoes } from "../../state/hooks.js";
 import { useVisaoAluno } from "../../state/aluno.js";
 import { NomeConteudo, SeletorConteudo } from "../../ui/Conteudo.jsx";
-import { Barra, Botao, Campo, Carregando, Dialogo, MensagemErro, Tile, TituloPagina, Vazio } from "../../ui/ui.jsx";
+import { Barra, Botao, Campo, Carregando, Dialogo, MensagemErro, TituloPagina, Vazio } from "../../ui/ui.jsx";
+import { QuadroSemana } from "./Semana.jsx";
 import { FormQuestoes } from "../comum/Registros.jsx";
 import { AvisoLinha, LerAviso } from "./Avisos.jsx";
 
@@ -68,7 +69,7 @@ function ComoEstaConteudo({ popup, fechar, plano, alunoId }) {
             {podeConcluir && (
               <Botao variante="solido" tamanho="lg" icone={Check} disabled={ocupado} onClick={() => executar(async () => {
                 await s.planos.concluirItem(alunoId, popup.itemId);
-                setRetorno("Conteúdo concluído. As revisões foram agendadas e as próximas metas seguem para o conteúdo seguinte.");
+                setRetorno("Tópico cortado. As revisões foram agendadas e as próximas metas seguem para o tópico seguinte.");
               })}>Estou dominando: concluir</Botao>
             )}
             <Botao variante="vidro" tamanho="lg" icone={Clock4} onClick={() => setEtapa("tempo")}>Preciso de mais tempo</Botao>
@@ -156,7 +157,7 @@ function Replanejar({ aberto, fechar, alunoId, disp }) {
 
 const ABAS_ESTUDO = [
   { k: "fora", label: "Estudei por fora", icone: BookOpen },
-  { k: "concluido", label: "Concluí um conteúdo", icone: Zap },
+  { k: "concluido", label: "Cortei um tópico", icone: Zap },
   { k: "mais", label: "Preciso de mais tempo", icone: Clock4 },
 ];
 
@@ -182,7 +183,7 @@ function RegistrarEstudo({ aberto, fechar, v }) {
       setRetorno(`Registrado: ${fmtMin(minutos)} de estudo.${r.concluidos.length ? " Um conteúdo foi concluído e as revisões foram agendadas." : ""}`);
     } else if (aba === "concluido") {
       await s.planos.concluirItem(v.aluno.id, itemId);
-      setRetorno("Conteúdo concluído. As revisões foram agendadas e as próximas metas seguem para o conteúdo seguinte.");
+      setRetorno("Tópico cortado. As revisões foram agendadas e as próximas metas seguem para o tópico seguinte.");
     } else {
       const it = v.daVez(sel.materiaId);
       const dia = await s.estudo.tempoExtra(v.aluno.id, { materiaId: sel.materiaId, topicoId: sel.topicoId || it?.topicoId, subtopicoId: sel.subtopicoId || it?.subtopicoId, minutos });
@@ -211,11 +212,11 @@ function RegistrarEstudo({ aberto, fechar, v }) {
           </div>
           <p className="texto-dialogo">
             {aba === "fora" && "Estudo feito fora das metas. Soma no conteúdo escolhido (ou no da vez da matéria) e entra no histórico."}
-            {aba === "concluido" && "Terminou um conteúdo antes do previsto? Ele fica concluído, as revisões são agendadas e as metas seguem para o próximo."}
+            {aba === "concluido" && "Já domina um tópico? Corte-o do edital: as revisões são agendadas e as metas seguem para o próximo."}
             {aba === "mais" && "Precisa de mais tempo num conteúdo? Vira uma meta extra no próximo dia com folga nesta semana."}
           </p>
           {aba === "concluido" ? (
-            <Campo rotulo="Conteúdo" erro={erros.itemId}>
+            <Campo rotulo="Tópico" erro={erros.itemId}>
               <select className="entrada" value={itemId} onChange={(e) => setItemId(e.target.value)}>
                 <option value="">Selecione…</option>
                 {materiasDoPlano.map((mid) => {
@@ -248,6 +249,9 @@ function RegistrarEstudo({ aberto, fechar, v }) {
   );
 }
 
+const VISOES = [["hoje", "Hoje"], ["semana", "Semana"]];
+
+/* Dashboard: o dia (metas, atrasadas, registro rápido) ou a semana inteira. */
 export default function Inicio() {
   const { s } = useApp();
   const eu = useEu();
@@ -255,6 +259,8 @@ export default function Inicio() {
   const t = useFrases(v.aluno || eu);
   const avisos = useNotificacoes(eu.id) || [];
   const devolutivas = useDevolutivas(eu.id) || [];
+  const [params, setParams] = useSearchParams();
+  const visao = params.get("ver") === "semana" ? "semana" : "hoje";
   const [popup, setPopup] = useState(null);
   const [replan, setReplan] = useState(false);
   const [estudo, setEstudo] = useState(false);
@@ -264,7 +270,6 @@ export default function Inicio() {
   const { executar, ocupado, erro } = useAcao();
 
   if (v.carregando) return <Carregando />;
-  const vest = v.ind.vestibular(v.aluno?.vestibularId);
   const novos = avisos.filter((n) => !n.lidaEm);
   const redacoesNovas = devolutivas.filter((d) => !d.lida).length;
   const dataHoje = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
@@ -289,11 +294,17 @@ export default function Inicio() {
         frase={t("painel.dashboard.titulo")}
         direita={
           <div className="titulo-direita">
-            {vest && <span className="etiqueta"><i style={{ "--cor": vest.cor }} />{vest.nome}</span>}
-            <div className="progresso-dia">
-              <div className="num">{v.feitasHoje} de {v.totalHoje} metas concluídas</div>
-              <Barra valor={pct} />
+            <div className="filtros filtros--compacto" role="tablist" aria-label="Ver">
+              {VISOES.map(([k, nome]) => (
+                <button key={k} type="button" role="tab" className="filtro" aria-selected={visao === k} onClick={() => setParams(k === "hoje" ? {} : { ver: k }, { replace: true })}>{nome}</button>
+              ))}
             </div>
+            {visao === "hoje" && v.totalHoje > 0 && (
+              <div className="progresso-dia">
+                <div className="num">{v.feitasHoje} de {v.totalHoje} metas</div>
+                <Barra valor={pct} />
+              </div>
+            )}
           </div>
         }
       />
@@ -314,14 +325,17 @@ export default function Inicio() {
         </div>
       )}
 
-      {v.plano === null ? (
-        <div className="cartao"><Vazio icone={ListChecks} titulo="Seu plano de estudos ainda não foi criado" texto="Assim que o professor aplicar um plano, as metas de cada dia aparecem aqui." /></div>
+      {visao === "semana" ? <QuadroSemana v={v} texto={t("painel.semana.texto")} /> : v.plano === null ? (
+        <div className="cartao"><Vazio icone={ListChecks} titulo="Seu edital ainda não foi montado" texto="Assim que o professor aplicar a sua jornada, as metas de cada dia aparecem aqui." /></div>
       ) : (
         <>
           <div className="faixa">
-            <span>Você estudou <b className="num">{v.consistencia30.diasEstudados}</b> dos últimos 30 dias</span>
+            <span>
+              Hoje: <b className="num">{fmtMin(v.minutosHoje)}</b> estudados{v.questoesHoje ? <>, <b className="num">{v.questoesHoje}</b> questões</> : null}
+              {" · "}<b className="num">{v.consistencia30.diasEstudados}</b> dos últimos 30 dias
+            </span>
             {v.atrasos?.quantidade > 0 && (
-              <Link to="/aluno/plano" className="faixa-atraso"><AlertTriangle aria-hidden="true" />{v.atrasos.quantidade} {v.atrasos.quantidade === 1 ? "conteúdo atrasado" : "conteúdos atrasados"}</Link>
+              <Link to="/aluno/edital" className="faixa-atraso"><AlertTriangle aria-hidden="true" />{v.atrasos.quantidade} {v.atrasos.quantidade === 1 ? "tópico atrasado" : "tópicos atrasados"}</Link>
             )}
             <Botao variante={atrasadasAbertas ? "solido" : "vidro"} tamanho="sm" icone={RefreshCw} onClick={() => setReplan(true)}>Replanejar</Botao>
           </div>
@@ -341,20 +355,13 @@ export default function Inicio() {
               <div className="cartao"><Vazio icone={CheckCircle2} titulo={t("painel.dashboard.vazioTitulo")} texto={t("painel.dashboard.vazioTexto")} /></div>
             )}
           </section>
+
+          <div className="acoes-painel">
+            <Botao variante="vidro" icone={FileQuestion} onClick={() => setQuestoes(true)}>Registrar questões</Botao>
+            <Botao variante="vidro" icone={BookOpen} onClick={() => setEstudo(true)}>Registrar estudo</Botao>
+          </div>
         </>
       )}
-
-      <div className="stats-grid">
-        <Tile valor={fmtMin(v.minutosHoje) || "0min"} rotulo="estudados hoje" detalhe={v.minutosPlanejadosHoje ? `${fmtMin(v.minutosPlanejadosHoje)} planejados` : null} />
-        <Tile valor={v.questoesHoje} rotulo="questões hoje" />
-        <Tile valor={v.progressoPlano ? `${String(v.progressoPlano.pct).replace(".", ",")}%` : "–"} rotulo="do plano concluído"
-          detalhe={v.plano?.fimPrevisto ? `previsão de término: ${v.plano.fimPrevisto.split("-").reverse().join("/")}` : null} />
-      </div>
-
-      <div className="acoes-painel">
-        <Botao variante="vidro" tamanho="lg" icone={FileQuestion} onClick={() => setQuestoes(true)}>Registrar questões</Botao>
-        <Botao variante="vidro" tamanho="lg" icone={BookOpen} disabled={!v.plano} onClick={() => setEstudo(true)}>Registrar estudo</Botao>
-      </div>
 
       <ComoEstaConteudo popup={popup} fechar={() => setPopup(null)} plano={v.plano} alunoId={eu.id} />
       {replan && <Replanejar aberto={replan} fechar={() => setReplan(false)} alunoId={eu.id} disp={v.plano?.disponibilidade} />}

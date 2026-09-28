@@ -8,6 +8,7 @@ import { useAluno, useArquivoUrl, useConfigRedacao, useDevolutivas, useEu, useFr
 import { evolucao } from "../../redacao.js";
 import { EvolucaoNotas, FolhaCorrigida, ItemMarcacao, NotasCompetencias } from "../../ui/Correcao.jsx";
 import { Carregando, TituloPagina, Vazio } from "../../ui/ui.jsx";
+import { AbrirPdf } from "./Materiais.jsx";
 
 function CapaRedacao({ d }) {
   const { ind } = useApp();
@@ -125,9 +126,10 @@ export function RedacaoAluno() {
             {d.rubrica === "enem" && <NotasCompetencias notas={d.notas} media={media} />}
           </section>
 
-          {(d.proposta || aulasRedacao) && (
+          {(d.proposta || aulasRedacao || d.anexos?.length > 0) && (
             <section className="cartao material">
               <span className="eyebrow">Material de apoio</span>
+              {(d.anexos || []).map((a) => <AbrirPdf key={a.ref} arquivo={a} rotulo={a.nome} />)}
               {d.proposta && <a className="btn btn--vidro btn--sm" href={d.proposta} target="_blank" rel="noreferrer"><ExternalLink />Proposta de redação</a>}
               {aulasRedacao && <Link className="btn btn--vidro btn--sm" to={`/aluno/cursos/${aulasRedacao.id}`}><PlayCircle />{aulasRedacao.titulo}</Link>}
             </section>

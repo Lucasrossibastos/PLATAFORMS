@@ -1,12 +1,12 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { FileDown, Library } from "lucide-react";
-import { useApp } from "../../state/AppContext.jsx";
 import { useAluno, useArquivoUrl, useEu, useFrases, useMateriais, usePlano } from "../../state/hooks.js";
 import { fmtDataLonga } from "../../core/datas.js";
 import { fmtTamanho } from "../../core/validacao.js";
 import { TIPOS_MATERIAL, nomeTipoMaterial } from "../../services/materiais.js";
 import { BarraFiltros, useFiltros } from "../../ui/Filtros.jsx";
-import { NomeConteudo, PontoMateria } from "../../ui/Conteudo.jsx";
+import { NomeConteudo, PontoMateria, nomesDosProgramas } from "../../ui/Conteudo.jsx";
+import { materialDoPrograma } from "../../midia.js";
 import { Carregando, TituloPagina, Vazio } from "../../ui/ui.jsx";
 
 const sem = (t) => String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -17,7 +17,7 @@ export function filtrarMateriais(lista, f) {
     (!f.materiaId || m.materiaId === f.materiaId)
     && (!f.topicoId || m.topicoId === f.topicoId)
     && (!f.subtopicoId || m.subtopicoId === f.subtopicoId)
-    && (!f.vestibularId || m.vestibularId === f.vestibularId)
+    && (!f.programaId || materialDoPrograma(m, f.programaId))
     && (!f.tipo || m.tipo === f.tipo)
     && (!busca || sem(`${m.titulo} ${m.descricao} ${(m.tags || []).join(" ")}`).includes(busca)));
 }
@@ -30,13 +30,12 @@ export function AbrirPdf({ arquivo, rotulo = "Abrir PDF" }) {
   return <a className="btn btn--solido btn--sm" href={url} target="_blank" rel="noreferrer" download={arquivo.nome}><FileDown aria-hidden="true" />{rotulo}</a>;
 }
 
-export function CartaoMaterial({ m, acoes }) {
-  const { ind } = useApp();
+export function CartaoMaterial({ m, acoes, programas }) {
   return (
     <article className="cartao cartao-material">
       <div className="cartao-material-topo">
         <span className="etiqueta">{nomeTipoMaterial(m.tipo)}</span>
-        {m.vestibularId && <span className="etiqueta"><i style={{ "--cor": ind.vestibular(m.vestibularId)?.cor }} />{ind.nomeVestibular(m.vestibularId)}</span>}
+        {programas && <span className="etiqueta">{nomesDosProgramas(m.programaIds, programas)}</span>}
         {m.publicado === false && <span className="etiqueta etiqueta--perigo">Rascunho</span>}
       </div>
       <h3>{m.titulo}</h3>
@@ -51,6 +50,8 @@ export function CartaoMaterial({ m, acoes }) {
   );
 }
 
+/* Materiais do programa (jornada) do aluno, filtráveis por matéria, tópico,
+   subtópico e tipo. */
 export default function MateriaisAluno() {
   const eu = useEu();
   const aluno = useAluno(eu.id);
@@ -58,22 +59,17 @@ export default function MateriaisAluno() {
   const materiais = useMateriais();
   const t = useFrases(aluno || eu);
   const filtros = useFiltros();
-  const [doPlano, setDoPlano] = useState(false);
   const lista = useMemo(() => {
-    if (!materiais) return [];
-    const doMeuPlano = new Set((plano?.materias || []).map((m) => m.materiaId));
-    return filtrarMateriais(materiais, filtros.f).filter((m) => !doPlano || !m.materiaId || doMeuPlano.has(m.materiaId));
-  }, [materiais, filtros.f, doPlano, plano]);
-  if (!materiais) return <Carregando />;
+    if (!materiais || plano === undefined) return [];
+    return filtrarMateriais(materiais, filtros.f).filter((m) => materialDoPrograma(m, plano?.modeloId || null));
+  }, [materiais, filtros.f, plano]);
+  if (!materiais || plano === undefined) return <Carregando />;
   return (
     <>
       <TituloPagina eyebrow="PDFs do professor" frase={t("painel.materiais.titulo")} />
-      <BarraFiltros filtros={filtros} campos={["busca", "conteudo", "vestibular", "tipo"]} tipos={TIPOS_MATERIAL} rotuloBusca="Buscar por título ou tag" />
-      {plano && (
-        <label className="checagem"><input type="checkbox" checked={doPlano} onChange={(e) => setDoPlano(e.target.checked)} />Só das matérias do meu plano</label>
-      )}
+      <BarraFiltros filtros={filtros} campos={["busca", "conteudo", "tipo"]} tipos={TIPOS_MATERIAL} rotuloBusca="Buscar por título ou tag" />
       {lista.length === 0
-        ? <div className="cartao"><Vazio icone={Library} titulo={materiais.length ? "Nenhum material com esses filtros" : "Nenhum material publicado ainda"} texto={materiais.length ? "Limpe os filtros para ver todos." : "Quando o professor publicar um PDF, ele aparece aqui."} /></div>
+        ? <div className="cartao"><Vazio icone={Library} titulo={filtros.ativo ? "Nenhum material com esses filtros" : "Nenhum material publicado ainda"} texto={filtros.ativo ? "Limpe os filtros para ver todos." : "Quando o professor publicar um PDF, ele aparece aqui."} /></div>
         : <div className="grade-materiais">{lista.map((m) => <CartaoMaterial key={m.id} m={m} />)}</div>}
     </>
   );

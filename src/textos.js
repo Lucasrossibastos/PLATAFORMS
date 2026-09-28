@@ -36,18 +36,17 @@ export const TEXTOS = {
   "boasvindas.comMetas": { grupo: "boasvindas", tipo: "cinema", rotulo: "Segunda linha, em dia com metas", padrao: "Suas metas de hoje *já estão prontas*." },
   "boasvindas.semMetas": { grupo: "boasvindas", tipo: "cinema", rotulo: "Segunda linha, em dia livre", padrao: "Hoje é dia *livre*." },
 
-  "painel.dashboard.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título da tela inicial", padrao: "Metas de *hoje*" },
+  "painel.dashboard.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título do Dashboard", padrao: "Seu *dashboard*" },
   "painel.dashboard.vazioTitulo": { grupo: "painel", tipo: "linha", rotulo: "Dia sem metas: título", padrao: "Nenhuma meta para hoje" },
   "painel.dashboard.vazioTexto": { grupo: "painel", tipo: "paragrafo", rotulo: "Dia sem metas: texto", padrao: "Dia livre no seu plano. Use para revisar ou registrar estudo por fora." },
-  "painel.semana.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título da Semana", padrao: "Sua *semana*" },
-  "painel.semana.texto": { grupo: "painel", tipo: "paragrafo", rotulo: "Instrução da Semana", padrao: "Arraste uma meta para outro dia, ou toque nela e depois no dia. Só vale para esta semana; as próximas continuam automáticas." },
+  "painel.semana.texto": { grupo: "painel", tipo: "paragrafo", rotulo: "Instrução da semana (Dashboard)", padrao: "Arraste uma meta para outro dia, ou toque nela e depois no dia. Só vale para esta semana; as próximas continuam automáticas." },
   "painel.boasvindas.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título da página Boas-Vindas", padrao: "Boas-vindas ao *curso*" },
-  "painel.plano.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título de Meu plano", padrao: "Meu plano de *estudos*" },
+  "painel.plano.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título do Edital", padrao: "Seu *edital*" },
   "painel.questoes.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título de Questões", padrao: "Suas *questões*" },
   "painel.simulados.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título de Simulados", padrao: "Seus *simulados*" },
   "painel.desempenho.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título de Desempenho", padrao: "Seu *desempenho*" },
   "painel.materiais.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título de Materiais", padrao: "Materiais de *estudo*" },
-  "painel.cursos.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título de Cursos em vídeo", padrao: "Cursos em *vídeo*" },
+  "painel.cursos.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título de Meus cursos", padrao: "Meus *cursos*" },
   "painel.redacao.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título de Redação", padrao: "Suas *redações*" },
 };
 

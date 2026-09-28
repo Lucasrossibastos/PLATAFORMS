@@ -7,6 +7,7 @@ import { PAPEIS } from "../core/permissoes.js";
 import { ErroValidacao, opsDeLog, recentesPrimeiro } from "./base.js";
 import { mediaDoTema, normalizarTema } from "../redacao.js";
 import { playlistVisivelPara } from "../midia.js";
+import { validarPdf } from "../core/validacao.js";
 
 export { playlistVisivelPara };
 
@@ -119,13 +120,26 @@ export function servicoRedacao(ctx) {
         { tipo: "remover", colecao: "devolutivas", id },
         ...opsDeLog(ctx, { alunoId: d.alunoId, entidade: "redacao", entidadeId: id }, [{ tipo: "remover", descricao: `Apagou a devolutiva "${d.tema}"`, antes: d.status }]),
       ]);
-      if (d.foto && !/^https?:|^\.|^\//.test(d.foto)) await repo.removerArquivo(d.foto).catch(() => {});
+      const refs = [d.foto, ...(d.anexos || []).map((a) => a.ref)].filter((r) => r && !/^https?:|^\.|^\//.test(r));
+      await Promise.all(refs.map((r) => repo.removerArquivo(r).catch(() => {})));
     },
 
     async enviarFoto(alunoId, blob) {
       ctx.exigir("gerenciar:redacao");
       const r = await repo.enviarArquivo(`redacoes/${alunoId}/${novoId()}.jpg`, blob);
       return r.ref;
+    },
+    // texto anexado à devolutiva (PDF ou imagem já comprimida), na pasta do aluno
+    async enviarAnexo(alunoId, arquivo, nome = arquivo?.name) {
+      ctx.exigir("gerenciar:redacao");
+      const ehPdf = arquivo?.type === "application/pdf" || /\.pdf$/i.test(nome || "");
+      if (ehPdf) {
+        const ok = await validarPdf(arquivo instanceof Blob && !arquivo.name ? Object.assign(arquivo, { name: nome }) : arquivo);
+        if (!ok.ok) throw new ErroValidacao({ anexo: ok.erro });
+      } else if (!/^image\//.test(arquivo?.type || "")) throw new ErroValidacao({ anexo: "Anexe um PDF ou uma imagem." });
+      else if (arquivo.size > 15 * 1024 * 1024) throw new ErroValidacao({ anexo: "A imagem passa de 15 MB." });
+      const r = await repo.enviarArquivo(`redacoes/${alunoId}/anexo-${novoId()}${ehPdf ? ".pdf" : ".jpg"}`, arquivo);
+      return { ref: r.ref, nome: nome || (ehPdf ? "texto.pdf" : "imagem.jpg"), tipo: ehPdf ? "application/pdf" : arquivo.type, tamanho: arquivo.size };
     },
     removerArquivo: (ref) => (ref ? repo.removerArquivo(ref).catch(() => {}) : null),
     url: (ref) => repo.urlArquivo(ref),

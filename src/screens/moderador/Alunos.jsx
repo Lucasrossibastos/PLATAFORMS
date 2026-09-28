@@ -24,7 +24,7 @@ function senhaAleatoria() {
   return [...bytes].map((b) => a[b % a.length]).join("");
 }
 
-/* Cadastro: cria o acesso e, em seguida, aplica o plano geral sugerido. */
+/* Cadastro: cria o acesso e, em seguida, aplica a jornada sugerida. */
 function NovoAluno({ aberto, fechar }) {
   const { s, ind } = useApp();
   const modelos = useModelos() || [];
@@ -92,16 +92,16 @@ function NovoAluno({ aberto, fechar }) {
       ) : (
         <div className="form">
           <p className="retorno" role="status">Acesso criado para <b>{criado.nome}</b>: {criado.email} · senha <b className="num">{criado.senha}</b></p>
-          <Campo rotulo="Plano de estudos" ajuda="Sugestão pelo vestibular e curso. Depois dá para ajustar tudo no plano individual.">
+          <Campo rotulo="Jornada" ajuda="Sugestão pelo vestibular e curso. Depois dá para ajustar tudo no edital do aluno.">
             <select className="entrada" value={modeloId} onChange={(e) => setModeloId(e.target.value)}>
-              <option value="">Sem plano por enquanto</option>
-              {modelos.filter((m) => !m.arquivado).map((m) => <option key={m.id} value={m.id}>{m.nome}{m.vestibularId === f.vestibularId ? " · sugerido" : ""}</option>)}
+              <option value="">Sem jornada por enquanto</option>
+              {modelos.filter((m) => !m.arquivado).map((m) => <option key={m.id} value={m.id}>{m.nome}{m.vestibularId === f.vestibularId ? " · sugerida" : ""}</option>)}
             </select>
           </Campo>
           <MensagemErro erro={erro} />
           <div className="dialogo-acoes">
             <Botao variante="vidro" onClick={() => { const id = criado.id; sair(); navigate(id); }}>Ver o aluno</Botao>
-            <Botao variante="solido" disabled={!modeloId || ocupado} onClick={aplicar}>{ocupado ? "Aplicando…" : "Aplicar plano"}</Botao>
+            <Botao variante="solido" disabled={!modeloId || ocupado} onClick={aplicar}>{ocupado ? "Aplicando…" : "Aplicar jornada"}</Botao>
           </div>
         </div>
       )}
@@ -120,7 +120,7 @@ export default function Alunos() {
   const sessoes = useSessoesDesde(inicio);
   const simulados = useTodosSimulados();
   const [busca, setBusca] = useState("");
-  const [filtro, setFiltro] = useState({ vestibularId: "", cursoId: "", situacao: "", turma: "", ativos: "ativos" });
+  const [filtro, setFiltro] = useState({ vestibularId: "", situacao: "", turma: "", ativos: "ativos" });
   const [novo, setNovo] = useState(false);
 
   const carregando = [alunos, planos, progresso, questoes, sessoes, simulados].some((x) => x === undefined) || !ind;
@@ -144,7 +144,6 @@ export default function Alunos() {
     .filter(({ aluno: a, m }) => (filtro.ativos === "todos" || (filtro.ativos === "ativos" ? a.ativo !== false : a.ativo === false))
       && (!b || sem(`${a.nome} ${a.email} ${a.turma}`).includes(b))
       && (!filtro.vestibularId || a.vestibularId === filtro.vestibularId)
-      && (!filtro.cursoId || a.cursoId === filtro.cursoId)
       && (!filtro.turma || a.turma === filtro.turma)
       && (!filtro.situacao || m.situacao === filtro.situacao))
     .sort((x, y) => (SITUACOES[y.m.situacao]?.nivel ?? 0) - (SITUACOES[x.m.situacao]?.nivel ?? 0) || x.aluno.nome.localeCompare(y.aluno.nome, "pt-BR"));
@@ -154,13 +153,13 @@ export default function Alunos() {
   return (
     <>
       <TituloPagina eyebrow="Acompanhamento" frase="Seus *alunos*"
-        texto="Métricas dos últimos 30 dias, calculadas dos registros. Clique num aluno para ver o painel completo e editar o plano."
+        texto="Clique num aluno para abrir o painel dele: edital, incidência das matérias, redações e registros."
         direita={<Botao variante="solido" icone={Plus} onClick={() => setNovo(true)}>Novo aluno</Botao>} />
 
       <div className="stats-grid stats-grid--4">
         <Tile valor={ativos.length} rotulo="alunos ativos" />
         <Tile valor={conta("em_dia")} rotulo="em dia" tom="ok" />
-        <Tile valor={conta("atencao") + conta("sem_plano")} rotulo="pedem atenção" detalhe={conta("sem_plano") ? `${conta("sem_plano")} sem plano` : null} />
+        <Tile valor={conta("atencao") + conta("sem_plano")} rotulo="pedem atenção" detalhe={conta("sem_plano") ? `${conta("sem_plano")} sem edital` : null} />
         <Tile valor={conta("critico")} rotulo="em situação crítica" tom={conta("critico") ? "perigo" : undefined} detalhe="7+ dias sem estudar ou 14+ dias de atraso" />
       </div>
 
@@ -169,11 +168,6 @@ export default function Alunos() {
         <label className="filtro-campo"><span>Vestibular</span>
           <select className="entrada" value={filtro.vestibularId} onChange={(e) => setFiltro({ ...filtro, vestibularId: e.target.value })}>
             <option value="">Todos</option>{ind.vestibulares.map((v) => <option key={v.id} value={v.id}>{v.nome}</option>)}
-          </select>
-        </label>
-        <label className="filtro-campo"><span>Curso</span>
-          <select className="entrada" value={filtro.cursoId} onChange={(e) => setFiltro({ ...filtro, cursoId: e.target.value })}>
-            <option value="">Todos</option>{ind.cursos.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
         </label>
         {turmas.length > 0 && (
@@ -201,19 +195,19 @@ export default function Alunos() {
         <div className="tabela-rolagem">
           <table className="tabela tabela-alunos">
             <thead>
-              <tr><th>Aluno</th><th>Vestibular</th><th>Plano</th><th className="num">Atrasos</th><th className="num">Questões 30d</th><th className="num">Dias 30d</th><th>Último estudo</th><th className="num">Simulados</th><th>Situação</th></tr>
+              <tr><th>Aluno</th><th>Jornada</th><th>Edital</th><th className="num">Atrasos</th><th>Últimos 30 dias</th><th>Situação</th></tr>
             </thead>
             <tbody>
               {visiveis.map(({ aluno: a, m }) => (
                 <tr key={a.id}>
                   <td><Link to={a.id} className="link-aluno"><strong>{a.nome}</strong><small>{a.turma || a.email}</small></Link></td>
                   <td>{ind.nomeVestibular(a.vestibularId)}{a.cursoId && <small className="bloco-pequeno">{ind.nomeCurso(a.cursoId)}</small>}</td>
-                  <td className="celula-progresso">{m.planoPct != null ? <><Barra valor={m.planoPct} /><small className="num">{String(m.planoPct).replace(".", ",")}%{m.fimPrevisto ? ` · até ${fmtDataCurta(m.fimPrevisto)}` : ""}</small></> : <small>sem plano</small>}</td>
+                  <td className="celula-progresso">{m.planoPct != null ? <><Barra valor={m.planoPct} /><small className="num">{String(m.planoPct).replace(".", ",")}%{m.fimPrevisto ? ` · até ${fmtDataCurta(m.fimPrevisto)}` : ""}</small></> : <small>sem edital</small>}</td>
                   <td className={`num${m.atrasados ? " txt-erro" : ""}`}>{m.atrasados ? `${m.atrasados} · ${m.maxDiasAtraso}d` : "—"}</td>
-                  <td className="num">{m.questoes30 ? `${m.questoes30} · ${fmtPct(m.pct30)}` : "—"}</td>
-                  <td className="num">{m.diasEstudados30}/30</td>
-                  <td className="num">{m.ultimoEstudo ? (m.diasSemEstudar === 0 ? "hoje" : fmtDataLonga(m.ultimoEstudo)) : <small>nenhum nos últimos 30 dias</small>}</td>
-                  <td className="num">{m.simulados ? `${m.simulados} · ${fmtPct(m.mediaSimulados)}` : "—"}</td>
+                  <td className="num">
+                    {m.diasEstudados30}/30 dias{m.questoes30 ? ` · ${m.questoes30} questões (${fmtPct(m.pct30)})` : ""}
+                    <small className="bloco-pequeno">{m.ultimoEstudo ? `último estudo ${m.diasSemEstudar === 0 ? "hoje" : fmtDataLonga(m.ultimoEstudo)}` : "sem estudo no período"}</small>
+                  </td>
                   <td>{a.ativo === false ? <span className="etiqueta">Bloqueado</span> : <EtiquetaSituacao situacao={m.situacao} />}</td>
                 </tr>
               ))}

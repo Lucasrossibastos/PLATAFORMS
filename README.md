@@ -1,16 +1,23 @@
 # aprova+ · plataforma de estudos para vestibular
 
-React 19 + Vite. Dois papéis, **aluno** e **moderador**, sobre dados reais:
-plano de estudos individual, metas da semana, questões, simulados,
-desempenho, materiais em PDF, cursos em vídeo, redação e avisos.
+React 19 + Vite. Dois papéis, **aluno** e **moderador**, sobre dados reais.
+
+- **Aluno**: Dashboard (metas de hoje ou da semana), Edital (matérias em
+  blocos → tópicos → subtópicos; corta o que já viu, volta a ver, muda a
+  ordem), Meus cursos (aulas em vídeo), Redação, Desempenho e, em Extra,
+  Questões, Simulados e Materiais.
+- **Moderador**: quase tudo fica dentro de cada aluno (edital com incidência,
+  metas e matérias visíveis só para ele, redações, registros, histórico).
+  No geral: Jornadas (o conteúdo programático de cada vestibular/curso),
+  Materiais em PDF e Aulas em vídeo, filtráveis por programa.
 
 ## Rodar
 
 ```bash
 npm install
 npm run dev               # http://localhost:5173
-npm test                  # testes de núcleo, serviços e adaptador local (90)
-npm run test:emuladores   # regras de segurança e fluxo completo no Firebase emulado (21)
+npm test                  # testes de núcleo, serviços e adaptador local (98)
+npm run test:emuladores   # regras de segurança e fluxo completo no Firebase emulado (23)
 npm run build             # gera o site em docs/ (é o que o GitHub Pages publica)
 ```
 
@@ -25,9 +32,9 @@ na JVM). Se o ambiente definir `JAVA_TOOL_OPTIONS`, rode com
 | **Local (demonstração)** | sem as variáveis `VITE_FIREBASE_*` | `localStorage` (dados) e IndexedDB (arquivos) deste navegador |
 | **Firebase** | com as variáveis `VITE_FIREBASE_*` no build | Authentication, Firestore e Storage do seu projeto |
 
-No modo local, a primeira carga instala uma demonstração: estrutura
-acadêmica, 7 planos gerais (um por vestibular), o moderador e 3 alunos com o
-plano aplicado. **Nenhum histórico é inventado**: questões, simulados,
+No modo local, a primeira carga instala uma demonstração: as 9 matérias do
+curso com tópicos de exemplo, 7 jornadas (uma por vestibular), o moderador e
+3 alunos com a jornada aplicada. **Nenhum histórico é inventado**: questões, simulados,
 estudo, redações e avisos começam vazios. Contas (senha `123456`):
 `moderador@curso.com`, `aluno@curso.com` (FUVEST · Medicina),
 `carlos@curso.com` (ENEM MED · Medicina), `mariana@curso.com` (UNICAMP ·
@@ -72,8 +79,8 @@ Engenharia). No menu da conta há **Recomeçar a demonstração**.
 8. `npm run build` e publique `docs/`. Abra o site: a tela de login mostra
    **Primeiro acesso: criar a conta do moderador**. Isso só funciona uma vez
    (a regra de `config/instalacao` impede um segundo).
-9. No painel do moderador: **Estrutura → Importar estrutura base** (ou monte a
-   sua), crie os **Planos gerais** e cadastre os alunos. A conta do aluno é
+9. No painel do moderador: **Mais → Matérias e vestibulares → Importar
+   estrutura base** (ou monte a sua), crie as **Jornadas** e cadastre os alunos. A conta do aluno é
    criada pelo moderador, sem trocar a sessão dele.
 
 Para desenvolver contra os emuladores: `npm run emuladores` num terminal e,
@@ -103,6 +110,12 @@ firestore.rules, storage.rules   controle de acesso real
 - **Uma fonte de verdade**: desempenho, consistência e atrasos são sempre
   calculados dos registros (questões, simulados, sessões de estudo); nada
   disso é guardado pronto.
+- **Edital**: a unidade de estudo (a que vira meta) é o tópico; os
+  subtópicos são orientação dentro dele. Matéria oculta para um aluno fica no
+  edital dele, com o histórico, mas não gera metas.
+- **Jornada → aluno**: o aluno recebe uma cópia da jornada. Mudanças na
+  jornada só chegam aos alunos com "levar aos alunos" marcado, e mesmo assim
+  o que foi ajustado individualmente no aluno continua como está.
 - **Histórico não se perde**: mudar ou trocar o plano recalcula só o que
   falta; sessões, questões, simulados e conteúdos concluídos ficam. Toda
   correção ou exclusão de histórico grava um log (quem, quando, antes,
@@ -119,17 +132,18 @@ firestore.rules, storage.rules   controle de acesso real
 |---|---|
 | `usuarios/{uid}` | papel (`aluno`/`moderador`), nome, e-mail, vestibular, curso, turma, acesso |
 | `areas`, `materias`, `topicos`, `subtopicos`, `vestibulares`, `cursos` | estrutura acadêmica (id, nome, ordem, pai, carga, arquivado) |
-| `modelosPlano` | planos gerais (vestibular, curso, modalidade, período, versão, matérias em ordem, carga, prioridade, ritmo, revisões, permissões do aluno) |
-| `planos/{alunoId}` | plano individual (cópia editável do geral) + cronograma recalculado |
-| `planosAnteriores` | plano substituído, guardado inteiro |
+| `modelosPlano` | jornadas (vestibular, curso, modalidade, matérias em ordem com incidência, prioridade, velocidade e visibilidade, tópicos, revisões, permissões do aluno) |
+| `planos/{alunoId}` | edital do aluno (cópia editável da jornada) + cronograma recalculado |
+| `planosAnteriores` | edital substituído, guardado inteiro |
+| `vistos/{alunoId}` | subtópicos que o aluno marcou como vistos |
 | `progresso/{alunoId}` | minutos e conclusão por conteúdo (somados junto com cada sessão) |
 | `semanas/{alunoId}`, `resumosSemana` | metas da semana atual e fechamento das semanas |
 | `sessoesEstudo` | cada estudo feito (data, conteúdo, minutos, origem) |
 | `revisoes` | revisões espaçadas (agendada, realizada, atrasada, ignorada) |
 | `questoes`, `simulados` | registros do aluno (simulado com PDF opcional no Storage) |
-| `materiais` | metadados do PDF (título, conteúdo, tipo, vestibular, data, tags, referência do arquivo) |
-| `playlists`, `progressoVideos` | cursos em vídeo e aulas assistidas |
-| `devolutivas` | correções de redação |
+| `materiais` | metadados do PDF (título, matéria/tópico/subtópico, tipo, programas, data, tags, referência do arquivo) |
+| `playlists`, `progressoVideos` | aulas em vídeo (com os programas que veem) e aulas assistidas |
+| `devolutivas` | correções de redação (foto marcada, textos anexados, notas, observações) |
 | `notificacoes` | um documento por aluno e aviso (`lidaEm` por aluno) |
 | `logs` | histórico de alterações |
 | `config/{instalacao, textos, boasVindas, redacao}`, `textosAluno/{uid}` | configuração e textos |

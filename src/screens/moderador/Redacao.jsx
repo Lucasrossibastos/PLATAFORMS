@@ -1,79 +1,40 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Camera, PenLine, Plus, Save, Send, Trash2 } from "lucide-react";
+import { ArrowLeft, Camera, Paperclip, PenLine, Plus, Save, Send, Trash2 } from "lucide-react";
 import { CANAIS_ENVIO, COMPETENCIAS_ENEM, notaDevolutiva, rubricaPadrao } from "../../core/nucleo.js";
 import { fmtDataLonga } from "../../core/datas.js";
 import { useApp } from "../../state/AppContext.jsx";
-import { useAcao, useAlunos, useConfigRedacao, useDevolutivas } from "../../state/hooks.js";
+import { useAcao, useAluno, useDevolutivas } from "../../state/hooks.js";
 import { comprimirImagem } from "../../state/arquivos.js";
 import { NOTAS_COMPETENCIA, TIPOS_MARCACAO, competencia, statusDevolutiva } from "../../redacao.js";
 import { FolhaCorrigida, ItemMarcacao } from "../../ui/Correcao.jsx";
-import { Botao, Campo, Carregando, MensagemErro, TituloPagina, Vazio } from "../../ui/ui.jsx";
+import { fmtTamanho } from "../../core/validacao.js";
+import { Botao, Campo, Carregando, Vazio } from "../../ui/ui.jsx";
 
-function InstrucoesEnvio() {
-  const { s } = useApp();
-  const config = useConfigRedacao();
-  const [texto, setTexto] = useState(null);
-  const [salvo, setSalvo] = useState(false);
-  const { executar, ocupado, erro } = useAcao();
-  if (config === undefined) return null;
-  const atual = texto ?? config.instrucoes ?? "";
-  const mudou = atual !== (config.instrucoes ?? "");
-  return (
-    <section className="cartao form" aria-labelledby="t-instrucoes">
-      <h2 id="t-instrucoes" className="subtitulo">Instruções de envio <small>o aluno vê isto na tela de redação</small></h2>
-      <textarea className="entrada" rows={2} value={atual} onChange={(e) => { setTexto(e.target.value); setSalvo(false); }} aria-labelledby="t-instrucoes" />
-      <MensagemErro erro={erro} />
-      <div className="linha-acoes">
-        {salvo && <span className="retorno-curto" role="status">Instruções salvas.</span>}
-        <Botao variante="vidro" tamanho="sm" icone={Save} disabled={!mudou || !atual.trim() || ocupado}
-          onClick={() => executar(async () => { await s.redacao.salvarInstrucoes(atual); setTexto(null); setSalvo(true); })}>Salvar instruções</Botao>
-      </div>
-    </section>
-  );
-}
-
-export function RedacoesModerador() {
+/* Redações de um aluno (aba Redação do painel do aluno): cada devolutiva,
+   com a situação, e o botão para corrigir uma nova. */
+export function RedacoesDoAluno({ aluno }) {
   const { ind } = useApp();
   const navigate = useNavigate();
-  const devolutivas = useDevolutivas();
-  const alunos = useAlunos();
-  const [aluno, setAluno] = useState("todos");
-  const [status, setStatus] = useState("todas");
-  if (!devolutivas || !alunos) return <Carregando />;
-  const nomeAluno = (id) => alunos.find((a) => a.id === id)?.nome || "Aluno removido";
-  const lista = devolutivas
-    .filter((d) => (aluno === "todos" || d.alunoId === aluno) && (status === "todas" || (status === "rascunho" ? d.status === "rascunho" : d.status === "enviada")))
-    .sort((a, b) => (b.enviadaEm || b.recebidaEm || "").localeCompare(a.enviadaEm || a.recebidaEm || ""));
-
+  const devolutivas = useDevolutivas(aluno.id);
+  if (!devolutivas) return <Carregando />;
+  const lista = [...devolutivas].sort((a, b) => (b.enviadaEm || b.recebidaEm || "").localeCompare(a.enviadaEm || a.recebidaEm || ""));
+  const rascunhos = lista.filter((d) => d.status === "rascunho").length;
   return (
     <>
-      <TituloPagina eyebrow="Correções" frase="Devolutivas de *redação*"
-        texto="Registre a nota, anexe a foto do texto e marque os trechos. O aluno só vê depois que você enviar."
-        direita={<Botao variante="solido" icone={Plus} onClick={() => navigate("nova")}>Nova devolutiva</Botao>} />
-
-      <InstrucoesEnvio />
-
-      <div className="filtros-linha">
-        <select className="entrada" value={aluno} onChange={(e) => setAluno(e.target.value)} aria-label="Filtrar por aluno">
-          <option value="todos">Todos os alunos</option>
-          {alunos.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
-        </select>
-        <div className="filtros" role="tablist" aria-label="Situação">
-          {[["todas", "Todas"], ["rascunho", "Rascunhos"], ["enviadas", "Enviadas"]].map(([k, nome]) => (
-            <button key={k} type="button" role="tab" className="filtro" aria-selected={status === k} onClick={() => setStatus(k)}>{nome}</button>
-          ))}
-        </div>
+      <div className="linha-titulo-secao">
+        <p className="previa-linha">
+          {lista.length ? `${lista.length} ${lista.length === 1 ? "devolutiva" : "devolutivas"}${rascunhos ? ` · ${rascunhos} em rascunho` : ""}. O aluno só vê depois que você enviar.` : "Anexe o texto do aluno, escreva as observações e envie a devolutiva."}
+        </p>
+        <Botao variante="solido" icone={Plus} onClick={() => navigate(`/moderador/alunos/${aluno.id}/redacao/nova`)}>Nova devolutiva</Botao>
       </div>
-
       {lista.length === 0 ? (
-        <div className="cartao"><Vazio icone={PenLine} titulo="Nenhuma devolutiva aqui" texto="Use “Nova devolutiva” para registrar uma correção." /></div>
+        <div className="cartao"><Vazio icone={PenLine} titulo="Nenhuma redação corrigida ainda" /></div>
       ) : (
         <ul className="lista-devolutivas">
           {lista.map((d) => (
             <li key={d.id}>
-              <Link to={d.id} className="cartao linha-devolutiva">
-                <span className="linha-devolutiva-aluno">{nomeAluno(d.alunoId)}</span>
+              <Link to={`/moderador/alunos/${aluno.id}/redacao/${d.id}`} className="cartao linha-devolutiva">
                 <span className="linha-devolutiva-tema">{d.tema || "Sem tema"}</span>
                 <span className="etiqueta"><i style={{ "--cor": ind?.vestibular(d.vestibularId)?.cor }} />{ind?.nomeVestibular(d.vestibularId) || "—"}</span>
                 <span className="linha-devolutiva-nota num">{notaDevolutiva(d).texto}</span>
@@ -88,54 +49,81 @@ export function RedacoesModerador() {
   );
 }
 
-function novaDevolutiva(alunos, hoje) {
-  const aluno = alunos[0];
-  const vest = aluno?.vestibularId || "enem";
+function novaDevolutiva(aluno, hoje) {
+  const vest = aluno.vestibularId || "enem";
   return {
-    alunoId: aluno?.id || "", tema: "", vestibularId: vest, rubrica: rubricaPadrao(vest),
+    alunoId: aluno.id, tema: "", vestibularId: vest, rubrica: rubricaPadrao(vest),
     notas: {}, notaLivre: "", escalaLivre: 10, recebidaEm: hoje, canal: "whatsapp",
-    comentario: "", pontosFortes: "", aMelhorar: "", foto: null, marcacoes: [], proposta: "",
+    comentario: "", pontosFortes: "", aMelhorar: "", foto: null, anexos: [], marcacoes: [], proposta: "",
     status: "rascunho", enviadaEm: null, lida: false,
   };
 }
 
+/* Correção de uma redação, sempre dentro do aluno (rota alunos/:id/redacao/:did). */
 export function RedacaoModerador() {
-  const { id } = useParams();
-  const devolutivas = useDevolutivas();
-  const alunos = useAlunos();
-  if (!devolutivas || !alunos) return <Carregando />;
-  return <EditorDevolutiva key={id} id={id} devolutivas={devolutivas} alunos={alunos} />;
+  const { id: alunoId, did } = useParams();
+  const aluno = useAluno(alunoId);
+  const devolutivas = useDevolutivas(alunoId);
+  if (!devolutivas || aluno === undefined) return <Carregando />;
+  if (!aluno) return <Navigate to="/moderador/alunos" replace />;
+  return <EditorDevolutiva key={did} id={did} aluno={aluno} devolutivas={devolutivas} />;
 }
 
-function EditorDevolutiva({ id, devolutivas, alunos }) {
+function EditorDevolutiva({ id, aluno, devolutivas }) {
   const { s, ind, hoje } = useApp();
   const navigate = useNavigate();
+  const voltarPara = `/moderador/alunos/${aluno.id}?aba=redacao`;
   const salva = devolutivas.find((d) => d.id === id);
-  const [original] = useState(() => (id === "nova" ? novaDevolutiva(alunos, hoje) : salva ? structuredClone(salva) : null));
+  const [original] = useState(() => (id === "nova" ? novaDevolutiva(aluno, hoje) : salva ? { anexos: [], ...structuredClone(salva) } : null));
   const [f, setF] = useState(original);
   const [ativa, setAtiva] = useState(null);
   const [enviandoFoto, setEnviandoFoto] = useState(false);
+  const [enviandoAnexo, setEnviandoAnexo] = useState(false);
   const [erro, setErro] = useState("");
   const [excluir, setExcluir] = useState(false);
   const { executar, ocupado, erro: erroGravar } = useAcao();
 
-  if (!f) return <Navigate to=".." relative="path" replace />;
+  if (!f) return <Navigate to={voltarPara} replace />;
   const muda = (campos) => { setErro(""); setF((x) => ({ ...x, ...campos })); };
   const nota = notaDevolutiva(f);
   const apagarArquivo = (ref) => s.redacao.removerArquivo(ref);
+  const refsOriginais = new Set([original.foto, ...(original.anexos || []).map((a) => a.ref)].filter(Boolean));
+  // arquivos enviados nesta edição e que não ficaram: somem do armazenamento
+  const descartarNovos = (manter = []) => [f.foto, ...(f.anexos || []).map((a) => a.ref)]
+    .filter((r) => r && !refsOriginais.has(r) && !manter.includes(r)).forEach(apagarArquivo);
 
   const escolherFoto = async (e) => {
     const arquivo = e.target.files?.[0];
     if (!arquivo) return;
     setEnviandoFoto(true);
     try {
-      if (!f.alunoId) { setErro("Escolha o aluno antes de anexar a foto."); return; }
       const ref = await s.redacao.enviarFoto(f.alunoId, await comprimirImagem(arquivo));
-      if (f.foto && f.foto !== original.foto) apagarArquivo(f.foto);
+      if (f.foto && !refsOriginais.has(f.foto)) apagarArquivo(f.foto);
       muda({ foto: ref });
     } catch (err) {
       setErro(err?.codigo === "permissao" ? err.message : "Não foi possível enviar essa imagem. Envie uma foto em JPG ou PNG.");
     } finally { setEnviandoFoto(false); e.target.value = ""; }
+  };
+
+  const anexar = async (e) => {
+    const arquivos = [...(e.target.files || [])];
+    if (!arquivos.length) return;
+    setEnviandoAnexo(true);
+    try {
+      const novos = [];
+      for (const a of arquivos) {
+        const ehImagem = /^image\//.test(a.type);
+        novos.push(await s.redacao.enviarAnexo(f.alunoId, ehImagem ? await comprimirImagem(a) : a, a.name));
+      }
+      setF((x) => ({ ...x, anexos: [...(x.anexos || []), ...novos] }));
+      setErro("");
+    } catch (err) {
+      setErro(err?.erros?.anexo || err?.message || "Não foi possível anexar esse arquivo.");
+    } finally { setEnviandoAnexo(false); e.target.value = ""; }
+  };
+  const tirarAnexo = (ref) => {
+    if (!refsOriginais.has(ref)) apagarArquivo(ref);
+    muda({ anexos: f.anexos.filter((a) => a.ref !== ref) });
   };
 
   const adicionarMarcacao = ({ x, y }) => {
@@ -146,7 +134,6 @@ function EditorDevolutiva({ id, devolutivas, alunos }) {
   const mudarMarcacao = (mid, campos) => muda({ marcacoes: f.marcacoes.map((m) => (m.id === mid ? { ...m, ...campos } : m)) });
 
   const faltando = () => {
-    if (!f.alunoId) return "Escolha o aluno.";
     if (!f.tema.trim()) return "Escreva o tema da redação.";
     if (f.rubrica === "enem" && COMPETENCIAS_ENEM.some((c) => f.notas?.[c.id] === undefined || f.notas[c.id] === "")) return "Dê a nota das cinco competências.";
     if (f.rubrica === "livre" && (f.notaLivre === "" || !(Number(f.escalaLivre) > 0))) return "Preencha a nota e a escala.";
@@ -155,7 +142,7 @@ function EditorDevolutiva({ id, devolutivas, alunos }) {
   };
 
   const gravar = (enviar) => {
-    const problema = enviar ? faltando() : (!f.alunoId ? "Escolha o aluno." : "");
+    const problema = enviar ? faltando() : "";
     if (problema) { setErro(problema); return; }
     const final = {
       ...f, tema: f.tema.trim(),
@@ -163,27 +150,29 @@ function EditorDevolutiva({ id, devolutivas, alunos }) {
     };
     executar(async () => {
       await s.redacao.salvar({ ...final, ...(id !== "nova" ? { id } : {}) });
-      if (original.foto && original.foto !== final.foto) apagarArquivo(original.foto);
-      navigate("..", { relative: "path" });
+      // o que saiu desta devolutiva sai do armazenamento
+      const ficaram = new Set([final.foto, ...(final.anexos || []).map((a) => a.ref)]);
+      refsOriginais.forEach((r) => { if (!ficaram.has(r)) apagarArquivo(r); });
+      navigate(voltarPara);
     });
   };
 
   const descartar = () => {
-    if (f.foto && f.foto !== original.foto) apagarArquivo(f.foto);
-    navigate("..", { relative: "path" });
+    descartarNovos();
+    navigate(voltarPara);
   };
 
   const apagar = () => executar(async () => {
-    if (original.foto !== f.foto) apagarArquivo(f.foto);
+    descartarNovos();
     await s.redacao.remover(id);
-    navigate("..", { relative: "path" });
+    navigate(voltarPara);
   });
 
   const trocarVestibular = (vestibularId) => muda({ vestibularId, rubrica: f.rubrica && salva ? f.rubrica : rubricaPadrao(vestibularId) });
 
   return (
     <>
-      <Link to=".." relative="path" className="voltar"><ArrowLeft aria-hidden="true" />Todas as devolutivas</Link>
+      <Link to={voltarPara} className="voltar"><ArrowLeft aria-hidden="true" />{aluno.nome} · redações</Link>
       <header className="cabeca-redacao">
         <span className="eyebrow">{id === "nova" ? "Nova devolutiva" : statusDevolutiva(f)}{f.lidaEm ? ` em ${fmtDataLonga(f.lidaEm.slice(0, 10))}` : ""}</span>
         <h1>{f.tema.trim() || "Sem tema"}</h1>
@@ -212,19 +201,11 @@ function EditorDevolutiva({ id, devolutivas, alunos }) {
 
         <aside className="correcao-painel form">
           <section className="cartao form">
-            <div className="form-linha">
-              <Campo rotulo="Aluno">
-                <select className="entrada" value={f.alunoId} disabled={!!f.foto} title={f.foto ? "A foto fica na pasta do aluno: tire a foto para trocar o aluno" : undefined} onChange={(e) => muda({ alunoId: e.target.value })}>
-                  <option value="">Selecione…</option>
-                  {alunos.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
-                </select>
-              </Campo>
-              <Campo rotulo="Vestibular">
-                <select className="entrada" value={f.vestibularId || ""} onChange={(e) => trocarVestibular(e.target.value)}>
-                  {ind?.vestibulares.map((v) => <option key={v.id} value={v.id}>{v.nome}</option>)}
-                </select>
-              </Campo>
-            </div>
+            <Campo rotulo="Vestibular">
+              <select className="entrada" value={f.vestibularId || ""} onChange={(e) => trocarVestibular(e.target.value)}>
+                {ind?.vestibulares.map((v) => <option key={v.id} value={v.id}>{v.nome}</option>)}
+              </select>
+            </Campo>
             <Campo rotulo="Tema">
               <input className="entrada" value={f.tema} placeholder="Ex.: Os impactos da inteligência artificial no mercado de trabalho" onChange={(e) => muda({ tema: e.target.value })} />
             </Campo>
@@ -288,6 +269,24 @@ function EditorDevolutiva({ id, devolutivas, alunos }) {
                 <Botao variante="texto" tamanho="sm" icone={Trash2} onClick={() => muda({ marcacoes: f.marcacoes.filter((x) => x.id !== m.id) })}>Remover marcação</Botao>
               </ItemMarcacao>
             ))}
+          </section>
+
+          <section className="cartao form" aria-labelledby="t-anexos">
+            <h2 id="t-anexos" className="subtitulo">Textos anexados <small>PDF ou imagem; o aluno baixa junto com a devolutiva</small></h2>
+            {(f.anexos || []).length > 0 && (
+              <ul className="lista-anexos">
+                {f.anexos.map((a) => (
+                  <li key={a.ref}>
+                    <Paperclip aria-hidden="true" /><span>{a.nome}</span><small className="num">{fmtTamanho(a.tamanho)}</small>
+                    <button type="button" className="icone-btn" aria-label={`Tirar ${a.nome}`} onClick={() => tirarAnexo(a.ref)}><Trash2 /></button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <label className="btn btn--vidro btn--sm">
+              <Paperclip aria-hidden="true" />{enviandoAnexo ? "Anexando…" : "Anexar texto"}
+              <input type="file" multiple accept="application/pdf,.pdf,image/*" className="sr-only" onChange={anexar} />
+            </label>
           </section>
 
           <section className="cartao form">

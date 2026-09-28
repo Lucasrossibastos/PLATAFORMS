@@ -40,6 +40,7 @@ export const useNotificacoes = (id) => usar(id && ((s, cb) => s.notificacoes.obs
 export const useLogs = (id) => usar(id && ((s, cb) => s.logs.observarDoAluno(id, cb)), [id]);
 export const useAssistidos = (id) => usar(id && ((s, cb) => s.playlists.observarAssistidos(id, cb)), [id]);
 export const useDevolutivas = (id) => usar((s, cb) => s.redacao.observar(id, cb), [id]);
+export const useVistos = (id) => usar(id && ((s, cb) => s.planos.observarVistos(id, cb)), [id]);
 export const usePlanosAnteriores = (id) => usar(id && ((s, cb) => s.planos.observarPlanosAnteriores(id, cb)), [id]);
 
 // conteúdo e configuração

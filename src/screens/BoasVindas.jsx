@@ -7,8 +7,15 @@ import { useVisaoAluno } from "../state/aluno.js";
 import { COR_DESTAQUE_PADRAO, primeiroNome, saudacao } from "../textos.js";
 import { Cinema } from "../ui/Cinema.jsx";
 import { Botao, Estrela } from "../ui/ui.jsx";
+import { MENU_ALUNO, MENU_MODERADOR } from "../navegacao.js";
 
 const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
+
+// o mesmo menu das telas internas, para os nomes nunca divergirem
+const navDoMenu = (menu, ir) => [
+  ...menu.topo.map((i) => ({ label: i.label, onClick: () => ir(i.k) })),
+  { label: menu.extra.label, submenu: menu.extra.itens.map((i) => ({ label: i.label, onClick: () => ir(i.k) })) },
+];
 
 /* Tela de entrada do aluno: saudação, indicadores reais e a próxima meta. */
 function GateAluno() {
@@ -28,18 +35,7 @@ function GateAluno() {
 
   return (
     <Cinema
-      nav={[
-        { label: "Metas de hoje", onClick: () => ir("inicio") },
-        { label: "Meu plano", onClick: () => ir("plano") },
-        { label: "Estudar", submenu: [
-          { label: "Questões", onClick: () => ir("questoes") },
-          { label: "Simulados", onClick: () => ir("simulados") },
-          { label: "Materiais", onClick: () => ir("materiais") },
-          { label: "Cursos em vídeo", onClick: () => ir("cursos") },
-          { label: "Redação", onClick: () => ir("redacao") },
-        ] },
-        { label: "Desempenho", onClick: () => ir("desempenho") },
-      ]}
+      nav={navDoMenu(MENU_ALUNO, ir)}
       acoes={<>
         <Botao variante="vidro" className="opcional aparece aparece--escala" style={{ "--d": "0.3s" }} onClick={sair}>Sair</Botao>
         <Botao variante="solido" className="aparece aparece--escala" style={{ "--d": "0.34s" }} onClick={() => ir("inicio")}>Acessar a plataforma</Botao>
@@ -84,18 +80,7 @@ function GateModerador() {
 
   return (
     <Cinema
-      nav={[
-        { label: "Alunos", onClick: () => ir("alunos") },
-        { label: "Planos gerais", onClick: () => ir("planos") },
-        { label: "Conteúdo", submenu: [
-          { label: "Estrutura acadêmica", onClick: () => ir("estrutura") },
-          { label: "Materiais", onClick: () => ir("materiais") },
-          { label: "Cursos em vídeo", onClick: () => ir("cursos") },
-          { label: "Redação", onClick: () => ir("redacao") },
-          { label: "Textos e boas-vindas", onClick: () => ir("textos") },
-        ] },
-        { label: "Avisos", onClick: () => ir("avisos") },
-      ]}
+      nav={navDoMenu(MENU_MODERADOR, ir)}
       acoes={<>
         <Botao variante="vidro" className="opcional aparece aparece--escala" style={{ "--d": "0.3s" }} onClick={sair}>Sair</Botao>
         <Botao variante="solido" className="aparece aparece--escala" style={{ "--d": "0.34s" }} onClick={() => ir("alunos")}>Acessar o painel</Botao>

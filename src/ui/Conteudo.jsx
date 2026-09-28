@@ -69,3 +69,22 @@ export function EtiquetaStatus({ status, extra }) {
   const Icone = st.icone;
   return <span className={`etiqueta etiqueta-status ${st.classe}`}><Icone aria-hidden="true" />{st.nome}{extra ? ` · ${extra}` : ""}</span>;
 }
+
+/* Para quais jornadas (programas) vale um material ou uma playlist.
+   Nenhuma marcada = todas. */
+export function SeletorProgramas({ programas, valor = [], aoMudar }) {
+  return (
+    <fieldset className="lista-checagem lista-checagem--linha">
+      <legend>Programas</legend>
+      {programas.map((p) => (
+        <label key={p.id} className="checagem">
+          <input type="checkbox" checked={valor.includes(p.id)} onChange={(e) => aoMudar(e.target.checked ? [...valor, p.id] : valor.filter((x) => x !== p.id))} />{p.nome}
+        </label>
+      ))}
+      <small className="previa-linha">{valor.length ? `Só os alunos ${valor.length === 1 ? "dessa jornada" : "dessas jornadas"} veem.` : "Nenhum marcado: todos os alunos veem."}</small>
+    </fieldset>
+  );
+}
+
+export const nomesDosProgramas = (ids = [], programas = []) =>
+  (ids.length ? ids.map((id) => programas.find((p) => p.id === id)?.nome || "jornada removida").join(", ") : "Todos os programas");

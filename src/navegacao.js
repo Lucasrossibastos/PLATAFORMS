@@ -1,34 +1,44 @@
 import {
-  Bell, CalendarDays, FileQuestion, FileText, GraduationCap, House, Library, ListChecks, Megaphone,
-  Network, PenLine, PlayCircle, TrendingUp, Type, Users,
+  FileQuestion, FileText, House, Library, ListChecks, Map as Mapa, Megaphone, Network, PenLine, PlayCircle, TrendingUp, Type, Users,
 } from "lucide-react";
 
-/* Menus por papel. As quatro primeiras entradas viram pílulas no topo; o
-   resto fica em "Mais". Toda entrada leva a uma tela que funciona. */
+/* Menus por papel: `topo` vira pílulas no cabeçalho; `extra` é o menu
+   suspenso. No celular, tudo vai para o menu em tela cheia. */
 
-export const MENU_ALUNO = [
-  { k: "inicio", label: "Hoje", icone: House },
-  { k: "plano", label: "Meu plano", icone: ListChecks },
-  { k: "questoes", label: "Questões", icone: FileQuestion },
-  { k: "desempenho", label: "Desempenho", icone: TrendingUp },
-  { k: "semana", label: "Semana", icone: CalendarDays },
-  { k: "simulados", label: "Simulados", icone: FileText },
-  { k: "materiais", label: "Materiais", icone: Library },
-  { k: "cursos", label: "Cursos em vídeo", icone: PlayCircle },
-  { k: "redacao", label: "Redação", icone: PenLine },
-  { k: "avisos", label: "Avisos", icone: Bell },
-  { k: "boas-vindas", label: "Boas-vindas", icone: GraduationCap },
-];
+export const MENU_ALUNO = {
+  topo: [
+    { k: "inicio", label: "Dashboard", icone: House },
+    { k: "edital", label: "Edital", icone: ListChecks },
+    { k: "cursos", label: "Meus cursos", icone: PlayCircle },
+    { k: "redacao", label: "Redação", icone: PenLine },
+    { k: "desempenho", label: "Desempenho", icone: TrendingUp },
+  ],
+  extra: {
+    label: "Extra",
+    itens: [
+      { k: "questoes", label: "Questões", icone: FileQuestion },
+      { k: "simulados", label: "Simulados", icone: FileText },
+      { k: "materiais", label: "Materiais", icone: Library },
+    ],
+  },
+};
 
-export const MENU_MODERADOR = [
-  { k: "alunos", label: "Alunos", icone: Users },
-  { k: "planos", label: "Planos gerais", icone: ListChecks },
-  { k: "estrutura", label: "Estrutura", icone: Network },
-  { k: "materiais", label: "Materiais", icone: Library },
-  { k: "avisos", label: "Avisos", icone: Megaphone },
-  { k: "cursos", label: "Cursos em vídeo", icone: PlayCircle },
-  { k: "redacao", label: "Redação", icone: PenLine },
-  { k: "textos", label: "Textos e boas-vindas", icone: Type },
-];
+export const MENU_MODERADOR = {
+  topo: [
+    { k: "alunos", label: "Alunos", icone: Users },
+    { k: "jornadas", label: "Jornadas", icone: Mapa },
+    { k: "materiais", label: "Materiais", icone: Library },
+    { k: "cursos", label: "Aulas em vídeo", icone: PlayCircle },
+  ],
+  extra: {
+    label: "Mais",
+    itens: [
+      { k: "avisos", label: "Avisos", icone: Megaphone },
+      { k: "textos", label: "Textos e boas-vindas", icone: Type },
+      { k: "estrutura", label: "Matérias e vestibulares", icone: Network },
+    ],
+  },
+};
 
+export const todosDoMenu = (menu) => [...menu.topo, ...menu.extra.itens];
 export const baseDoPapel = (role) => (role === "moderador" ? "/moderador" : "/aluno");

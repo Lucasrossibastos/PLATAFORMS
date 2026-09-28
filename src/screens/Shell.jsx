@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Bell, ChevronDown, LogOut, Moon, RotateCcw, Sparkles, Sun } from "lucide-react";
+import { Bell, ChevronDown, GraduationCap, LogOut, Moon, RotateCcw, Sparkles, Sun } from "lucide-react";
 import { useApp } from "../state/AppContext.jsx";
 import { useNotificacoes } from "../state/hooks.js";
 import { useTema } from "../state/tema.js";
-import { baseDoPapel } from "../navegacao.js";
+import { baseDoPapel, todosDoMenu } from "../navegacao.js";
 import { MenuCheio } from "../ui/Cinema.jsx";
 import { Botao, Grao, Marca } from "../ui/ui.jsx";
 
@@ -19,8 +19,8 @@ function Sino({ alunoId, rota }) {
   );
 }
 
-/* Moldura das telas internas: cabeçalho com pílulas de metal (quatro fixas +
-   "Mais"), tema, conta; no celular, menu em tela cheia. */
+/* Moldura das telas internas: cabeçalho com as pílulas principais e um menu
+   suspenso (Extra/Mais), tema, conta; no celular, menu em tela cheia. */
 export default function Shell({ menu }) {
   const { usuario, sair, recomecarDemonstracao, modo } = useApp();
   const [tema, alternarTema] = useTema();
@@ -46,9 +46,9 @@ export default function Shell({ menu }) {
   }, [aberto]);
 
   const rota = (item) => `${base}/${item.k}`;
-  const principais = menu.slice(0, 4);
-  const extras = menu.slice(4);
-  const extraAtivo = [...extras, principais[3]].some((i) => i && pathname.startsWith(rota(i)));
+  const principais = menu.topo;
+  const extras = menu.extra.itens;
+  const extraAtivo = extras.some((i) => pathname.startsWith(rota(i)));
   const alternar = (qual) => setAberto((a) => (a === qual ? null : qual));
   const primeiro = (usuario.nome || "").split(" ")[0];
   const IconeTema = tema === "light" ? Moon : Sun;
@@ -66,20 +66,18 @@ export default function Shell({ menu }) {
         <NavLink to={base} aria-label="Início"><Marca /></NavLink>
 
         <nav className="app-nav" aria-label="Principal">
-          {principais.map((item, i) => (
-            <NavLink key={item.k} to={rota(item)} className={`metal${i === 3 ? " so-largo" : ""}`}>{item.label}</NavLink>
+          {principais.map((item) => (
+            <NavLink key={item.k} to={rota(item)} className="metal">{item.label}</NavLink>
           ))}
           {extras.length > 0 && (
             <div style={{ position: "relative" }}>
               <button type="button" className="metal" aria-expanded={aberto === "mais"} data-ativo={extraAtivo} onClick={() => alternar("mais")}>
-                Mais<ChevronDown aria-hidden="true" />
+                {menu.extra.label}<ChevronDown aria-hidden="true" />
               </button>
               {aberto === "mais" && (
                 <div className="painel" style={{ right: "auto", left: 0 }}>
-                  {[principais[3], ...extras].map((item, i) => (
-                    <NavLink key={item.k} to={rota(item)} className={i === 0 ? "so-estreito" : undefined}>
-                      <item.icone aria-hidden="true" />{item.label}
-                    </NavLink>
+                  {extras.map((item) => (
+                    <NavLink key={item.k} to={rota(item)}><item.icone aria-hidden="true" />{item.label}</NavLink>
                   ))}
                 </div>
               )}
@@ -106,7 +104,12 @@ export default function Shell({ menu }) {
                 </div>
                 <hr />
                 <button type="button" onClick={() => navigate("/boas-vindas")}><Sparkles />Rever a tela de boas-vindas</button>
-                {modo === "local" && <button type="button" onClick={recomecar}><RotateCcw />Recomeçar a demonstração</button>}
+                {usuario.role === "aluno" && <button type="button" onClick={() => navigate(`${base}/boas-vindas`)}><GraduationCap />Sobre o curso</button>}
+                {modo === "local" && <>
+                  <hr />
+                  <p className="painel-nota">Demonstração: os dados ficam só neste navegador.</p>
+                  <button type="button" onClick={recomecar}><RotateCcw />Recomeçar a demonstração</button>
+                </>}
                 <button type="button" onClick={sair}><LogOut />Sair</button>
               </div>
             )}
@@ -125,7 +128,7 @@ export default function Shell({ menu }) {
           <Botao variante="vidro" icone={LogOut} onClick={sair}>Sair</Botao>
         </>}>
         <div className="menu-cheio-lista">
-          {menu.map((item) => (
+          {todosDoMenu(menu).map((item) => (
             <NavLink key={item.k} to={rota(item)} className="metal" onClick={() => setMenuCel(false)}>
               <item.icone aria-hidden="true" />{item.label}
             </NavLink>
@@ -134,9 +137,6 @@ export default function Shell({ menu }) {
       </MenuCheio>
 
       <main className="app-main" key={pathname}>
-        {modo === "local" && (
-          <p className="faixa-modo" role="note">Modo local de demonstração: os dados ficam só neste navegador. Configure o Firebase para uso real.</p>
-        )}
         <Outlet />
       </main>
       {/* grão só nas telas internas: sobre o vídeo, a mistura custa um quadro a cada quadro */}

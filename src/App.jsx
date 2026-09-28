@@ -9,8 +9,7 @@ import Shell from "./screens/Shell.jsx";
 import { AcessoBloqueado, Instalacao } from "./screens/Acesso.jsx";
 import { BoasVindasPagina } from "./screens/Paginas.jsx";
 import Inicio from "./screens/aluno/Inicio.jsx";
-import Semana from "./screens/aluno/Semana.jsx";
-import PlanoAluno from "./screens/aluno/Plano.jsx";
+import EditalAluno from "./screens/aluno/Edital.jsx";
 import QuestoesAluno from "./screens/aluno/Questoes.jsx";
 import SimuladosAluno from "./screens/aluno/Simulados.jsx";
 import DesempenhoAluno from "./screens/aluno/Desempenho.jsx";
@@ -22,15 +21,14 @@ import { RedacaoAluno, RedacoesAluno } from "./screens/aluno/Redacao.jsx";
 const sob = (carregar, nome = "default") => lazy(() => carregar().then((m) => ({ default: m[nome] })));
 const Alunos = sob(() => import("./screens/moderador/Alunos.jsx"));
 const AlunoPainel = sob(() => import("./screens/moderador/AlunoPainel.jsx"));
-const Modelos = sob(() => import("./screens/moderador/Modelos.jsx"), "Modelos");
-const Modelo = sob(() => import("./screens/moderador/Modelos.jsx"), "Modelo");
+const Jornadas = sob(() => import("./screens/moderador/Jornadas.jsx"), "Jornadas");
+const Jornada = sob(() => import("./screens/moderador/Jornadas.jsx"), "Jornada");
 const Estrutura = sob(() => import("./screens/moderador/Estrutura.jsx"));
 const MateriaisModerador = sob(() => import("./screens/moderador/Materiais.jsx"));
 const AvisosModerador = sob(() => import("./screens/moderador/Avisos.jsx"));
 const Textos = sob(() => import("./screens/moderador/Textos.jsx"));
 const CursosModerador = sob(() => import("./screens/moderador/Cursos.jsx"), "CursosModerador");
 const PlaylistModerador = sob(() => import("./screens/moderador/Cursos.jsx"), "PlaylistModerador");
-const RedacoesModerador = sob(() => import("./screens/moderador/Redacao.jsx"), "RedacoesModerador");
 const RedacaoModerador = sob(() => import("./screens/moderador/Redacao.jsx"), "RedacaoModerador");
 
 function Tela({ children }) {
@@ -73,8 +71,9 @@ export default function App() {
             <Route path="/aluno" element={<Protegida papel="aluno"><Shell menu={MENU_ALUNO} /></Protegida>}>
               <Route index element={<Navigate to="inicio" replace />} />
               <Route path="inicio" element={<Inicio />} />
-              <Route path="semana" element={<Semana />} />
-              <Route path="plano" element={<PlanoAluno />} />
+              <Route path="semana" element={<Navigate to="/aluno/inicio?ver=semana" replace />} />
+              <Route path="edital" element={<EditalAluno />} />
+              <Route path="plano" element={<Navigate to="/aluno/edital" replace />} />
               <Route path="questoes" element={<QuestoesAluno />} />
               <Route path="simulados" element={<SimuladosAluno />} />
               <Route path="desempenho" element={<DesempenhoAluno />} />
@@ -91,16 +90,17 @@ export default function App() {
               <Route index element={<Navigate to="alunos" replace />} />
               <Route path="alunos" element={<Alunos />} />
               <Route path="alunos/:id" element={<AlunoPainel />} />
-              <Route path="planos" element={<Modelos />} />
-              <Route path="planos/:id" element={<Modelo />} />
+              <Route path="alunos/:id/redacao/:did" element={<RedacaoModerador />} />
+              <Route path="jornadas" element={<Jornadas />} />
+              <Route path="jornadas/:id" element={<Jornada />} />
+              <Route path="planos/*" element={<Navigate to="/moderador/jornadas" replace />} />
               <Route path="estrutura" element={<Estrutura />} />
               <Route path="materiais" element={<MateriaisModerador />} />
               <Route path="avisos" element={<AvisosModerador />} />
               <Route path="textos" element={<Textos />} />
               <Route path="cursos" element={<CursosModerador />} />
               <Route path="cursos/:id" element={<PlaylistModerador />} />
-              <Route path="redacao" element={<RedacoesModerador />} />
-              <Route path="redacao/:id" element={<RedacaoModerador />} />
+              <Route path="redacao/*" element={<Navigate to="/moderador/alunos" replace />} />
               <Route path="*" element={<Navigate to="alunos" replace />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

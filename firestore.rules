@@ -106,16 +106,18 @@ service cloud.firestore {
     /* ---------- plano individual ---------- */
 
     // O aluno só muda o que o moderador liberou em permissoesAluno, e sempre
-    // com log no mesmo lote. Os campos do recálculo acompanham as mudanças
-    // liberadas; sozinhos, exigem a permissão "recalcular".
+    // com log no mesmo lote. `materias` (incidência, matérias visíveis,
+    // tópicos) é só do moderador: a ordem que o aluno escolhe fica em
+    // ordemTopicos. Os campos do recálculo acompanham as mudanças liberadas;
+    // sozinhos, exigem a permissão "recalcular".
     function planoDoAlunoOk(alunoId) {
       let perm = antigo().get('permissoesAluno', {});
       let m = mudou();
-      return m.hasOnly(['materias', 'disponibilidade', 'ritmo', 'alocacaoSemanal', 'cronograma', 'fimPrevisto', 'recalculadoEm', 'atualizadoEm', 'ultimoLogId'])
-        && (!m.hasAny(['materias']) || perm.get('reordenar', false) == true)
+      return m.hasOnly(['ordemTopicos', 'disponibilidade', 'ritmo', 'alocacaoSemanal', 'cronograma', 'fimPrevisto', 'recalculadoEm', 'atualizadoEm', 'ultimoLogId'])
+        && (!m.hasAny(['ordemTopicos']) || (perm.get('reordenar', false) == true && novo().ordemTopicos is map))
         && (!m.hasAny(['disponibilidade']) || perm.get('disponibilidade', false) == true)
         && (!m.hasAny(['ritmo']) || perm.get('ritmo', false) == true)
-        && (!m.hasAny(['alocacaoSemanal', 'cronograma', 'fimPrevisto']) || m.hasAny(['materias', 'disponibilidade', 'ritmo']) || perm.get('recalcular', false) == true)
+        && (!m.hasAny(['alocacaoSemanal', 'cronograma', 'fimPrevisto']) || m.hasAny(['ordemTopicos', 'disponibilidade', 'ritmo']) || perm.get('recalcular', false) == true)
         && logNoLote(novo().ultimoLogId, alunoId);
     }
 

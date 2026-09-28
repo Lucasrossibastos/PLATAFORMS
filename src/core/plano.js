@@ -60,12 +60,27 @@ const arred5 = (n) => Math.ceil(n / 5) * 5;
 
 /* ---------- Leitura ---------- */
 
+/* Ordem dos tópicos de uma matéria. No edital do aluno, a ordem fica à parte
+   (ordemTopicos: só ids), para o aluno poder mudá-la sem poder mexer no resto
+   do edital (incidência, matérias visíveis), que é do moderador. Tópico fora
+   da lista vem depois, na ordem do edital. */
+export function topicosEmOrdem(plano, m) {
+  const lista = m?.topicos || [];
+  const ordem = plano?.ordemTopicos?.[m?.materiaId];
+  if (!Array.isArray(ordem) || !ordem.length) return lista;
+  const pos = new Map(ordem.map((id, i) => [id, i]));
+  return lista
+    .map((t, i) => ({ t, k: pos.has(t.topicoId) ? pos.get(t.topicoId) : ordem.length + i }))
+    .sort((a, b) => a.k - b.k)
+    .map((x) => x.t);
+}
+
 export function itensDoPlano(plano, ind) {
   const itens = [];
   (plano?.materias || []).forEach((m, posMateria) => {
     if (!ind.materia(m.materiaId) || m.ativa === false) return;
     const fator = (plano.ritmo || 1) * (m.ritmo || 1);
-    (m.topicos || []).forEach((t, posTopico) => {
+    topicosEmOrdem(plano, m).forEach((t, posTopico) => {
       const topico = ind.topico(t.topicoId);
       if (!topico) return;
       const carga = t.cargaMin ?? topico.cargaMin ?? CARGA_PADRAO;
@@ -418,8 +433,17 @@ export function alterarPlano(plano, ind, op) {
     }
     case "moverTopico": {
       const m = mat(op.materiaId);
-      const i = m?.topicos.findIndex((t) => t.topicoId === op.topicoId) ?? -1;
-      if (m && mover(m.topicos, i, op.passo)) registrar(op.tipo, `Mudou a ordem de ${nomeT} em ${nomeM}`, i + 1, i + 1 + op.passo);
+      if (!m) break;
+      if (p.alunoId) { // edital do aluno: só a lista de ordem muda
+        const ids = topicosEmOrdem(p, m).map((t) => t.topicoId);
+        const i = ids.indexOf(op.topicoId);
+        if (!mover(ids, i, op.passo)) break;
+        p.ordemTopicos = { ...(p.ordemTopicos || {}), [op.materiaId]: ids };
+        registrar(op.tipo, `Mudou a ordem de ${nomeT} em ${nomeM}`, i + 1, i + 1 + op.passo);
+        break;
+      }
+      const i = m.topicos.findIndex((t) => t.topicoId === op.topicoId);
+      if (mover(m.topicos, i, op.passo)) registrar(op.tipo, `Mudou a ordem de ${nomeT} em ${nomeM}`, i + 1, i + 1 + op.passo);
       break;
     }
     case "adicionarSubtopico": {

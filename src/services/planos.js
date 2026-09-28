@@ -1,4 +1,4 @@
-/* studyPlanService: planos gerais (modelos), plano individual, progresso e revisões.
+/* studyPlanService: jornadas (planos gerais, "modelos"), plano individual, progresso e revisões.
 
    planos/{alunoId}      cópia editável do modelo (materias, ritmo, datas, cronograma)
    progresso/{alunoId}   { itens: { [itemId]: { minutos, concluido, concluidoEm } } }
@@ -19,7 +19,7 @@ import { ErroValidacao, opsDeLog, porNome } from "./base.js";
 
 /* Qual permissão do aluno cada alteração exige (null = só o moderador). */
 export function permissaoDaOperacao(op) {
-  if (["moverMateria", "moverTopico", "moverSubtopico"].includes(op.tipo)) return "reordenar";
+  if (op.tipo === "moverTopico") return "reordenar"; // grava só ordemTopicos
   if (op.tipo === "definirPlano") {
     const campos = Object.keys(op.campos || {});
     if (campos.length && campos.every((c) => c === "disponibilidade")) return "disponibilidade";
@@ -58,6 +58,34 @@ export function opsCancelarRevisoes(revisoes, itemId, { soIds } = {}) {
   return ops;
 }
 
+/* Versão de uma alteração da jornada para o plano de um aluno (null = não levar). */
+const PADRAO_MATERIA = { prioridade: 2, ritmo: 1, ativa: true };
+const valorMateria = (m, k) => (k === "ativa" ? m?.ativa !== false : m?.[k] ?? PADRAO_MATERIA[k] ?? null);
+export function opParaAluno(op, modeloAntes, plano) {
+  if (["moverMateria", "moverTopico", "moverSubtopico"].includes(op.tipo)) return null;
+  const igual = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+  if (op.tipo === "definirMateria") {
+    const naJornada = modeloAntes.materias?.find((m) => m.materiaId === op.materiaId);
+    const noAluno = plano.materias?.find((m) => m.materiaId === op.materiaId);
+    if (!noAluno) return null;
+    const campos = Object.fromEntries(Object.entries(op.campos || {}).filter(([k]) => igual(valorMateria(noAluno, k), valorMateria(naJornada, k))));
+    return Object.keys(campos).length ? { ...op, campos } : null;
+  }
+  if (op.tipo === "definirPlano") {
+    const soDaJornada = ["nome", "descricao", "versao", "periodo"];
+    const campos = Object.fromEntries(Object.entries(op.campos || {}).filter(([k]) => !soDaJornada.includes(k) && igual(plano[k], modeloAntes[k])));
+    return Object.keys(campos).length ? { ...op, campos } : null;
+  }
+  if (op.tipo === "definirCarga") {
+    const alvo = (p) => {
+      const t = p.materias?.find((m) => m.materiaId === op.materiaId)?.topicos?.find((x) => x.topicoId === op.topicoId);
+      return op.subtopicoId ? t?.subtopicos?.find((x) => x.subtopicoId === op.subtopicoId) : t;
+    };
+    return igual(alvo(plano)?.cargaMin, alvo(modeloAntes)?.cargaMin) ? op : null;
+  }
+  return op;
+}
+
 export function servicoPlanos(ctx, servicos) {
   const { repo } = ctx;
 
@@ -68,7 +96,7 @@ export function servicoPlanos(ctx, servicos) {
 
   function validarModelo(m, ind) {
     const erros = {};
-    if (!String(m.nome || "").trim()) erros.nome = "Dê um nome ao plano geral.";
+    if (!String(m.nome || "").trim()) erros.nome = "Dê um nome à jornada.";
     if (!m.vestibularId || !ind.vestibular(m.vestibularId)) erros.vestibularId = "Escolha o vestibular.";
     if (m.cursoId && !ind.curso(m.cursoId)) erros.cursoId = "Curso inválido.";
     if (m.dataAlvo && !/^\d{4}-\d{2}-\d{2}$/.test(m.dataAlvo)) erros.dataAlvo = "Data inválida.";
@@ -92,7 +120,7 @@ export function servicoPlanos(ctx, servicos) {
   return {
     permissaoDaOperacao,
 
-    /* ---------- Planos gerais (modelos) ---------- */
+    /* ---------- Jornadas (planos gerais) ---------- */
 
     observarModelos(cb) {
       ctx.exigir("gerenciar:modelos");
@@ -109,7 +137,7 @@ export function servicoPlanos(ctx, servicos) {
       const { id: _i, ...doc } = modelo;
       await repo.lote([
         { tipo: "definir", colecao: "modelosPlano", id, dados: { ...doc, nome: doc.nome.trim(), arquivado: !!doc.arquivado, atualizadoEm: carimbo(), ...(dados.id ? {} : { criadoEm: carimbo() }) } },
-        ...opsDeLog(ctx, { entidade: "modelo", entidadeId: id }, [{ tipo: dados.id ? "editar" : "criar", descricao: `${dados.id ? "Editou" : "Criou"} o plano geral ${doc.nome.trim()}` }]),
+        ...opsDeLog(ctx, { entidade: "modelo", entidadeId: id }, [{ tipo: dados.id ? "editar" : "criar", descricao: `${dados.id ? "Editou" : "Criou"} a jornada ${doc.nome.trim()}` }]),
       ]);
       return id;
     },
@@ -118,7 +146,7 @@ export function servicoPlanos(ctx, servicos) {
       ctx.exigir("gerenciar:modelos");
       const ind = await ctx.indice();
       let modelo = await repo.obter("modelosPlano", id);
-      if (!modelo) throw new ErroDados("Plano geral não encontrado.", "nao-encontrado");
+      if (!modelo) throw new ErroDados("Jornada não encontrada.", "nao-encontrado");
       const entradas = [];
       (Array.isArray(ops) ? ops : [ops]).forEach((op) => {
         const r = alterarPlano(modelo, ind, op);
@@ -137,7 +165,7 @@ export function servicoPlanos(ctx, servicos) {
     async duplicarModelo(id) {
       ctx.exigir("gerenciar:modelos");
       const m = await repo.obter("modelosPlano", id);
-      if (!m) throw new ErroDados("Plano geral não encontrado.", "nao-encontrado");
+      if (!m) throw new ErroDados("Jornada não encontrada.", "nao-encontrado");
       const { id: _i, ...doc } = m;
       return this.salvarModelo({ ...doc, nome: `${m.nome} (cópia)`, versao: 1, arquivado: false });
     },
@@ -191,15 +219,29 @@ export function servicoPlanos(ctx, servicos) {
       return subtopicoId;
     },
 
-    // aplica uma alteração na jornada e, se pedido, nos planos dos alunos dela
-    async aplicarNaJornada({ modeloId, alunoId, op, propagar = false, motivo = "" }) {
-      if (modeloId) {
-        await this.alterarModelo(modeloId, op);
-        if (propagar) {
-          const planos = await repo.listar("planos", [["modeloId", "==", modeloId]]);
-          for (const p of planos) await this.alterar(p.id, op, { motivo: motivo || "Incluído pela jornada" });
-        }
+    /* Alteração na jornada e, com propagar, nos planos dos alunos dela. O
+       ajuste individual de cada aluno é mantido: um campo de matéria ou de
+       regra só muda no aluno se ainda estiver igual ao da jornada; mudanças
+       de ordem não são levadas (cada aluno pode ter a sua). */
+    async alterarJornada(modeloId, ops, { propagar = false, motivo = "" } = {}) {
+      const lista = Array.isArray(ops) ? ops : [ops];
+      const antes = await repo.obter("modelosPlano", modeloId);
+      const mudou = await this.alterarModelo(modeloId, lista);
+      if (!propagar || !antes) return { mudou, alunos: 0 };
+      const planos = await repo.listar("planos", [["modeloId", "==", modeloId]]);
+      let alunos = 0;
+      for (const p of planos) {
+        const doAluno = lista.map((op) => opParaAluno(op, antes, p)).filter(Boolean);
+        if (!doAluno.length) continue;
+        const r = await this.alterar(p.id, doAluno, { motivo: motivo || "Levado pela jornada" });
+        if (r.mudou) alunos++;
       }
+      return { mudou, alunos };
+    },
+
+    // aplica uma alteração na jornada (com os alunos dela, se pedido) ou no plano de um aluno
+    async aplicarNaJornada({ modeloId, alunoId, op, propagar = false, motivo = "" }) {
+      if (modeloId) await this.alterarJornada(modeloId, op, { propagar, motivo: motivo || "Incluído pela jornada" });
       if (alunoId) await this.alterar(alunoId, op, { motivo });
     },
 
@@ -238,7 +280,7 @@ export function servicoPlanos(ctx, servicos) {
       return repo.observar("progresso", [], (lista) => cb(Object.fromEntries(lista.map((p) => [p.id, p.itens || {}]))));
     },
 
-    /* Cria o plano individual a partir de um plano geral. Se o aluno já tem
+    /* Cria o plano individual a partir de uma jornada. Se o aluno já tem
        plano, só substitui com { substituir: true }; o anterior fica guardado
        em planosAnteriores e o progresso/histórico continuam. */
     async aplicarModelo(alunoId, modeloId, { substituir = false, motivo = "" } = {}) {
@@ -246,7 +288,7 @@ export function servicoPlanos(ctx, servicos) {
       const [modelo, aluno, { plano: atual, prog, ind }] = await Promise.all([
         repo.obter("modelosPlano", modeloId), repo.obter("usuarios", alunoId), carregar(alunoId),
       ]);
-      if (!modelo) throw new ErroDados("Plano geral não encontrado.", "nao-encontrado");
+      if (!modelo) throw new ErroDados("Jornada não encontrada.", "nao-encontrado");
       if (!aluno) throw new ErroDados("Aluno não encontrado.", "nao-encontrado");
       if (atual && !substituir) {
         throw new ErroDados(`${aluno.nome} já tem um plano (${atual.nome}). Confirme para substituir; o progresso e o histórico são mantidos.`, "plano-existente");
@@ -259,7 +301,7 @@ export function servicoPlanos(ctx, servicos) {
       if (atual) extra.push({ tipo: "criar", colecao: "planosAnteriores", id: novoId(), dados: { alunoId, plano: atual, substituidoEm: carimbo(), substituidoPor: ctx.usuario.uid } });
       return gravarPlano(alunoId, plano, prog, ind, [{
         tipo: atual ? "substituirPlano" : "aplicarPlano",
-        descricao: atual ? `Substituiu o plano pelo plano geral ${modelo.nome}` : `Aplicou o plano geral ${modelo.nome}`,
+        descricao: atual ? `Trocou a jornada pela ${modelo.nome}` : `Aplicou a jornada ${modelo.nome}`,
         antes: atual?.nome || null, depois: modelo.nome,
       }], { motivo, extra });
     },

@@ -6,7 +6,7 @@
 
 import { CICLO_TEMPLATES, DISP_PADRAO, INSTRUCOES_REDACAO_INICIAL, isoLocal } from "../core/nucleo.js";
 import { estruturaInicial, indiceEstrutura, materiaDoCurso } from "../core/estrutura.js";
-import { REVISAO_PADRAO, PERMISSOES_PADRAO, planoDoModelo, recalcularPlano } from "../core/plano.js";
+import { REVISAO_PADRAO, PERMISSOES_PADRAO, capacidadeSemanal, planoDoModelo, recalcularPlano } from "../core/plano.js";
 import { COR_DESTAQUE_PADRAO } from "../textos.js";
 import { carimbo } from "./contrato.js";
 
@@ -23,7 +23,7 @@ export const BOAS_VINDAS_PADRAO = {
   hero: { foto: null, nome: "Seu curso", subtitulo: "Edite esta página em Textos, no painel do moderador.", cor: "#C9793A" },
   blocos: [
     { id: "b1", tipo: "titulo", texto: "Como usar a plataforma" },
-    { id: "b2", tipo: "texto", texto: "1. Confira as metas de hoje no início e marque cada uma ao terminar.\n2. Em Meu plano, veja a sequência de conteúdos, o que está atrasado e a previsão de término.\n3. Registre as questões que resolver e os simulados que fizer.\n4. Acompanhe a sua evolução em Desempenho.\n5. Materiais, cursos em vídeo e devolutivas de redação ficam no menu." },
+    { id: "b2", tipo: "texto", texto: "1. No Dashboard, veja as metas do dia e marque cada uma ao terminar.\n2. No Edital, abra cada matéria para ver os tópicos; corte o que já domina.\n3. Em Meus cursos e Redação ficam as aulas em vídeo e as suas devolutivas.\n4. Em Extra: questões, simulados e materiais em PDF.\n5. Acompanhe a sua evolução em Desempenho." },
   ],
 };
 
@@ -37,6 +37,10 @@ export function modelosIniciais(ind) {
       const atual = porMateria.get(id) || { minutos: 0, maxSessao: 0 };
       porMateria.set(id, { minutos: atual.minutos + a.minutosSemanais, maxSessao: Math.max(atual.maxSessao, a.maxSessao || 60) });
     });
+    // cabe nas horas livres padrão (com folga): a demonstração não nasce estourada
+    const somar = () => ind.materias.reduce((x, m) => x + (porMateria.get(m.id)?.minutos ?? 60), 0);
+    const fator = Math.min(1, (capacidadeSemanal(DISP_PADRAO) * 0.9) / somar());
+    porMateria.forEach((v, id) => porMateria.set(id, { ...v, minutos: Math.max(45, Math.round((v.minutos * fator) / 15) * 15) }));
     return {
       id: `modelo-${vestibularId}`,
       nome: `${t.nome} · Extensivo`,

@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
-  ArrowLeft, BookOpen, CalendarDays, FileQuestion, FileText, History, LayoutDashboard, ListChecks, Replace, TrendingUp, Trash2, UserCog,
+  ArrowLeft, BookOpen, ClipboardList, History, LayoutDashboard, ListChecks, PenLine, Replace, TrendingUp, Trash2, UserCog,
 } from "lucide-react";
 import { useApp } from "../../state/AppContext.jsx";
 import { errosDeCampo, useAcao, useModelos, usePlanosAnteriores } from "../../state/hooks.js";
@@ -13,15 +13,16 @@ import { fmtPct } from "../../core/desempenho.js";
 import { CalendarioDias } from "../../ui/Graficos.jsx";
 import { NomeConteudo, PontoMateria } from "../../ui/Conteudo.jsx";
 import { Abas, Botao, Campo, Carregando, Confirmar, MensagemErro, Tile, Vazio } from "../../ui/ui.jsx";
-import { Historico, PainelPlano } from "../comum/Plano.jsx";
+import { EditalDoAluno, Historico, ListaRevisoes } from "../comum/Edital.jsx";
 import { PainelDesempenho } from "../comum/Desempenho.jsx";
 import { QuestoesDoAluno } from "../aluno/Questoes.jsx";
 import { SimuladosDoAluno } from "../aluno/Simulados.jsx";
 import { MetaLinha } from "../aluno/Inicio.jsx";
 import { quando } from "../aluno/Avisos.jsx";
 import { EtiquetaSituacao } from "./Alunos.jsx";
+import { RedacoesDoAluno } from "./Redacao.jsx";
 
-function AplicarModelo({ v, aberto, fechar }) {
+function TrocarJornada({ v, aberto, fechar }) {
   const { s } = useApp();
   const modelos = (useModelos() || []).filter((m) => !m.arquivado);
   const sugerido = s.planos.sugerir(modelos, v.aluno);
@@ -31,19 +32,19 @@ function AplicarModelo({ v, aberto, fechar }) {
   const escolhido = modeloId || sugerido?.id || "";
   const substitui = !!v.plano;
   return (
-    <Confirmar aberto={aberto} titulo={substitui ? "Substituir o plano" : "Aplicar um plano geral"} rotulo={substitui ? "Substituir o plano" : "Aplicar"} perigo={substitui}
+    <Confirmar aberto={aberto} titulo={substitui ? "Trocar a jornada" : "Aplicar uma jornada"} rotulo={substitui ? "Trocar a jornada" : "Aplicar"} perigo={substitui}
       ocupado={ocupado || !escolhido} erro={erro} aoFechar={fechar}
       aoConfirmar={() => executar(async () => { await s.planos.aplicarModelo(v.aluno.id, escolhido, { substituir: substitui, motivo }); fechar(); })}>
-      <Campo rotulo="Plano geral" ajuda={sugerido ? `Sugerido pelo vestibular${sugerido.cursoId ? " e curso" : ""}: ${sugerido.nome}.` : "Nenhum plano geral bate com o vestibular do aluno."}>
+      <Campo rotulo="Jornada" ajuda={sugerido ? `Sugerida pelo vestibular${sugerido.cursoId ? " e curso" : ""}: ${sugerido.nome}.` : "Nenhuma jornada bate com o vestibular do aluno."}>
         <select className="entrada" value={escolhido} onChange={(e) => setModeloId(e.target.value)}>
           <option value="">Selecione…</option>
-          {modelos.map((m) => <option key={m.id} value={m.id}>{m.nome}{m.id === sugerido?.id ? " · sugerido" : ""}</option>)}
+          {modelos.map((m) => <option key={m.id} value={m.id}>{m.nome}{m.id === sugerido?.id ? " · sugerida" : ""}</option>)}
         </select>
       </Campo>
       {substitui && (
         <p className="aviso aviso--erro" role="note">
-          O plano atual (<b>{v.plano.nome}</b>) será trocado por uma cópia nova do plano geral. O anterior fica guardado,
-          e o progresso, as sessões de estudo, as questões e os simulados continuam. Personalizações do plano atual não passam para o novo.
+          O edital atual (<b>{v.plano.nome}</b>) será trocado por uma cópia nova da jornada. O anterior fica guardado,
+          e o que já foi estudado, as questões e os simulados continuam. Ajustes individuais do edital atual não passam para o novo.
         </p>
       )}
       <Campo rotulo="Motivo (opcional)"><input className="entrada" value={motivo} onChange={(e) => setMotivo(e.target.value)} /></Campo>
@@ -76,8 +77,8 @@ function VisaoGeral({ v }) {
         </section>
       </div>
       <div className="stats-grid stats-grid--4">
-        <Tile valor={m.planoPct != null ? `${String(m.planoPct).replace(".", ",")}%` : "–"} rotulo="do plano" detalhe={m.fimPrevisto ? `término previsto ${fmtDataCurta(m.fimPrevisto)}` : null} />
-        <Tile valor={m.atrasados} rotulo="conteúdos atrasados" tom={m.atrasados ? "perigo" : undefined} detalhe={m.atrasados ? `até ${m.maxDiasAtraso} dias · ${fmtMin(m.cargaAtrasadaMin)}` : null} />
+        <Tile valor={m.planoPct != null ? `${String(m.planoPct).replace(".", ",")}%` : "–"} rotulo="do edital" detalhe={m.fimPrevisto ? `término previsto ${fmtDataCurta(m.fimPrevisto)}` : null} />
+        <Tile valor={m.atrasados} rotulo="tópicos atrasados" tom={m.atrasados ? "perigo" : undefined} detalhe={m.atrasados ? `até ${m.maxDiasAtraso} dias · ${fmtMin(m.cargaAtrasadaMin)}` : null} />
         <Tile valor={m.questoes30} rotulo="questões em 30 dias" detalhe={m.questoes30 ? `${fmtPct(m.pct30)} de acerto` : null} />
         <Tile valor={m.simulados} rotulo="simulados" detalhe={m.simulados ? `média ${fmtPct(m.mediaSimulados)}` : null} />
       </div>
@@ -85,7 +86,7 @@ function VisaoGeral({ v }) {
         <span className="eyebrow">Metas de hoje · {v.feitasHoje} de {v.totalHoje} feitas</span>
         {v.atrasadas.map((meta) => <MetaLinha key={meta.id} meta={meta} atrasada somenteLeitura />)}
         {v.metasHoje.map((meta) => <MetaLinha key={meta.id} meta={meta} somenteLeitura />)}
-        {!v.totalHoje && <p className="previa-linha">{v.plano ? "Sem metas hoje." : "Sem plano: aplique um plano geral na aba Plano."}</p>}
+        {!v.totalHoje && <p className="previa-linha">{v.plano ? "Sem metas hoje." : "Sem edital: aplique uma jornada na aba Edital."}</p>}
       </section>
       <p><EtiquetaSituacao situacao={m.situacao} /></p>
     </>
@@ -127,6 +128,27 @@ function Estudo({ v }) {
   );
 }
 
+const REGISTROS = [["questoes", "Questões"], ["simulados", "Simulados"], ["estudo", "Estudo"], ["revisoes", "Revisões"]];
+
+function Registros({ v }) {
+  const [tipo, setTipo] = useState("questoes");
+  return (
+    <>
+      <div className="filtros" role="tablist" aria-label="Tipo de registro">
+        {REGISTROS.map(([k, nome]) => (
+          <button key={k} type="button" role="tab" className="filtro" aria-selected={tipo === k} onClick={() => setTipo(k)}>
+            {nome}{k === "questoes" && v.questoes.length ? ` · ${v.questoes.length}` : k === "simulados" && v.simulados.length ? ` · ${v.simulados.length}` : ""}
+          </button>
+        ))}
+      </div>
+      {tipo === "questoes" && <QuestoesDoAluno alunoId={v.aluno.id} registros={v.questoes} moderador />}
+      {tipo === "simulados" && <SimuladosDoAluno alunoId={v.aluno.id} registros={v.simulados} moderador cursoPadrao={v.aluno.cursoId} />}
+      {tipo === "estudo" && <Estudo v={v} />}
+      {tipo === "revisoes" && <ListaRevisoes v={v} podeIgnorar />}
+    </>
+  );
+}
+
 function Perfil({ v }) {
   const { s, ind } = useApp();
   const a = v.aluno;
@@ -157,7 +179,7 @@ function Perfil({ v }) {
           <Campo rotulo="Telefone"><input className="entrada" value={f.telefone} onChange={(e) => setF({ ...f, telefone: e.target.value })} /></Campo>
           <Campo rotulo="Data da prova" erro={erros.dataProva}><input className="entrada" type="date" value={f.dataProva} onChange={(e) => setF({ ...f, dataProva: e.target.value })} /></Campo>
         </div>
-        <p className="previa-linha">Mudar o vestibular ou o curso não troca o plano; para isso, use “Aplicar outro plano geral” na aba Plano.</p>
+        <p className="previa-linha">Mudar o vestibular ou o curso não troca o edital; para isso, use “Trocar jornada”.</p>
         {ok && <p className="retorno-curto" role="status">{ok}</p>}
         {!Object.keys(erros).length && <MensagemErro erro={erro} />}
         <Botao variante="solido" disabled={ocupado} onClick={() => executar(async () => { const m = await s.alunos.atualizar(a.id, { ...f, dataProva: f.dataProva || null }); setOk(m ? "Dados salvos." : "Nada mudou."); })}>Salvar</Botao>
@@ -171,7 +193,7 @@ function Perfil({ v }) {
         <Link className="btn btn--vidro btn--sm" to={`/moderador/textos?aluno=${a.id}`}>Textos personalizados deste aluno</Link>
         {anteriores.length > 0 && (
           <>
-            <h3 className="subtitulo">Planos anteriores</h3>
+            <h3 className="subtitulo">Editais anteriores</h3>
             <ul className="lista-simples">{anteriores.map((p) => <li key={p.id}>{p.plano?.nome} <small>substituído em {quando(p.substituidoEm)}</small></li>)}</ul>
           </>
         )}
@@ -180,49 +202,53 @@ function Perfil({ v }) {
   );
 }
 
+const ABAS = [
+  { k: "geral", label: "Visão geral", icone: LayoutDashboard },
+  { k: "edital", label: "Edital", icone: ListChecks },
+  { k: "redacao", label: "Redação", icone: PenLine },
+  { k: "desempenho", label: "Desempenho", icone: TrendingUp },
+  { k: "registros", label: "Registros", icone: ClipboardList },
+  { k: "historico", label: "Histórico", icone: History },
+  { k: "perfil", label: "Perfil e acesso", icone: UserCog },
+];
+
+/* Tudo de um aluno num lugar: o moderador mexe no edital dele (incidência,
+   metas, matérias visíveis, tópicos), corrige redações e vê os registros.
+   A aba fica no endereço (?aba=), para voltar direto a ela. */
 export default function AlunoPainel() {
   const { id } = useParams();
   const v = useVisaoAluno(id);
-  const [aba, setAba] = useState("geral");
-  const [aplicar, setAplicar] = useState(false);
+  const [params, setParams] = useSearchParams();
+  const aba = ABAS.some((a) => a.k === params.get("aba")) ? params.get("aba") : "geral";
+  const mudarAba = (k) => setParams(k === "geral" ? {} : { aba: k }, { replace: true });
+  const [trocar, setTrocar] = useState(false);
   if (v.carregando) return <Carregando />;
-  if (!v.aluno) return <><Link to=".." relative="path" className="voltar"><ArrowLeft aria-hidden="true" />Alunos</Link><div className="cartao"><Vazio icone={UserCog} titulo="Aluno não encontrado" /></div></>;
+  if (!v.aluno) return <><Link to="/moderador/alunos" className="voltar"><ArrowLeft aria-hidden="true" />Alunos</Link><div className="cartao"><Vazio icone={UserCog} titulo="Aluno não encontrado" /></div></>;
 
-  const abas = [
-    { k: "geral", label: "Visão geral", icone: LayoutDashboard },
-    { k: "plano", label: "Plano", icone: ListChecks },
-    { k: "desempenho", label: "Desempenho", icone: TrendingUp },
-    { k: "questoes", label: "Questões", icone: FileQuestion, contador: v.questoes.length },
-    { k: "simulados", label: "Simulados", icone: FileText, contador: v.simulados.length },
-    { k: "estudo", label: "Estudo", icone: CalendarDays },
-    { k: "historico", label: "Histórico", icone: History },
-    { k: "perfil", label: "Perfil e acesso", icone: UserCog },
-  ];
   return (
     <>
-      <Link to=".." relative="path" className="voltar"><ArrowLeft aria-hidden="true" />Todos os alunos</Link>
+      <Link to="/moderador/alunos" className="voltar"><ArrowLeft aria-hidden="true" />Todos os alunos</Link>
       <header className="titulo-pagina">
         <div>
-          <span className="eyebrow">{v.ind.nomeVestibular(v.aluno.vestibularId)}{v.aluno.turma ? ` · ${v.aluno.turma}` : ""}{v.aluno.ativo === false ? " · acesso bloqueado" : ""}</span>
+          <span className="eyebrow">{[v.plano?.nome || v.ind.nomeVestibular(v.aluno.vestibularId), v.aluno.turma, v.aluno.ativo === false ? "acesso bloqueado" : null].filter(Boolean).join(" · ")}</span>
           <h1>{v.aluno.nome}</h1>
         </div>
         <div className="titulo-direita">
-          <Botao variante={v.plano ? "vidro" : "solido"} icone={Replace} onClick={() => setAplicar(true)}>{v.plano ? "Aplicar outro plano geral" : "Aplicar plano geral"}</Botao>
+          <Botao variante={v.plano ? "vidro" : "solido"} icone={Replace} onClick={() => setTrocar(true)}>{v.plano ? "Trocar jornada" : "Aplicar jornada"}</Botao>
         </div>
       </header>
-      <Abas rotulo="Seções do aluno" itens={abas} ativa={aba} aoMudar={setAba} />
+      <Abas rotulo="Seções do aluno" itens={ABAS} ativa={aba} aoMudar={mudarAba} />
       {aba === "geral" && <VisaoGeral v={v} />}
-      {aba === "plano" && (v.plano ? <PainelPlano v={v} modo="moderador" /> : (
-        <div className="cartao"><Vazio icone={ListChecks} titulo="Este aluno ainda não tem plano" texto="Aplique um plano geral; depois ele vira uma cópia individual, editável." />
-          <Botao variante="solido" onClick={() => setAplicar(true)}>Aplicar plano geral</Botao></div>
+      {aba === "edital" && (v.plano ? <EditalDoAluno v={v} modo="moderador" /> : (
+        <div className="cartao"><Vazio icone={ListChecks} titulo="Este aluno ainda não tem edital" texto="Aplique a jornada do vestibular dele; depois ela vira uma cópia individual, que você ajusta aqui." />
+          <Botao variante="solido" onClick={() => setTrocar(true)}>Aplicar jornada</Botao></div>
       ))}
+      {aba === "redacao" && <RedacoesDoAluno aluno={v.aluno} />}
       {aba === "desempenho" && <PainelDesempenho v={v} />}
-      {aba === "questoes" && <QuestoesDoAluno alunoId={v.aluno.id} registros={v.questoes} moderador />}
-      {aba === "simulados" && <SimuladosDoAluno alunoId={v.aluno.id} registros={v.simulados} moderador cursoPadrao={v.aluno.cursoId} />}
-      {aba === "estudo" && <Estudo v={v} />}
+      {aba === "registros" && <Registros v={v} />}
       {aba === "historico" && <Historico alunoId={v.aluno.id} />}
       {aba === "perfil" && <Perfil key={v.aluno.id} v={v} />}
-      {aplicar && <AplicarModelo v={v} aberto={aplicar} fechar={() => setAplicar(false)} />}
+      {trocar && <TrocarJornada v={v} aberto={trocar} fechar={() => setTrocar(false)} />}
     </>
   );
 }

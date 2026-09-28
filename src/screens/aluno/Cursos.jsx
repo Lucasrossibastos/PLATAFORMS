@@ -9,7 +9,7 @@ import { playlistVisivelPara } from "../../services/conteudo.js";
 import { CapaPlaylist, MiniaturaVideo, PlayerVideo, Relevancia, nomeCategoria } from "../../ui/Midia.jsx";
 import { Barra, Botao, Carregando, MensagemErro, TituloPagina, Vazio } from "../../ui/ui.jsx";
 
-// playlists publicadas que valem para o vestibular, o curso e o plano do aluno
+// playlists publicadas que valem para o programa (jornada) do aluno e as matérias visíveis do edital
 function usePlaylistsDoAluno() {
   const eu = useEu();
   const aluno = useAluno(eu.id);
@@ -17,10 +17,10 @@ function usePlaylistsDoAluno() {
   const todas = usePlaylists();
   const assistidos = useAssistidos(eu.id) || {};
   const playlists = useMemo(() => {
-    if (!todas || aluno === undefined || plano === undefined) return null;
-    const materias = plano ? plano.materias.map((m) => m.materiaId) : null;
-    return todas.filter((pl) => playlistVisivelPara(pl, aluno || eu, materias));
-  }, [todas, aluno, plano, eu]);
+    if (!todas || plano === undefined) return null;
+    const materias = plano ? plano.materias.filter((m) => m.ativa !== false).map((m) => m.materiaId) : null;
+    return todas.filter((pl) => playlistVisivelPara(pl, plano?.modeloId || null, materias));
+  }, [todas, plano]);
   return { playlists, assistidos, aluno: aluno || eu };
 }
 

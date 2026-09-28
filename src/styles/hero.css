@@ -91,10 +91,20 @@
   padding: 6px;
   border-radius: 10px;
   border: 1px solid rgba(198, 198, 198, 0.35);
-  background: rgba(12, 12, 13, 0.94);
+  /* opaco e numa camada própria: em alguns Chrome com vídeo acelerado, o
+     vídeo de fundo chegava a ser desenhado por cima de um painel translúcido */
+  background: #0c0c0d;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
-  transform: translateX(-50%);
-  animation: pop-in 0.35s var(--ease-out);
+  transform: translateX(-50%) translateZ(0);
+  will-change: transform;
+  isolation: isolate;
+  animation: submenu-entra 0.3s var(--ease-out);
+}
+/* a animação mantém o translateX: com pop-in (que termina em transform: none)
+   o painel nascia deslocado e pulava para o centro no fim */
+@keyframes submenu-entra {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px) translateZ(0); }
+  to { opacity: 1; transform: translateX(-50%) translateZ(0); }
 }
 .submenu-painel button,
 .submenu-painel a {
@@ -369,6 +379,12 @@
 }
 .folha[open] { animation: folha-entra 0.45s var(--ease-out); }
 .folha::backdrop { background: rgba(0, 0, 0, 0.35); }
+@media (min-width: 901px) and (max-width: 1100px) {
+  .cine-topo { grid-template-columns: 1fr auto auto; }
+  .cine-nav { display: none; }
+  .burger { display: grid; color: #fff; }
+}
+
 @keyframes folha-entra { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
 .folha-topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 24px 24px 8px; }
 .folha-topo h2 { font-size: 22px; font-weight: 500; letter-spacing: -0.03em; }

@@ -4,30 +4,22 @@ import { DIAS, fmtMin } from "../../core/nucleo.js";
 import { fmtDataCurta } from "../../core/datas.js";
 import { chaveDoDia, datasDaSemana, idxDia } from "../../core/semana.js";
 import { useApp } from "../../state/AppContext.jsx";
-import { useAcao, useEu, useFrases } from "../../state/hooks.js";
-import { useVisaoAluno } from "../../state/aluno.js";
-import { Barra, Botao, Carregando, MensagemErro, TituloPagina, Vazio } from "../../ui/ui.jsx";
+import { useAcao } from "../../state/hooks.js";
+import { Barra, Botao, MensagemErro, Vazio } from "../../ui/ui.jsx";
 
-/* Semana com as metas por dia. Mover: arrastar (mouse) ou tocar na meta e
-   depois no dia (celular e teclado). Só dá para mover para hoje em diante. */
-export default function Semana() {
+/* Quadro da semana (Dashboard → Semana): as metas por dia. Mover: arrastar
+   (mouse) ou tocar na meta e depois no dia (celular e teclado). Só dá para
+   mover para hoje em diante. */
+export function QuadroSemana({ v, texto }) {
   const { s, ind } = useApp();
-  const eu = useEu();
-  const v = useVisaoAluno(eu.id);
-  const t = useFrases(v.aluno || eu);
   const [arrastando, setArrastando] = useState(null); // { id, de }
   const [sobre, setSobre] = useState(null);
   const [selecao, setSelecao] = useState(null); // { id, de, nome }
   const { executar, ocupado, erro } = useAcao();
+  const alunoId = v.aluno.id;
 
-  if (v.carregando) return <Carregando />;
   if (!v.semana) {
-    return (
-      <>
-        <TituloPagina eyebrow="Semana" frase={t("painel.semana.titulo")} />
-        <div className="cartao"><Vazio icone={Sparkles} titulo={v.plano === null ? "Seu plano ainda não foi criado" : "Montando a semana…"} texto={v.plano === null ? "As metas da semana aparecem quando o professor aplicar o seu plano." : null} /></div>
-      </>
-    );
+    return <div className="cartao"><Vazio icone={Sparkles} titulo={v.plano === null ? "Seu edital ainda não foi montado" : "Montando a semana…"} texto={v.plano === null ? "As metas da semana aparecem quando o professor aplicar a sua jornada." : null} /></div>;
   }
   const est = v.semana;
   const disp = v.plano?.disponibilidade || {};
@@ -36,26 +28,19 @@ export default function Semana() {
   const podeReceber = (k) => idxDia(k) >= hIdx;
   const mover = (id, de, para) => {
     setArrastando(null); setSobre(null); setSelecao(null);
-    if (de !== para && podeReceber(para)) executar(() => s.estudo.moverMeta(eu.id, id, de, para));
+    if (de !== para && podeReceber(para)) executar(() => s.estudo.moverMeta(alunoId, id, de, para));
   };
   const total = DIAS.reduce((x, d) => x + (est.metas[d.k] || []).reduce((y, m) => y + m.minutos, 0), 0);
   const origem = selecao || arrastando;
 
   return (
     <>
-      <TituloPagina
-        eyebrow={`${fmtDataCurta(datas.seg)} a ${fmtDataCurta(datas.dom)}`}
-        frase={t("painel.semana.titulo")}
-        texto={t("painel.semana.texto")}
-        direita={
-          <div className="titulo-direita">
-            <span className="etiqueta num">{fmtMin(total)} programados</span>
-            {est.editada && (
-              <Botao variante="vidro" tamanho="sm" icone={RotateCcw} disabled={ocupado} onClick={() => executar(() => s.estudo.reorganizar(eu.id))}>Voltar ao automático</Botao>
-            )}
-          </div>
-        }
-      />
+      <div className="faixa">
+        <span>{fmtDataCurta(datas.seg)} a {fmtDataCurta(datas.dom)} · <b className="num">{fmtMin(total)}</b> programados. {texto}</span>
+        {est.editada && (
+          <Botao variante="vidro" tamanho="sm" icone={RotateCcw} disabled={ocupado} onClick={() => executar(() => s.estudo.reorganizar(alunoId))}>Voltar ao automático</Botao>
+        )}
+      </div>
       <MensagemErro erro={erro} />
       {est.editada && (
         <div className="aviso"><Sparkles aria-hidden="true" />Semana reorganizada por você. Voltar ao automático refaz só o que ainda não foi feito, de hoje em diante.</div>

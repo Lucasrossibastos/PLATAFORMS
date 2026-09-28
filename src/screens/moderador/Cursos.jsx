@@ -5,39 +5,27 @@ import {
 } from "lucide-react";
 import { CATEGORIAS_PLAYLIST, CORES_PLAYLIST } from "../../core/nucleo.js";
 import { useApp } from "../../state/AppContext.jsx";
-import { useAcao, usePlaylists } from "../../state/hooks.js";
+import { useAcao, useModelos, usePlaylists } from "../../state/hooks.js";
+import { SeletorProgramas, nomesDosProgramas } from "../../ui/Conteudo.jsx";
 import { comprimirImagem, lerDuracaoVideo } from "../../state/arquivos.js";
 import { RELEVANCIAS, analisarLink, fmtDuracao } from "../../midia.js";
 import { CapaPlaylist, MiniaturaVideo, PlayerVideo, nomeCategoria } from "../../ui/Midia.jsx";
 import { Botao, Campo, Carregando, Dialogo, MensagemErro, TituloPagina, Vazio } from "../../ui/ui.jsx";
 
-const PLAYLIST_VAZIA = { titulo: "", descricao: "", categoria: "introducao", cor: CORES_PLAYLIST[0], vestibularIds: [], cursoIds: [], materiaId: "", topicoId: "", capa: null };
+const PLAYLIST_VAZIA = { titulo: "", descricao: "", categoria: "introducao", cor: CORES_PLAYLIST[0], programaIds: [], materiaId: "", topicoId: "", capa: null };
 
-function publico(pl, ind) {
+// para quem a playlist aparece
+function publico(pl, ind, jornadas) {
   const partes = [
-    (pl.vestibularIds || []).length ? pl.vestibularIds.map((id) => ind?.nomeVestibular(id)).join(", ") : null,
-    (pl.cursoIds || []).length ? pl.cursoIds.map((id) => ind?.nomeCurso(id)).join(", ") : null,
-    pl.materiaId ? `quem tem ${ind?.nomeMateria(pl.materiaId)} no plano` : null,
+    (pl.programaIds || []).length ? nomesDosProgramas(pl.programaIds, jornadas) : null,
+    pl.materiaId ? `quem tem ${ind?.nomeMateria(pl.materiaId)} no edital` : null,
   ].filter(Boolean);
   return partes.length ? `só ${partes.join(" · ")}` : "todos os alunos";
 }
 
-function MultiSelecao({ rotulo, opcoes, valor, aoMudar, ajuda }) {
-  return (
-    <fieldset className="lista-checagem lista-checagem--linha">
-      <legend>{rotulo}</legend>
-      {opcoes.map((o) => (
-        <label key={o.id} className="checagem">
-          <input type="checkbox" checked={valor.includes(o.id)} onChange={(e) => aoMudar(e.target.checked ? [...valor, o.id] : valor.filter((x) => x !== o.id))} />{o.nome}
-        </label>
-      ))}
-      {ajuda && <small className="previa-linha">{ajuda}</small>}
-    </fieldset>
-  );
-}
-
 function CamposPlaylist({ form, setForm, playlistId }) {
   const { s, ind } = useApp();
+  const jornadas = useModelos();
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState(null);
   const escolherCapa = async (e) => {
@@ -63,7 +51,7 @@ function CamposPlaylist({ form, setForm, playlistId }) {
             {CATEGORIAS_PLAYLIST.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
         </Campo>
-        <Campo rotulo="Matéria (opcional)" ajuda="Com matéria, aparece só para quem a tem no plano.">
+        <Campo rotulo="Matéria (opcional)" ajuda="Com matéria, aparece só para quem a tem visível no edital.">
           <select className="entrada" value={form.materiaId || ""} onChange={(e) => setForm((f) => ({ ...f, materiaId: e.target.value, topicoId: "" }))}>
             <option value="">Nenhuma</option>{ind?.materias.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
           </select>
@@ -76,10 +64,7 @@ function CamposPlaylist({ form, setForm, playlistId }) {
           </select>
         </Campo>
       )}
-      <MultiSelecao rotulo="Vestibulares" opcoes={ind?.vestibulares || []} valor={form.vestibularIds || []} ajuda="Nenhum marcado: vale para todos."
-        aoMudar={(v) => setForm((f) => ({ ...f, vestibularIds: v }))} />
-      <MultiSelecao rotulo="Cursos" opcoes={ind?.cursos || []} valor={form.cursoIds || []} ajuda="Nenhum marcado: vale para todos."
-        aoMudar={(v) => setForm((f) => ({ ...f, cursoIds: v }))} />
+      <SeletorProgramas programas={(jornadas || []).filter((j) => !j.arquivado)} valor={form.programaIds || []} aoMudar={(v) => setForm((f) => ({ ...f, programaIds: v }))} />
       <div className="campo">
         <span>Cor</span>
         <div className="cores">
@@ -110,6 +95,7 @@ function CamposPlaylist({ form, setForm, playlistId }) {
 
 export function CursosModerador() {
   const { s, ind } = useApp();
+  const jornadas = useModelos() || [];
   const navigate = useNavigate();
   const [nova, setNova] = useState(false);
   const [form, setForm] = useState(PLAYLIST_VAZIA);
@@ -126,8 +112,8 @@ export function CursosModerador() {
 
   return (
     <>
-      <TituloPagina eyebrow="Conteúdo" frase="Cursos em *vídeo*"
-        texto="Crie playlists e anexe as aulas. Só as publicadas aparecem, e só para os alunos do vestibular, curso e plano escolhidos."
+      <TituloPagina eyebrow="Conteúdo" frase="Aulas em *vídeo*"
+        texto="Crie playlists e publique as aulas. Só as publicadas aparecem, e só para os alunos dos programas escolhidos (em Meus cursos)."
         direita={<Botao variante="solido" icone={Plus} onClick={() => setNova(true)}>Nova playlist</Botao>} />
 
       {CATEGORIAS_PLAYLIST.map((cat) => {
@@ -143,7 +129,7 @@ export function CursosModerador() {
                   <div className="cartao-curso-corpo">
                     <strong>{pl.titulo}</strong>
                     <span className={`etiqueta${pl.publicada ? " etiqueta--ok" : ""}`}>{pl.publicada ? "Publicada" : "Rascunho"}</span>
-                    <span className="cartao-curso-meta">{pl.videos.length} {pl.videos.length === 1 ? "vídeo" : "vídeos"} · {publico(pl, ind)}</span>
+                    <span className="cartao-curso-meta">{pl.videos.length} {pl.videos.length === 1 ? "vídeo" : "vídeos"} · {publico(pl, ind, jornadas)}</span>
                   </div>
                 </Link>
               ))}
@@ -243,6 +229,7 @@ function FormVideo({ inicial, playlistId, aoSalvar, aoCancelar }) {
 export function PlaylistModerador() {
   const { id } = useParams();
   const { s, ind } = useApp();
+  const jornadas = useModelos() || [];
   const navigate = useNavigate();
   const playlists = usePlaylists();
   const playlist = playlists?.find((pl) => pl.id === id);
@@ -288,7 +275,7 @@ export function PlaylistModerador() {
       <div className="cartao cabeca-editor">
         <div className="cabeca-editor-capa"><CapaPlaylist playlist={playlist} /></div>
         <div className="cabeca-editor-texto">
-          <span className="eyebrow">{nomeCategoria(playlist.categoria)} · {publico(playlist, ind)}</span>
+          <span className="eyebrow">{nomeCategoria(playlist.categoria)} · {publico(playlist, ind, jornadas)}</span>
           <h1>{playlist.titulo}</h1>
           <span className={`etiqueta${playlist.publicada ? " etiqueta--ok" : ""}`}>{playlist.publicada ? "Publicada: os alunos já veem" : "Rascunho: só você vê"}</span>
         </div>
@@ -353,7 +340,7 @@ export function PlaylistModerador() {
               <Botao variante="vidro" onClick={() => setDados(null)}>Cancelar</Botao>
               <Botao variante="solido" disabled={!dados.titulo.trim()} onClick={() => {
                 if (playlist.capa && playlist.capa !== dados.capa) apagarArquivo(playlist.capa);
-                alterar((pl) => { Object.assign(pl, { titulo: dados.titulo.trim(), descricao: dados.descricao, categoria: dados.categoria, cor: dados.cor, vestibularIds: dados.vestibularIds || [], cursoIds: dados.cursoIds || [], materiaId: dados.materiaId || null, topicoId: dados.topicoId || null, capa: dados.capa }); });
+                alterar((pl) => { Object.assign(pl, { titulo: dados.titulo.trim(), descricao: dados.descricao, categoria: dados.categoria, cor: dados.cor, programaIds: dados.programaIds || [], materiaId: dados.materiaId || null, topicoId: dados.topicoId || null, capa: dados.capa }); });
                 setDados(null);
               }}>Salvar</Botao>
             </div>

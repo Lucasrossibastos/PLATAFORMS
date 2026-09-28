@@ -35,10 +35,10 @@ service firebase.storage {
       allow write: if moderador() && (apagando() || midia());
     }
 
-    // fotos das redações corrigidas: só o aluno dono e o moderador
+    // fotos e textos anexados às redações: só o aluno dono e o moderador
     match /redacoes/{alunoId}/{arquivo} {
       allow read: if moderador() || eu(alunoId);
-      allow write: if moderador() && (apagando() || imagem(15));
+      allow write: if moderador() && (apagando() || imagem(15) || pdf());
     }
 
     // imagens da página inicial (aparecem antes do login)
