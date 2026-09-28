@@ -255,5 +255,28 @@ service cloud.firestore {
         && (moderador() || novo().alunoId == request.auth.uid);
       allow update, delete: if false;
     }
+
+    /* ================= Flashcards (módulo src/modules/flashcards) =================
+       Bloco isolado, com funções próprias. Cada aluno lê e grava só a própria
+       árvore flashcards_alunos/{uid}; ninguém mais (nem o moderador) tem acesso.
+       Exige um perfil ativo em usuarios/{uid}: contas criadas fora da plataforma,
+       ou bloqueadas pelo moderador, não usam o banco. Se a plataforma deixar de
+       existir, troque fcPerfilAtivo() por true. */
+    match /flashcards_alunos/{uid} {
+      function fcPerfilAtivo() {
+        let perfil = /databases/$(database)/documents/usuarios/$(request.auth.uid);
+        return exists(perfil) && get(perfil).data.get('ativo', true) != false;
+      }
+      function fcDono() { return request.auth != null && request.auth.uid == uid && fcPerfilAtivo(); }
+
+      allow read, write: if fcDono();
+
+      match /{colecao}/{id} {
+        allow read, write: if fcDono() && colecao in [
+          'flashcards_materias', 'flashcards_topicos', 'flashcards_notas',
+          'flashcards_cartoes', 'flashcards_revisoes', 'flashcards_dias'
+        ];
+      }
+    }
   }
 }
