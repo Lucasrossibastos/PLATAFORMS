@@ -49,11 +49,105 @@ function VideoFundo() {
     };
   }, []);
   return (
-    <div className="cine-video" aria-hidden="true">
-      <video ref={ref} autoPlay muted loop playsInline preload="auto" disablePictureInPicture disableRemotePlayback tabIndex={-1}>
-        <source src={VIDEO_FUNDO} />
-      </video>
+    <video ref={ref} autoPlay muted loop playsInline preload="auto" disablePictureInPicture disableRemotePlayback tabIndex={-1}>
+      <source src={VIDEO_FUNDO} />
+    </video>
+  );
+}
+
+/* Arte "galho que floresce": duas fotos do mesmo enquadramento; um círculo
+   de luz que segue o ponteiro mostra a segunda (o galho com folhas) sobre a
+   primeira. A luz anda suavizada (10% da distância por quadro) e para de
+   calcular quando alcança o ponteiro. Máscara em CSS: o mesmo degradê de uma
+   máscara desenhada em canvas, sem gerar uma imagem nova a cada quadro. */
+const RAIO_LUZ = 260;
+const ARTE_GALHO = {
+  base: "https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20260609_195923_b0ba8ace-1d1d-4f2c-9a28-1ab84b330680.png&w=1280&q=85",
+  revelada: "https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20260609_201152_bba90a12-bf12-459f-91f0-51f237dbaf3b.png&w=1280&q=85",
+};
+
+function FundoRevelar({ base, revelada }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const alvo = { x: 0, y: 0 };
+    const luz = { x: 0, y: 0 };
+    let primeiro = true;
+    let quadro = 0;
+    const pintar = () => {
+      el.style.setProperty("--luz-x", `${luz.x}px`);
+      el.style.setProperty("--luz-y", `${luz.y}px`);
+    };
+    const passo = () => {
+      luz.x += (alvo.x - luz.x) * 0.1;
+      luz.y += (alvo.y - luz.y) * 0.1;
+      pintar();
+      quadro = Math.abs(alvo.x - luz.x) + Math.abs(alvo.y - luz.y) > 0.5 ? requestAnimationFrame(passo) : 0;
+    };
+    const mover = (e) => {
+      const r = el.getBoundingClientRect();
+      alvo.x = e.clientX - r.left;
+      alvo.y = e.clientY - r.top;
+      if (primeiro) { // a luz nasce no ponteiro, em vez de atravessar a tela vindo do canto
+        primeiro = false;
+        luz.x = alvo.x;
+        luz.y = alvo.y;
+        pintar();
+      }
+      if (!quadro) quadro = requestAnimationFrame(passo);
+    };
+    window.addEventListener("pointermove", mover, { passive: true });
+    window.addEventListener("pointerdown", mover, { passive: true });
+    return () => {
+      window.removeEventListener("pointermove", mover);
+      window.removeEventListener("pointerdown", mover);
+      cancelAnimationFrame(quadro);
+    };
+  }, []);
+  return (
+    <div ref={ref} className="fundo-revelar" style={{ "--luz-r": `${RAIO_LUZ}px` }}>
+      <div className="fundo-revelar-img fundo-zoom" style={{ backgroundImage: `url("${base}")` }} />
+      <div className="fundo-revelar-mascara">
+        <div className="fundo-revelar-img fundo-zoom" style={{ backgroundImage: `url("${revelada}")` }} />
+      </div>
     </div>
+  );
+}
+
+/* Fundos das telas de cinema (login e boas-vindas), na ordem do botão de
+   trocar. Para incluir outro, é só acrescentar aqui. */
+export const FUNDOS = [
+  { id: "video", nome: "Vídeo", Fundo: VideoFundo },
+  { id: "galho", nome: "Galho que floresce", Fundo: () => <FundoRevelar {...ARTE_GALHO} />, imagens: [ARTE_GALHO.base, ARTE_GALHO.revelada] },
+];
+
+// a escolha fica neste navegador (conveniência de quem está vendo)
+const CHAVE_FUNDO = "aprova:fundo";
+function useFundo() {
+  const [id, setId] = useState(() => {
+    try { return localStorage.getItem(CHAVE_FUNDO) || FUNDOS[0].id; } catch { return FUNDOS[0].id; }
+  });
+  const i = Math.max(0, FUNDOS.findIndex((f) => f.id === id));
+  const proximo = FUNDOS[(i + 1) % FUNDOS.length];
+  // o próximo fundo já baixa as imagens, para a troca ser imediata
+  useEffect(() => {
+    proximo.imagens?.forEach((src) => { const img = new Image(); img.src = src; });
+  }, [proximo]);
+  const trocar = () => {
+    setId(proximo.id);
+    try { localStorage.setItem(CHAVE_FUNDO, proximo.id); } catch { /* sem armazenamento: vale só nesta visita */ }
+  };
+  return { atual: FUNDOS[i], proximo, trocar };
+}
+
+// botão discreto no canto: um traço por fundo, o atual mais longo
+function TrocarFundo({ atual, proximo, aoTrocar }) {
+  return (
+    <button type="button" className="trocar-fundo" onClick={aoTrocar} title={`Fundo: ${atual.nome}`}
+      aria-label={`Trocar o fundo. Agora: ${atual.nome}. Próximo: ${proximo.nome}.`}>
+      {FUNDOS.map((f) => <i key={f.id} data-ativo={f.id === atual.id} />)}
+    </button>
   );
 }
 
@@ -144,10 +238,14 @@ export function TituloCinema({ texto, animar = true }) {
 export function Cinema({ nav = [], acoes, selo, titulo, corDestaque = COR_DESTAQUE_PADRAO, lede, children, stats = [], rodapeMenu }) {
   const [menu, setMenu] = useState(false);
   const itensMenu = nav.flatMap((i) => i.submenu || [i]);
+  const fundo = useFundo();
+  const Fundo = fundo.atual.Fundo;
 
   return (
     <div className="cine" data-theme="dark" style={{ "--destaque": corDestaque }}>
-      <VideoFundo />
+      {/* key: trocar o fundo refaz a entrada (fade e zoom) */}
+      <div key={fundo.atual.id} className="cine-video" aria-hidden="true"><Fundo /></div>
+      {FUNDOS.length > 1 && <TrocarFundo atual={fundo.atual} proximo={fundo.proximo} aoTrocar={fundo.trocar} />}
       <div className="cine-pagina">
         <header className="cine-topo">
           <Marca className="aparece aparece--escala" style={{ "--d": "0.08s" }} />

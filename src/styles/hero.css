@@ -42,6 +42,47 @@
   background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.55));
 }
 
+/* Arte que se revela sob o ponteiro (Cinema.jsx › FundoRevelar). A luz é um
+   círculo de raio --luz-r em (--luz-x, --luz-y); fora da tela até o primeiro
+   movimento. */
+.fundo-revelar { --luz-x: -999px; --luz-y: -999px; position: absolute; inset: 0; background: #000; }
+.fundo-revelar-img { position: absolute; inset: 0; background: center / cover no-repeat; }
+.fundo-revelar-mascara {
+  position: absolute;
+  inset: 0;
+  -webkit-mask-image: radial-gradient(circle var(--luz-r) at var(--luz-x) var(--luz-y),
+    #fff 0%, #fff 40%, rgba(255, 255, 255, 0.75) 60%, rgba(255, 255, 255, 0.4) 75%, rgba(255, 255, 255, 0.12) 88%, transparent 100%);
+  mask-image: radial-gradient(circle var(--luz-r) at var(--luz-x) var(--luz-y),
+    #fff 0%, #fff 40%, rgba(255, 255, 255, 0.75) 60%, rgba(255, 255, 255, 0.4) 75%, rgba(255, 255, 255, 0.12) 88%, transparent 100%);
+}
+/* as duas fotos fazem o mesmo zoom de entrada, para não desalinharem */
+.fundo-zoom { animation: fundo-zoom 1.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@keyframes fundo-zoom { from { transform: scale(1.12); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .fundo-zoom { animation: none; } }
+
+/* Trocar o fundo: um traço por opção, discreto até o ponteiro chegar perto. */
+.trocar-fundo {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 9px 10px;
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.28);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  opacity: 0.5;
+  cursor: pointer;
+  transition: opacity 0.25s ease, border-color 0.25s ease;
+}
+.trocar-fundo:hover, .trocar-fundo:focus-visible { opacity: 1; border-color: rgba(255, 255, 255, 0.42); }
+.trocar-fundo i { width: 5px; height: 5px; border-radius: 99px; background: rgba(255, 255, 255, 0.4); transition: width 0.3s var(--ease-out), background 0.3s ease; }
+.trocar-fundo i[data-ativo="true"] { width: 14px; background: #fff; }
+
 .cine-pagina {
   position: relative;
   z-index: 1;
