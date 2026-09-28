@@ -22,7 +22,15 @@ export const posicaoNova = (agora, i = 0) => agora.getTime() * 1000 + i;
 /* Resposta do aluno: o cartão com o novo estado, o registro da revisão e o
    resumo do dia, num lote só. O resumo guarda a revisão pelo id: gravar de
    novo (reenvio depois de uma queda) não conta duas vezes. */
-export async function responder(repo, { cartao, avaliacao, agendador, agora, duracaoMs = 0 }) {
+export async function responder(repo, args) {
+  const { depois, revisao, ops } = planejarResposta(repo, args);
+  await repo.lote(ops);
+  return { depois, revisao };
+}
+
+/* A mesma resposta em duas partes: o cálculo (instantâneo, para a tela
+   seguir sem esperar a rede) e as operações a gravar. */
+export function planejarResposta(repo, { cartao, avaliacao, agendador, agora, duracaoMs = 0 }) {
   const fsrs = agendador.responder(cartao, avaliacao, agora);
   const depois = comFila({ ...cartao, fsrs, enterradoAte: null });
   const id = repo.novoId();
@@ -34,12 +42,12 @@ export async function responder(repo, { cartao, avaliacao, agendador, agora, dur
     intervaloDias: Math.max(0, (fsrs.due.getTime() - agora.getTime()) / 86400000),
     feitaEm: agora, dia, duracaoMs: duracao,
   };
-  await repo.lote([
+  const ops = [
     atualizarCartao(depois, agora),
     { tipo: "definir", colecao: "revisoes", id, dados: revisao },
     { tipo: "mesclar", colecao: "dias", id: dia, dados: { revisoes: { [id]: { avaliacao, estadoAntes: cartao.fsrs.state, materiaId: cartao.materiaId, duracaoMs: duracao } } } },
-  ]);
-  return { depois, revisao: { id, ...revisao } };
+  ];
+  return { depois, revisao: { id, ...revisao }, ops };
 }
 
 // desfaz uma resposta: o cartão volta exatamente ao que era, a revisão some
@@ -64,6 +72,9 @@ export const suspender = (repo, cartoes, suspenso = true, agora = new Date()) =>
 // enterrar: some até a virada do dia seguinte
 export const enterrar = (repo, cartoes, { agora = new Date(), virada = 4 } = {}) =>
   aplicar(repo, cartoes, () => ({ enterradoAte: proximaVirada(agora, virada) }), agora);
+
+// desfaz o enterro (volta para a fila já)
+export const desenterrar = (repo, cartoes, agora = new Date()) => aplicar(repo, cartoes, () => ({ enterradoAte: null }), agora);
 
 /* Definir a data da próxima revisão.
    Já estudado: a revisão passa para a data (hoje = agora).
