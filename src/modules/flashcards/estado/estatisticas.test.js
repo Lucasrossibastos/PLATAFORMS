@@ -2,8 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import { ESTADOS } from "../dados/modelo.js";
-import { criarAgendador } from "../motor/agendador.js";
-import { curvaRetencao, distribuicao, niveisCalendario, nivelDo, previsao, resumirDias, sequencia, serieRevisoes, somarPeriodo } from "./estatisticas.js";
+import { distribuicao, previsao, resumirDias, sequencia, serieRevisoes, somarPeriodo } from "./estatisticas.js";
 
 const dia = (chave, respostas) => ({
   id: chave, dia: chave,
@@ -65,7 +64,7 @@ const cartao = (id, materiaId, estado, { fsrs = {}, ...resto } = {}) => ({
   fsrs: { state: estado, scheduled_days: 0, stability: 0, last_review: null, ...fsrs },
 });
 
-describe("cartões: distribuição, previsão e curva de retenção", () => {
+describe("cartões: distribuição e previsão", () => {
   const agora = new Date(2026, 8, 28, 10);
   const materias = [{ id: "m1", nome: "Biologia" }, { id: "m2", nome: "História" }, { id: "m3", nome: "Vazia" }];
   const cartoes = [
@@ -90,28 +89,5 @@ describe("cartões: distribuição, previsão e curva de retenção", () => {
     expect(pontos[0]).toEqual({ chave: "2026-09-28", total: 2 }); // atrasado + aprendendo de hoje
     expect(pontos[2]).toEqual({ chave: "2026-09-30", total: 1 });
     expect(pontos.reduce((s, p) => s + p.total, 0)).toBe(3);
-  });
-
-  it("curva: a média do R do FSRS, caindo com o tempo sem revisar", () => {
-    const ag = criarAgendador({}, { fuzz: false });
-    const { cartoes: n, pontos } = curvaRetencao(cartoes, ag.curva, agora, { horizonte: 30 });
-    expect(n).toBe(2); // só os estudados, com estabilidade, não suspensos
-    expect(pontos).toHaveLength(31);
-    const esperado0 = (ag.curva(38 + 10 / 24, 30) + ag.curva(1 + 10 / 24, 3)) / 2;
-    expect(pontos[0].r).toBeCloseTo(esperado0, 2);
-    for (let i = 1; i < pontos.length; i += 1) expect(pontos[i].r).toBeLessThan(pontos[i - 1].r);
-    // estabilidade = dias até R cair a 90%
-    expect(ag.curva(30, 30)).toBeCloseTo(0.9, 3);
-    expect(curvaRetencao([cartoes[0]], ag.curva, agora)).toEqual({ cartoes: 0, pontos: [] });
-  });
-});
-
-describe("calendário", () => {
-  it("níveis pelos quartis dos dias estudados, sem limites repetidos", () => {
-    const lim = niveisCalendario([0, 5, 10, 20, 40, 80, 0]);
-    expect(lim).toEqual([10, 20, 40]);
-    expect([0, 3, 10, 15, 40, 500].map((v) => nivelDo(v, lim))).toEqual([0, 1, 1, 2, 3, 4]);
-    expect(niveisCalendario([7, 7, 7])).toEqual([7, 8, 9]);
-    expect(niveisCalendario([])).toEqual([1, 2, 3]);
   });
 });
