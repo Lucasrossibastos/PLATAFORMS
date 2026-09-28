@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Bell, ChevronDown, GraduationCap, LogOut, Moon, RotateCcw, Sun } from "lucide-react";
 import { useApp } from "../state/AppContext.jsx";
@@ -6,7 +6,8 @@ import { useNotificacoes } from "../state/hooks.js";
 import { useTema } from "../state/tema.js";
 import { baseDoPapel, todosDoMenu } from "../navegacao.js";
 import { MenuCheio } from "../ui/MenuCheio.jsx";
-import { Botao, Marca } from "../ui/ui.jsx";
+import { Botao, Carregando, Marca } from "../ui/ui.jsx";
+import { LimiteDeErro } from "../ui/Falha.jsx";
 
 // sino com os avisos não lidos (só aluno)
 function Sino({ alunoId, rota }) {
@@ -137,7 +138,12 @@ export default function Shell({ menu }) {
       </MenuCheio>
 
       <main className="app-main" key={pathname}>
-        <Outlet />
+        {/* um erro numa tela fica nela; a troca de aba remonta tudo aqui */}
+        <LimiteDeErro>
+          <Suspense fallback={<Carregando />}>
+            <Outlet />
+          </Suspense>
+        </LimiteDeErro>
       </main>
     </div>
   );

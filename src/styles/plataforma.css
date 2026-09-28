@@ -500,3 +500,11 @@ button.barras-linha:hover { background: var(--surface-2); }
   .grade-provas { grid-template-columns: 1fr; }
   .form-prova { grid-template-columns: 1fr; }
 }
+
+/* ---------- Tela com erro (rede de segurança) ---------- */
+
+.falha-tela { display: grid; justify-items: start; gap: 10px; max-width: 560px; padding: 24px; }
+.falha-tela > svg { width: 26px; height: 26px; color: var(--danger); }
+.falha-tela h2 { font-size: 18px; font-weight: 600; }
+.falha-tela p { color: var(--muted); font-size: 14px; line-height: 1.55; }
+.falha-tela code { max-width: 100%; padding: 8px 10px; border-radius: 8px; background: var(--surface-2); color: var(--text-soft); font-size: 12.5px; overflow-wrap: anywhere; }
