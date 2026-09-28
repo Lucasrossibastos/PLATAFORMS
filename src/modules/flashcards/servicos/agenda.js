@@ -29,8 +29,9 @@ export async function responder(repo, args) {
 }
 
 /* A mesma resposta em duas partes: o cálculo (instantâneo, para a tela
-   seguir sem esperar a rede) e as operações a gravar. */
-export function planejarResposta(repo, { cartao, avaliacao, agendador, agora, duracaoMs = 0 }) {
+   seguir sem esperar a rede) e as operações a gravar. antecipada: resposta
+   do modo "rever antes do prazo" (não gasta o limite de revisões do dia). */
+export function planejarResposta(repo, { cartao, avaliacao, agendador, agora, duracaoMs = 0, antecipada = false }) {
   const fsrs = agendador.responder(cartao, avaliacao, agora);
   const depois = comFila({ ...cartao, fsrs, enterradoAte: null });
   const id = repo.novoId();
@@ -41,11 +42,12 @@ export function planejarResposta(repo, { cartao, avaliacao, agendador, agora, du
     avaliacao, antes: camposAgenda(cartao), estadoAntes: cartao.fsrs.state, estadoDepois: fsrs.state,
     intervaloDias: Math.max(0, (fsrs.due.getTime() - agora.getTime()) / 86400000),
     feitaEm: agora, dia, duracaoMs: duracao,
+    ...(antecipada ? { antecipada: true } : {}),
   };
   const ops = [
     atualizarCartao(depois, agora),
     { tipo: "definir", colecao: "revisoes", id, dados: revisao },
-    { tipo: "mesclar", colecao: "dias", id: dia, dados: { dia, revisoes: { [id]: { avaliacao, estadoAntes: cartao.fsrs.state, materiaId: cartao.materiaId, duracaoMs: duracao } } } },
+    { tipo: "mesclar", colecao: "dias", id: dia, dados: { dia, revisoes: { [id]: { avaliacao, estadoAntes: cartao.fsrs.state, materiaId: cartao.materiaId, duracaoMs: duracao, ...(antecipada ? { antecipada: true } : {}) } } } },
   ];
   return { depois, revisao: { id, ...revisao }, ops };
 }

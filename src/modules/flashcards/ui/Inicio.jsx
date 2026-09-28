@@ -10,7 +10,7 @@ import {
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  ArrowRight, CalendarClock, ChevronRight, FolderInput, GripVertical, Layers, Pencil, Play, Plus, Search, Sparkles, Tag, Trash2,
+  ArrowRight, CalendarClock, ChevronRight, FolderInput, GripVertical, Layers, Pencil, Play, Plus, RotateCcw, Search, Sparkles, Tag, Trash2,
 } from "lucide-react";
 import { useBase, useLoja, usePreferencia } from "../estado/hooks.js";
 import { contagensDoDia, somaDe } from "../estado/contagens.js";
@@ -31,10 +31,17 @@ function useSensores() {
 
 /* ---------- o que há para hoje ---------- */
 
-function Hoje({ c, estado, aoEstudar }) {
+function Hoje({ c, estado, aoEstudar, aoRever }) {
   const { repo } = useLoja();
   const total = somaDe(c.total);
   const [proxima, setProxima] = useState(undefined);
+  const [estudados, setEstudados] = useState(0);
+  // quantos já foram estudados (podem ser revistos antes do prazo)
+  useEffect(() => {
+    let vivo = true;
+    repo.contar("cartoes", { onde: [["fila", ">", new Date(0)]] }).then((n) => { if (vivo) setEstudados(n); }).catch(() => {});
+    return () => { vivo = false; };
+  }, [repo, estado.pendentes]);
   useEffect(() => {
     if (total || !estado.fimDoDia) return;
     let vivo = true;
@@ -67,10 +74,16 @@ function Hoje({ c, estado, aoEstudar }) {
           </p>
         )}
       </div>
-      {total > 0 && (
+      {total > 0 ? (
         <div className="fc-hoje-acao">
           <button type="button" className="fc-estudar" onClick={aoEstudar}>Estudar agora<ArrowRight aria-hidden="true" /></button>
           <small>{total} {total === 1 ? "cartão" : "cartões"} · cerca de {minutos} min</small>
+          {estudados > 0 && <button type="button" className="fc-rever-link" onClick={aoRever}><RotateCcw aria-hidden="true" />Rever tudo antes do prazo</button>}
+        </div>
+      ) : estudados > 0 && (
+        <div className="fc-hoje-acao">
+          <button type="button" className="fc-estudar fc-estudar--rever" onClick={aoRever}><RotateCcw aria-hidden="true" />Rever antes do prazo</button>
+          <small>{estudados} {estudados === 1 ? "cartão estudado" : "cartões estudados"} · os que você lembra menos primeiro</small>
         </div>
       )}
     </section>
@@ -87,18 +100,27 @@ function Alca({ ordenavel, rotulo }) {
   );
 }
 
+// com algo para hoje, estuda; sem nada vencendo, revê antes do prazo (um toque sempre faz algo útil)
+function BotaoEstudar({ nome, temHoje, acoes }) {
+  return temHoje
+    ? <Botao variante="fantasma" icone={Play} aria-label={`Estudar ${nome}`} title="Estudar o que vence hoje" onClick={acoes.estudar} className="fc-linha-play" />
+    : <Botao variante="fantasma" icone={RotateCcw} aria-label={`Rever ${nome} antes do prazo`} title="Nada vence hoje: rever antes do prazo" onClick={acoes.rever} className="fc-linha-play fc-linha-play--rever" />;
+}
+
 function LinhaTopico({ t, c, acoes }) {
   const ordenavel = useSortable({ id: t.id });
   const estilo = { transform: CSS.Transform.toString(ordenavel.transform), transition: ordenavel.transition };
+  const temHoje = somaDe(c) > 0;
   return (
     <div ref={ordenavel.setNodeRef} style={estilo} className={`fc-linha fc-linha--topico${ordenavel.isDragging ? " fc-linha--arrastando" : ""}`}>
       <Alca ordenavel={ordenavel} rotulo={`Reordenar ${t.nome}`} />
-      <button type="button" className="fc-linha-nome" onClick={acoes.estudar} disabled={!somaDe(c)} title={somaDe(c) ? `Estudar ${t.nome}` : "Nada para hoje neste tópico"}>
+      <button type="button" className="fc-linha-nome" onClick={temHoje ? acoes.estudar : acoes.rever} title={temHoje ? `Estudar ${t.nome}` : `Nada vence hoje: rever ${t.nome} antes do prazo`}>
         <span>{t.nome}</span>
       </button>
       <Contagens c={c} />
-      <Botao variante="fantasma" icone={Play} aria-label={`Estudar ${t.nome}`} title="Estudar este tópico" disabled={!somaDe(c)} onClick={acoes.estudar} className="fc-linha-play" />
+      <BotaoEstudar nome={t.nome} temHoje={temHoje} acoes={acoes} />
       <Menu rotulo={`Ações de ${t.nome}`} itens={[
+        { rotulo: "Rever antes do prazo", icone: RotateCcw, aoClicar: acoes.rever },
         { rotulo: "Adicionar cartão", icone: Plus, aoClicar: acoes.adicionar },
         { rotulo: "Ver os cartões", icone: Search, aoClicar: acoes.ver },
         "-",
@@ -132,8 +154,9 @@ function LinhaMateria({ m, topicos, c, cTopicos, aberta, alternar, acoes, acoesT
           <small>{topicos.length} {topicos.length === 1 ? "tópico" : "tópicos"}</small>
         </button>
         <Contagens c={c} />
-        <Botao variante="fantasma" icone={Play} aria-label={`Estudar ${m.nome}`} title="Estudar esta matéria" disabled={!somaDe(c)} onClick={acoes.estudar} className="fc-linha-play" />
+        <BotaoEstudar nome={m.nome} temHoje={somaDe(c) > 0} acoes={acoes} />
         <Menu rotulo={`Ações de ${m.nome}`} itens={[
+          { rotulo: "Rever antes do prazo", icone: RotateCcw, aoClicar: acoes.rever },
           { rotulo: "Novo tópico", icone: Plus, aoClicar: acoes.novoTopico },
           { rotulo: "Adicionar cartão", icone: Plus, aoClicar: acoes.adicionar, desativado: !topicos.length },
           { rotulo: "Ver os cartões", icone: Search, aoClicar: acoes.ver },
@@ -275,6 +298,7 @@ export default function Inicio() {
 
   const acoesMateria = (m) => ({
     estudar: () => estudar(`?materia=${m.id}`),
+    rever: () => estudar(`?materia=${m.id}&rever=1`),
     adicionar: () => navigate(`${base}/novo?materia=${m.id}`),
     ver: () => navigate(`${base}/navegar?materia=${m.id}`),
     novoTopico: () => setDialogo({ tipo: "novoTopico", materia: m }),
@@ -284,6 +308,7 @@ export default function Inicio() {
   });
   const acoesTopico = (t) => ({
     estudar: () => estudar(`?topico=${t.id}`),
+    rever: () => estudar(`?topico=${t.id}&rever=1`),
     adicionar: () => navigate(`${base}/novo?topico=${t.id}`),
     ver: () => navigate(`${base}/navegar?topico=${t.id}`),
     renomear: () => setDialogo({ tipo: "renomear", colecao: "topicos", item: t }),
@@ -296,7 +321,7 @@ export default function Inicio() {
 
   return (
     <div className="fc-inicio">
-      <Hoje c={c} estado={estado} aoEstudar={() => estudar()} />
+      <Hoje c={c} estado={estado} aoEstudar={() => estudar()} aoRever={() => estudar("?rever=1")} />
 
       <section className="fc-secao" aria-labelledby="fc-materias-t">
         <header className="fc-secao-topo">
@@ -332,7 +357,8 @@ export default function Inicio() {
           <header className="fc-secao-topo"><h2 id="fc-tags-t">Estudar por tag</h2></header>
           <div className="fc-tags">
             {tags.map((t) => (
-              <button key={t} type="button" className="fc-tag-estudo" onClick={() => estudar(`?tag=${encodeURIComponent(t)}`)}>
+              <button key={t} type="button" className="fc-tag-estudo" onClick={() => estudar(`?tag=${encodeURIComponent(t)}${somaDe(c.porTag[t]) ? "" : "&rever=1"}`)}
+                title={somaDe(c.porTag[t]) ? `Estudar ${t}` : `Nada vence hoje: rever ${t} antes do prazo`}>
                 <Tag aria-hidden="true" />{t}<Contagens c={c.porTag[t]} compacto />
               </button>
             ))}

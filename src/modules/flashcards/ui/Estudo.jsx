@@ -2,6 +2,8 @@
    a resposta; os 4 botões aparecem depois, cada um dizendo quando o cartão
    volta. Cada resposta é gravada na hora (sem esperar a rede para seguir).
 
+   Com ?rever=1: rever antes do prazo (todos os já estudados do recorte).
+
    Atalhos (como no Anki): Espaço/Enter revela e, revelado, marca Bom;
    1–4 avaliam; Z desfaz; - enterra; @ suspende; E edita; I informações;
    Esc sai. */
@@ -13,7 +15,7 @@ import { CalendarClock, EyeOff, Info, Pencil, RotateCcw, SkipForward, Trash2, Un
 import { useBase, useLoja } from "../estado/hooks.js";
 import { ESTADOS, FILTRO_NOVOS } from "../dados/modelo.js";
 import { AVALIACOES, formatarIntervalo } from "../motor/agendador.js";
-import { SessaoEstudo, feitosHoje, montarPlano } from "../motor/fila.js";
+import { SessaoEstudo, feitosHoje, montarPlano, montarRevisao } from "../motor/fila.js";
 import { desenterrar, desfazer, enterrar, planejarResposta, resetar, suspender } from "../servicos/agenda.js";
 import { apagarNotas } from "../servicos/notas.js";
 import { Botao, Carregando, Confirmar, Contagens, Menu, avisar } from "./comum.jsx";
@@ -31,6 +33,7 @@ function useEscopo() {
     materiaId: params.get("materia") || undefined,
     topicoId: params.get("topico") || undefined,
     tag: params.get("tag") || undefined,
+    rever: params.get("rever") === "1", // rever antes do prazo: todos os já estudados
   }), [params]);
 }
 
@@ -57,7 +60,7 @@ const minutos = (ms) => {
   return m < 1 ? "menos de 1 min" : `${m} min`;
 };
 
-function Fim({ respostas, aoSair, aoMaisNovos, temMaisNovos }) {
+function Fim({ respostas, aoSair, aoMaisNovos, temMaisNovos, rever }) {
   const total = respostas.length;
   const tempo = respostas.reduce((s, r) => s + Math.min(r.ms, 60000), 0);
   const lembrou = respostas.filter((r) => r.avaliacao > 1).length;
@@ -65,7 +68,7 @@ function Fim({ respostas, aoSair, aoMaisNovos, temMaisNovos }) {
   return (
     <div className="fc-fim">
       <div className="fc-fim-selo" aria-hidden="true">✓</div>
-      <h2>{total ? "Parabéns, por hoje é isso!" : "Nada para estudar aqui agora"}</h2>
+      <h2>{total ? (rever ? "Revisão concluída" : "Parabéns, por hoje é isso!") : (rever ? "Nada para rever aqui" : "Nada para estudar aqui agora")}</h2>
       {total > 0 ? (
         <>
           <p className="fc-fim-sub">{total} {total === 1 ? "resposta" : "respostas"} em {minutos(tempo)} · lembrou de {Math.round((lembrou / total) * 100)}%</p>
@@ -78,12 +81,12 @@ function Fim({ respostas, aoSair, aoMaisNovos, temMaisNovos }) {
             ))}
           </div>
         </>
-      ) : <p className="fc-fim-sub">Os cartões deste recorte já foram revisados ou ainda não venceram.</p>}
+      ) : <p className="fc-fim-sub">{rever ? "Ainda não há cartões estudados aqui. Estude os novos primeiro; depois eles podem ser revistos quando você quiser." : "Os cartões deste recorte já foram revisados ou ainda não venceram."}</p>}
       <div className="fc-fim-acoes">
         <Botao variante="primario" onClick={aoSair}>Voltar aos baralhos</Botao>
         {temMaisNovos && <Botao onClick={aoMaisNovos}>Estudar mais 10 novos</Botao>}
       </div>
-      <p className="fc-dica">Revisar no dia certo vale mais do que revisar muito de uma vez. Volte amanhã.</p>
+      <p className="fc-dica">{rever ? "Cada cartão revisto recomeça a contar a partir de agora." : "Revisar no dia certo vale mais do que revisar muito de uma vez. Volte amanhã."}</p>
     </div>
   );
 }
@@ -107,7 +110,7 @@ export default function Estudo() {
   const base = useBase();
   const navigate = useNavigate();
   const escopo = useEscopo();
-  const nome = nomeDoEscopo(escopo, estado);
+  const nome = `${escopo.rever ? "Rever · " : ""}${nomeDoEscopo(escopo, estado)}`;
 
   const sessao = useRef(null);
   const notas = useRef(new Map());
@@ -148,7 +151,7 @@ export default function Estudo() {
       if (r.fim) {
         setFase("fim");
         setAtual(null);
-        const mais = await repo.contar("cartoes", { onde: [...filtrosDoEscopo(escopo), FILTRO_NOVOS] }).catch(() => 0);
+        const mais = escopo.rever ? 0 : await repo.contar("cartoes", { onde: [...filtrosDoEscopo(escopo), FILTRO_NOVOS] }).catch(() => 0);
         setTemMaisNovos(mais > 0);
         return;
       }
@@ -168,13 +171,21 @@ export default function Estudo() {
     let vivo = true;
     (async () => {
       const agora = new Date();
+      const retencao = (c) => agendador.retencao(c, agora);
+      if (escopo.rever) {
+        const cartoes = await repo.listar("cartoes", { onde: filtrosDoEscopo(escopo) }).catch(() => []);
+        if (!vivo) return;
+        sessao.current = new SessaoEstudo({ plano: montarRevisao({ agora, cartoes, escopo, retencao }), fimDoDia: estado.fimDoDia });
+        avancar();
+        return;
+      }
       const feitos = feitosHoje(estado.dia);
       const sobra = Math.max(0, estado.config.novosPorDia - feitos.novos);
       const novos = sobra
         ? await repo.listar("cartoes", { onde: [...filtrosDoEscopo(escopo), FILTRO_NOVOS], ordem: ["ordemNovo", "asc"], limite: Math.min(sobra * 3 + 10, 500) }).catch(() => [])
         : [];
       if (!vivo) return;
-      const plano = montarPlano({ agora, config: estado.config, pendentes: estado.pendentes, novos, dia: estado.dia, escopo, retencao: (c) => agendador.retencao(c, agora) });
+      const plano = montarPlano({ agora, config: estado.config, pendentes: estado.pendentes, novos, dia: estado.dia, escopo, retencao });
       sessao.current = new SessaoEstudo({ plano, fimDoDia: estado.fimDoDia });
       avancar();
     })();
@@ -198,14 +209,16 @@ export default function Estudo() {
     if (!atual?.revelado || ocupado.current || saindo) return;
     ocupado.current = true;
     const { cartao, reveladoEm, inicio } = atual;
-    const { depois, revisao, ops } = planejarResposta(repo, { cartao, avaliacao, agendador, agora: reveladoEm, duracaoMs: Date.now() - inicio });
+    // no modo rever, o cartão que ainda não venceu hoje é uma revisão antecipada (não gasta o limite do dia)
+    const antecipada = escopo.rever && new Date(cartao.fsrs.due) >= estado.fimDoDia;
+    const { depois, revisao, ops } = planejarResposta(repo, { cartao, avaliacao, agendador, agora: reveladoEm, duracaoMs: Date.now() - inicio, antecipada });
     const gravacao = repo.lote(ops).catch((e) => { avisar(`Não foi possível salvar esta resposta: ${e.message}`, { tipo: "erro", duracao: 8000 }); throw e; });
     const passo = sessao.current.registrar(cartao, { ...depois, id: cartao.id });
     desfazeres.current.push({ passo, revisao, gravacao });
     respostas.current.push({ avaliacao, ms: Date.now() - inicio });
     setFeedback({ avaliacao, texto: `Volta em ${formatarIntervalo(depois.fsrs.due.getTime() - reveladoEm.getTime())}`, id: Math.random() });
     trocar(async () => { await avancar(); ocupado.current = false; });
-  }, [atual, repo, agendador, avancar, trocar, saindo]);
+  }, [atual, repo, agendador, avancar, trocar, saindo, escopo.rever, estado.fimDoDia]);
 
   const desfazerUltima = useCallback(async () => {
     const u = desfazeres.current.pop();
@@ -246,7 +259,7 @@ export default function Estudo() {
     },
     resetar: async () => {
       await resetar(repo, [atual.cartao], agendador);
-      tirarAtual("Cartão voltou a ser novo.");
+      tirarAtual("Cartão recomeçou do zero (voltou a ser novo).");
       loja.recontar();
     },
   }, [atual, repo, agendador, estado.config.viradaDoDia, tirarAtual, loja]);
@@ -316,7 +329,7 @@ export default function Estudo() {
               { rotulo: "Enterrar até amanhã", icone: SkipForward, atalho: "-", aoClicar: acoes.enterrar },
               { rotulo: "Suspender", icone: EyeOff, atalho: "@", aoClicar: acoes.suspender },
               { rotulo: "Definir a próxima revisão", icone: CalendarClock, aoClicar: () => setDialogo({ tipo: "data" }) },
-              { rotulo: "Voltar a novo (resetar)", icone: RotateCcw, aoClicar: acoes.resetar },
+              { rotulo: "Recomeçar do zero", icone: RotateCcw, aoClicar: acoes.resetar },
               "-",
               { rotulo: "Apagar a nota", icone: Trash2, perigo: true, aoClicar: () => setDialogo({ tipo: "apagar" }) },
             ]} />
@@ -327,7 +340,7 @@ export default function Estudo() {
 
       <main className="fc-estudo-palco">
         {fase === "carregando" && <Carregando texto="Preparando a sessão…" />}
-        {fase === "fim" && <Fim respostas={respostas.current} aoSair={sair} aoMaisNovos={maisNovos} temMaisNovos={temMaisNovos} />}
+        {fase === "fim" && <Fim respostas={respostas.current} aoSair={sair} aoMaisNovos={maisNovos} temMaisNovos={temMaisNovos} rever={escopo.rever} />}
         {fase === "espera" && espera && <Espera ate={espera} aoSair={sair} />}
         {fase === "cartao" && atual && (
           <div key={`${atual.cartao.id}-${respostas.current.length}`} className={`fc-cartao${saindo ? " fc-cartao--saindo" : ""}`}

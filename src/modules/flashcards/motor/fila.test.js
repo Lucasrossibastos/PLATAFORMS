@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ESTADOS, normalizarConfig } from "../dados/modelo.js";
-import { SessaoEstudo, feitosHoje, montarPlano, noEscopo } from "./fila.js";
+import { SessaoEstudo, feitosHoje, montarPlano, montarRevisao, noEscopo } from "./fila.js";
 
 const agora = new Date(2026, 8, 28, 10, 0);
 const fimDoDia = new Date(2026, 8, 29, 4, 0);
@@ -131,3 +131,27 @@ describe("sessão de estudo", () => {
     expect(s.proximo(agora).cartao.id).not.toBe(c1.id);
   });
 });
+
+describe("rever antes do prazo", () => {
+  it("todos os já estudados do escopo, vencidos ou não, dos menos lembrados primeiro", () => {
+    const longe = cartao({ due: new Date(2026, 10, 1), r: 0.97 });
+    const fraco = cartao({ due: new Date(2026, 9, 5), r: 0.6 });
+    const hoje = cartao({ r: 0.8 });
+    const aprendendo = cartao({ estado: ESTADOS.aprendendo, due: min(30), r: 0.7 });
+    const outroTopico = cartao({ topico: "t2", r: 0.1 });
+    const plano = montarRevisao({
+      agora,
+      cartoes: [longe, fraco, hoje, aprendendo, outroTopico, novo(), cartao({ suspenso: true }), cartao({ enterradoAte: min(600) })],
+      escopo: { topicoId: "t1" },
+      retencao: (c) => c.r,
+    });
+    expect(plano.principal.map((c) => c.id)).toEqual([fraco.id, aprendendo.id, hoje.id, longe.id]);
+    expect(plano.aprendendo).toEqual([]);
+  });
+
+  it("respostas antecipadas não gastam o limite do dia", () => {
+    const dia = { revisoes: { a: { estadoAntes: ESTADOS.revisao, antecipada: true }, b: { estadoAntes: ESTADOS.revisao } } };
+    expect(feitosHoje(dia)).toEqual({ novos: 0, revisoes: 1, total: 2 });
+  });
+});
+

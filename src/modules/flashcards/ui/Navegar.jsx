@@ -12,10 +12,10 @@ import {
 } from "lucide-react";
 import { useBase, useLoja } from "../estado/hooks.js";
 import { ESTADOS, textoDoHtml } from "../dados/modelo.js";
-import { enterrar, resetar, suspender } from "../servicos/agenda.js";
+import { definirData, enterrar, resetar, suspender } from "../servicos/agenda.js";
 import { alterarTags, apagarNotas, moverNotas } from "../servicos/notas.js";
 import { formatarIntervalo } from "../motor/agendador.js";
-import { Botao, Carregando, Confirmar, Dialogo, Vazio, avisar, executar } from "./comum.jsx";
+import { Botao, Carregando, Confirmar, Dialogo, Menu, Vazio, avisar, executar } from "./comum.jsx";
 import { Cartao } from "./Cartao.jsx";
 import { DefinirData, InfoCartao, estadoDoCartao } from "./dialogosCartao.jsx";
 import { htmlCloze, idDaForma, numeroDaLacuna } from "./html.js";
@@ -225,13 +225,17 @@ function Painel({ c, nota, lugar, agora, aoFechar, acoes }) {
       </dl>
       <div className="fc-painel-acoes">
         <Botao variante="primario" icone={Pencil} onClick={acoes.editar}>Editar</Botao>
-        <Botao icone={Info} onClick={acoes.info}>Histórico</Botao>
-        <Botao icone={CalendarClock} onClick={acoes.data}>Próxima revisão</Botao>
+        <Botao icone={RotateCcw} onClick={acoes.reverHoje} disabled={c.suspenso}>Rever hoje</Botao>
         <Botao icone={EyeOff} onClick={acoes.suspender}>{c.suspenso ? "Reativar" : "Suspender"}</Botao>
-        <Botao icone={SkipForward} onClick={acoes.enterrar} disabled={c.suspenso}>Enterrar</Botao>
-        <Botao icone={RotateCcw} onClick={acoes.resetar} disabled={novo}>Resetar</Botao>
-        <Botao icone={FolderInput} onClick={acoes.mover}>Mover</Botao>
-        <Botao variante="fantasma" icone={Trash2} className="fc-perigo-texto" onClick={acoes.apagar}>Apagar nota</Botao>
+        <Menu rotulo="Mais ações" itens={[
+          { rotulo: "Histórico de respostas", icone: Info, aoClicar: acoes.info },
+          { rotulo: "Mover para…", icone: FolderInput, aoClicar: acoes.mover },
+          { rotulo: "Adiar ou escolher a data", icone: CalendarClock, aoClicar: acoes.data },
+          { rotulo: "Enterrar até amanhã", icone: SkipForward, aoClicar: acoes.enterrar, desativado: c.suspenso },
+          { rotulo: "Recomeçar do zero", icone: RotateCcw, aoClicar: acoes.resetar, desativado: novo },
+          "-",
+          { rotulo: "Apagar nota", icone: Trash2, perigo: true, aoClicar: acoes.apagar },
+        ]} />
       </div>
     </aside>
   );
@@ -358,6 +362,14 @@ export default function Navegar() {
   };
   const alvo = (dialogo?.alvo) || selecao;
   const acoesDe = (cs) => ({
+    // rever hoje: voltam para a fila de hoje (a contagem recomeça quando você responder)
+    reverHoje: async () => {
+      const ativos = cs.filter((c) => !c.suspenso);
+      const r = await executar(() => definirData(repo, ativos, new Date()));
+      if (!r.ok) return;
+      loja.recontar();
+      avisar(`${ativos.length === 1 ? "Volta" : `${ativos.length} cartões voltam`} para hoje.`, { acao: { rotulo: "Estudar agora", fn: () => navigate(`${base}/estudar`) } });
+    },
     suspender: () => emLote(() => suspender(repo, cs, !cs.every((c) => c.suspenso)), cs.every((c) => c.suspenso) ? "Reativado." : "Suspenso: sai das revisões até reativar."),
     enterrar: () => emLote(() => enterrar(repo, cs, { virada: estado.config.viradaDoDia }), "Enterrado até amanhã."),
     resetar: () => setDialogo({ tipo: "resetar", alvo: cs }),
@@ -421,13 +433,17 @@ export default function Navegar() {
           {marcados.size > 0 && (
             <div className="fc-lote" role="toolbar" aria-label="Ações nos selecionados">
               <strong>{marcados.size} {marcados.size === 1 ? "selecionado" : "selecionados"}</strong>
+              <Botao tamanho="sm" variante="primario" icone={RotateCcw} onClick={lote.reverHoje}>Rever hoje</Botao>
               <Botao tamanho="sm" icone={FolderInput} onClick={lote.mover}>Mover</Botao>
               <Botao tamanho="sm" icone={IconeTag} onClick={lote.tags}>Tags</Botao>
               <Botao tamanho="sm" icone={EyeOff} onClick={lote.suspender}>{selecao.every((c) => c.suspenso) ? "Reativar" : "Suspender"}</Botao>
-              <Botao tamanho="sm" icone={CalendarClock} onClick={lote.data}>Próxima revisão</Botao>
-              <Botao tamanho="sm" icone={SkipForward} onClick={lote.enterrar}>Enterrar</Botao>
-              <Botao tamanho="sm" icone={RotateCcw} onClick={lote.resetar}>Resetar</Botao>
-              <Botao tamanho="sm" variante="fantasma" icone={Trash2} className="fc-perigo-texto" onClick={lote.apagar}>Apagar</Botao>
+              <Menu rotulo="Mais ações nos selecionados" itens={[
+                { rotulo: "Adiar ou escolher a data", icone: CalendarClock, aoClicar: lote.data },
+                { rotulo: "Enterrar até amanhã", icone: SkipForward, aoClicar: lote.enterrar },
+                { rotulo: "Recomeçar do zero", icone: RotateCcw, aoClicar: lote.resetar },
+                "-",
+                { rotulo: "Apagar", icone: Trash2, perigo: true, aoClicar: lote.apagar },
+              ]} />
               <Botao tamanho="sm" variante="fantasma" icone={X} aria-label="Limpar seleção" onClick={() => setMarcados(new Set())} />
             </div>
           )}
@@ -483,14 +499,14 @@ export default function Navegar() {
         </Suspense>
       )}
       {dialogo?.tipo === "info" && <InfoCartao cartao={dialogo.alvo[0]} aoFechar={() => setDialogo(null)} />}
-      {dialogo?.tipo === "data" && <DefinirData cartoes={alvo} aoFechar={() => setDialogo(null)} aoConcluir={() => { avisar("Próxima revisão definida."); loja.recontar(); }} />}
+      {dialogo?.tipo === "data" && <DefinirData cartoes={alvo} aoFechar={() => setDialogo(null)} aoConcluir={() => { avisar("Data da próxima revisão salva."); loja.recontar(); }} />}
       <MoverPara aberto={dialogo?.tipo === "mover"} n={alvo.length} estado={estado} aoFechar={() => setDialogo(null)}
         aoMover={(destino) => emLote(() => moverNotas(repo, notasDe(alvo), destino, { cartoes }), "Movido.")} />
       <EditarTags aberto={dialogo?.tipo === "tags"} n={alvo.length} conhecidas={estado.tagsConhecidas} aoFechar={() => setDialogo(null)}
         aoAplicar={(mud) => emLote(() => alterarTags(repo, notasDe(alvo), mud, { cartoes, tagsConhecidas: estado.tagsConhecidas }), "Tags atualizadas.")} />
-      <Confirmar aberto={dialogo?.tipo === "resetar"} titulo={`Resetar ${alvo.length} ${alvo.length === 1 ? "cartão" : "cartões"}?`} rotulo="Resetar" erro={erroLote}
-        aoFechar={() => setDialogo(null)} aoConfirmar={() => emLote(() => resetar(repo, alvo, agendador), "Voltaram a ser novos.")}>
-        <p className="fc-texto">Voltam a ser novos, no fim da fila de novos. O histórico de respostas fica nas estatísticas.</p>
+      <Confirmar aberto={dialogo?.tipo === "resetar"} titulo={`Recomeçar ${alvo.length === 1 ? "este cartão" : `${alvo.length} cartões`} do zero?`} rotulo="Recomeçar" erro={erroLote}
+        aoFechar={() => setDialogo(null)} aoConfirmar={() => emLote(() => resetar(repo, alvo, agendador), "Recomeçaram do zero.")}>
+        <p className="fc-texto">Voltam a ser cartões novos: o algoritmo esquece o que sabia sobre eles. Para só rever antes do prazo, use “Rever hoje”. O histórico de respostas continua nas estatísticas.</p>
       </Confirmar>
       <Confirmar aberto={dialogo?.tipo === "apagar"} titulo="Apagar?" rotulo="Apagar" perigo erro={erroLote} aoFechar={() => setDialogo(null)}
         aoConfirmar={async () => { if (await emLote(() => apagarNotas(repo, notasDe(alvo), { cartoes }), "Apagado.")) { setMarcados(new Set()); setAberto(null); } }}>

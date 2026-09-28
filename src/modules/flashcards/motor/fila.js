@@ -8,7 +8,8 @@
    - novos, na ordem em que foram criados, até o limite do dia, misturados
      entre as revisões;
    - irmãos (outras lacunas/formas da mesma nota) ficam para outra sessão;
-   - nunca dois cartões seguidos do mesmo tópico, se houver alternativa. */
+   - nunca dois cartões seguidos do mesmo tópico, se houver alternativa.
+   Há também o modo "rever antes do prazo" (montarRevisao). */
 
 import { ESTADOS } from "../dados/modelo.js";
 
@@ -24,11 +25,13 @@ export function noEscopo(cartao, escopo = {}) {
   return true;
 }
 
-// o que já foi feito hoje (do resumo do dia): novos vistos e revisões feitas
+// o que já foi feito hoje (do resumo do dia): novos vistos e revisões feitas.
+// Revisões antecipadas (modo "rever") contam no total, mas não gastam o limite do dia.
 export function feitosHoje(dia) {
   const r = { novos: 0, revisoes: 0, total: 0 };
   for (const e of Object.values(dia?.revisoes || {})) {
     r.total += 1;
+    if (e.antecipada) continue;
     if (e.estadoAntes === ESTADOS.novo) r.novos += 1;
     else if (e.estadoAntes === ESTADOS.revisao) r.revisoes += 1;
   }
@@ -80,6 +83,20 @@ export function montarPlano({ agora, config, pendentes = [], novos = [], dia = n
     .sort((a, b) => a.ordemNovo - b.ordemNovo)).slice(0, limiteNovos);
 
   return { aprendendo: emAprendizado, principal: misturar(revisoes, novosDoDia), feitos, limiteNovos, limiteRevisoes };
+}
+
+/* Rever antes do prazo: todos os cartões já estudados do escopo, vencidos
+   ou não, dos menos lembrados para os mais lembrados. Sem limite do dia;
+   novos, suspensos e enterrados ficam de fora. Responder recomeça a
+   contagem do cartão a partir de agora (o FSRS considera o tempo que passou
+   desde a última revisão). */
+export function montarRevisao({ agora, cartoes = [], escopo = {}, retencao = () => 0 }) {
+  const r = new Map();
+  const lista = cartoes
+    .filter((c) => !c.suspenso && c.fsrs.state !== ESTADOS.novo && !(c.enterradoAte && new Date(c.enterradoAte) > agora) && noEscopo(c, escopo))
+    .map((c) => { r.set(c.id, retencao(c) ?? 0); return c; })
+    .sort((a, b) => r.get(a.id) - r.get(b.id) || due(a) - due(b));
+  return { aprendendo: [], principal: lista, feitos: null, limiteNovos: 0, limiteRevisoes: lista.length };
 }
 
 /* Sessão: escolhe o próximo cartão e acompanha o progresso. Os cartões são

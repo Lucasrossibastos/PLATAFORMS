@@ -34,7 +34,7 @@ export const LIMITES = Object.freeze({
 
 export const CONFIG_PADRAO = Object.freeze({
   retencao: 0.9, // retenção-alvo (probabilidade de lembrar na hora da revisão)
-  intervaloMaximo: 365, // dias
+  intervaloMaximo: 90, // dias: cada cartão volta pelo menos a cada 3 meses (ajustável)
   novosPorDia: 20,
   revisoesPorDia: 200,
   passosAprendizado: ["1m", "10m"],

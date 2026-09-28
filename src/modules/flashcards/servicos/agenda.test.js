@@ -150,3 +150,18 @@ describe("reagendar com configurações novas (retenção-alvo, intervalo máxim
     expect((salvo.fsrs.due.getTime() - t.getTime()) / 86400000).toBeLessThanOrEqual(7);
   });
 });
+
+describe("rever antes do prazo", () => {
+  it("resposta antecipada fica marcada (não gasta o limite) e recomeça a contagem a partir de agora", async () => {
+    const c = await criarCartao();
+    const { depois } = await responder(repo, { cartao: c, avaliacao: FACIL, agendador: ag, agora });
+    const cedo = new Date(agora.getTime() + 86400000); // um dia depois, bem antes de vencer
+    expect(depois.fsrs.due.getTime()).toBeGreaterThan(cedo.getTime() + 86400000);
+    const r2 = await responder(repo, { cartao: { ...depois, id: c.id }, avaliacao: BOM, agendador: ag, agora: cedo, antecipada: true });
+    expect(r2.revisao.antecipada).toBe(true);
+    expect((await repo.obter("dias", "2026-09-29")).revisoes[r2.revisao.id]).toMatchObject({ antecipada: true, estadoAntes: ESTADOS.revisao });
+    expect(new Date(r2.depois.fsrs.last_review).getTime()).toBe(cedo.getTime());
+    expect(r2.depois.fsrs.due.getTime()).toBeGreaterThan(cedo.getTime());
+  });
+});
+
