@@ -44,6 +44,22 @@ export function contratoDoRepositorio(nome, criar) {
       expect(desc.map((c) => c.id)).toEqual(["e", "a"]);
     });
 
+    it("consultas das estatísticas e do reagendamento: campo aninhado e intervalo de texto", async () => {
+      const r = await criar();
+      await r.lote([
+        { tipo: "definir", colecao: "cartoes", id: "a", dados: { fsrs: { state: 2, due: dia(5) } } },
+        { tipo: "definir", colecao: "cartoes", id: "b", dados: { fsrs: { state: 0, due: dia(3) } } },
+        { tipo: "definir", colecao: "cartoes", id: "c", dados: { fsrs: { state: 2, due: dia(9) } } },
+        { tipo: "mesclar", colecao: "dias", id: "2026-08-30", dados: { dia: "2026-08-30", revisoes: { r1: { avaliacao: 3 } } } },
+        { tipo: "mesclar", colecao: "dias", id: "2026-09-02", dados: { dia: "2026-09-02", revisoes: { r2: { avaliacao: 1 } } } },
+        { tipo: "mesclar", colecao: "dias", id: "2026-09-28", dados: { dia: "2026-09-28", revisoes: { r3: { avaliacao: 4 } } } },
+      ]);
+      const emRevisao = await r.listar("cartoes", { onde: [["fsrs.state", "==", 2]] });
+      expect(emRevisao.map((c) => c.id).sort()).toEqual(["a", "c"]);
+      const recentes = await r.listar("dias", { onde: [["dia", ">=", "2026-09-01"]] });
+      expect(recentes.map((d) => d.id).sort()).toEqual(["2026-09-02", "2026-09-28"]);
+    });
+
     it("mesclar junta mapas; atualizar aceita caminho com ponto e APAGAR", async () => {
       const r = await criar();
       await r.lote([{ tipo: "mesclar", colecao: "dias", id: "2026-09-28", dados: { revisoes: { r1: { avaliacao: 3 } } } }]);

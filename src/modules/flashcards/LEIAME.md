@@ -15,7 +15,7 @@ flashcards_alunos/{uid}                      configurações (retenção, limite
   flashcards_notas/{id}                      texto-fonte: { tipo, materiaId, topicoId, campos, tags, imagens }
   flashcards_cartoes/{notaId}__{ordinal}     cartão de revisão: { estado FSRS, fila, ordemNovo, suspenso, enterradoAte, … }
   flashcards_revisoes/{id}                   cada resposta: { cartaoId, avaliacao, antes, depois, feitaEm, dia }
-  flashcards_dias/{AAAA-MM-DD}               resumo do dia: { revisoes: { idDaRevisao: {…} } }
+  flashcards_dias/{AAAA-MM-DD}               resumo do dia: { dia, revisoes: { idDaRevisao: {…} } }
 ```
 
 - **Nota × cartão** (como no Anki): básico gera 1 cartão; cloze, um por
@@ -42,9 +42,23 @@ flashcards_alunos/{uid}                      configurações (retenção, limite
 - **Sem conexão:** o cache persistente do Firestore guarda o que foi feito e
   envia quando a conexão volta, mesmo depois de fechar a aba.
 
+## Telas (rotas dentro de `…/flashcards/`)
+
+| Rota | Tela |
+|---|---|
+| (início) | Baralhos: o que há para hoje, árvore Matéria → Tópico com contagens, arrastar para reordenar, estudo por recorte e por tag |
+| `estudar?materia=…\|topico=…\|tag=…` | Estudo em tela cheia: espaço revela, 1–4 avaliam, Z desfaz, `-` enterra, `@` suspende, E edita, I informações |
+| `novo`, `nota/:id` | Editor: básico, cloze (Ctrl+Shift+C) e oclusão de imagem, com prévia ao vivo |
+| `navegar` | Navegar: busca, filtros, seleção em lote, arrastar cartões para um tópico |
+| `estatisticas` | Estatísticas: hoje, sequência, retenção real e estimada, revisões por dia, previsão, curva de retenção, estados por matéria, calendário |
+| `configuracoes` | Ajustes: limites por dia, retenção-alvo, intervalo máximo, passos, virada do dia; reagendar opcional |
+
 ## Arquivos
 
 ```
+index.jsx                  ponto de montagem: abas, avisos e rotas internas
+flashcards.css             estilos (prefixo fc-, tokens próprios claro/escuro)
+
 dados/contrato.js          nomes das coleções e interface dos adaptadores
 dados/modelo.js            validação, geração de cartões e campos de fila
 dados/datas.js             dias de estudo no fuso do aparelho
@@ -54,24 +68,58 @@ dados/repoDemonstracao.js  demonstração no IndexedDB
 dados/repoFirestore.js     adaptador Firestore + Storage
 dados/sessao.js            quem é o aluno logado (único ponto que lê algo da plataforma)
 dados/index.js             abre o repositório certo
+
+motor/agendador.js         FSRS pela biblioteca ts-fsrs (previsões, resposta, teto, reagendar)
+motor/fila.js              a sessão de estudo (ordem do Anki, intercalação, desfazer)
+
+servicos/agenda.js         responder, desfazer, suspender, enterrar, adiar, definir data, resetar, reagendar
+servicos/arvore.js         matérias e tópicos
+servicos/notas.js          salvar/apagar/mover notas e tags
+servicos/exemplos.js       cartões de exemplo para começar
+
+estado/loja.js             estado em tempo real fora do React (um por aluno)
+estado/contagens.js        contagens do dia (novos, aprendendo, revisar)
+estado/estatisticas.js     números das estatísticas (funções puras)
+estado/hooks.js            ganchos do React
+
+ui/                        telas (Inicio, Estudo, Editor, Navegar, Estatisticas, Configuracoes)
+                           e peças (comum, Cartao, CampoRico, EditorOclusao, graficos, html, imagens)
 ```
 
-Testes: `modelo.test.js`, `repoMemoria.test.js`, `repoDemonstracao.test.js`
-(`npm test`) e `flashcards.emu.test.js` (`npm run test:emuladores`: regras e
-o adaptador Firestore na mesma bateria de contrato dos outros adaptadores).
+Testes (`npm test`): modelo, adaptadores (mesma bateria de contrato),
+agendador FSRS, fila, serviços e estatísticas. `npm run test:emuladores`:
+regras e o adaptador Firestore nos emuladores.
 
 ## O que o módulo toca fora desta pasta
 
 | Arquivo | O quê |
 |---|---|
+| `src/App.jsx` | uma rota `flashcards/*` na área do aluno (componente carregado sob demanda) |
+| `src/navegacao.js` | um item "Flashcards" no menu do aluno |
 | `firestore.rules` | bloco "Flashcards" no fim (só adição) |
 | `storage.rules` | bloco "Flashcards" no fim (só adição) |
 | `firestore.indexes.json` | índices das coleções `flashcards_*` |
-| `package.json` | `ts-fsrs` (motor FSRS); `fake-indexeddb` só nos testes |
+| `package.json` | `ts-fsrs` (FSRS), `@dnd-kit/*` (arrastar), `@tiptap/*` (texto formatado), `dompurify` (limpeza do HTML); `fake-indexeddb` só nos testes |
 
-Ainda por vir (etapas seguintes): uma rota em `src/App.jsx` e um item no
-menu do aluno em `src/navegacao.js`.
+Mudanças na plataforma autorizadas à parte ("a plataforma ter memória"),
+que servem a ela toda e não só aos flashcards:
+
+| Arquivo | O quê |
+|---|---|
+| `src/data/firebase.js` | cache persistente do Firestore (funciona sem conexão e sobrevive a fechar a aba) e nova tentativa quando uma escuta é negada logo depois do cadastro |
+
+Para remover o módulo: apague esta pasta, a rota, o item do menu, os blocos
+nas regras e os índices `flashcards_*`.
 
 Dependência da plataforma: a sessão (Firebase Auth, ou a chave
 `aprova:sessao:v3` no modo demonstração, em `dados/sessao.js`) e, nas
 regras, o perfil ativo em `usuarios/{uid}` (`fcPerfilAtivo()`).
+
+## Limites conhecidos
+
+- Parâmetros do FSRS: os padrões do FSRS-6. Não há otimizador com o
+  histórico do aluno (o Anki tem).
+- Busca e Navegar leem todos os cartões e notas do aluno no aparelho; as
+  estatísticas leem os cartões e os últimos 12 meses de resumos de dias.
+  Para coleções de dezenas de milhares de cartões, vale paginar.
+- Mover é por nota: os cartões irmãos (cloze, oclusão) vão juntos.

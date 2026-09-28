@@ -281,6 +281,9 @@ export default function Estudo() {
     return () => { document.body.style.overflow = antes; document.body.classList.remove("fc-em-estudo"); };
   }, []);
 
+  // ao sair: os novos respondidos saíram da fila de novos; as contagens da tela inicial se refazem
+  useEffect(() => () => loja.recontar(), [loja]);
+
   const maisNovos = async () => {
     const extra = await repo.listar("cartoes", { onde: [...filtrosDoEscopo(escopo), FILTRO_NOVOS], ordem: ["ordemNovo", "asc"], limite: 10 });
     const naSessao = new Set([...sessao.current.principal, ...sessao.current.aprendendo].map((c) => c.id));
