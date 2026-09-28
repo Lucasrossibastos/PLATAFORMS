@@ -17,7 +17,8 @@ React 19 + Vite. Dois papéis, **aluno** e **moderador**, sobre dados reais.
   listas dentro delas), Simulados (anexa o PDF de cada prova; a capa sai
   sozinha do alto da primeira página, com pdf.js, ou de uma imagem enviada)
   e Aulas em vídeo, tudo filtrável por programa.
-- **Entrada**: login num cartão branco sobre um fundo de cores parado; quem
+- **Entrada**: login num cartão branco sobre ondas lisas e paradas em SVG
+  (azul, anil e um toque de água; `assets/fundo-ondas.svg` e `fundo-fios.svg`); quem
   entra vai direto para o Dashboard (aluno) ou para Alunos (moderador). A
   frase, o texto e a foto do professor do lado direito se editam em Textos.
   Uma fonte só (Inter); tema claro por padrão, com o escuro no botão de tema.

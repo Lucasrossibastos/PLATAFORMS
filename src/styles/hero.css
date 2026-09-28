@@ -1,7 +1,8 @@
-/* Entrada (login, primeiro acesso, acesso bloqueado): fundo de cores
-   parado, no espírito das referências (roxo, azul, branco e laranja), e um
-   cartão branco. Sem vídeo e sem animação de fundo. Também: a marca e o menu
-   em tela cheia do celular, usados pelo shell interno. */
+/* Entrada (login, primeiro acesso, acesso bloqueado): ondas lisas e paradas
+   em azul, anil e um toque de água (tons frios e claros, os mais agradáveis
+   e menos agitados nos estudos de cor), e um cartão branco, onde fica o
+   único tom quente. Sem vídeo e sem animação. Também: a marca e o menu em
+   tela cheia do celular, usados pelo shell interno. */
 
 .marca {
   display: inline-flex;
@@ -17,29 +18,20 @@
 .marca b { font-weight: 400; }
 
 
-/* ---------- Fundo de cores ---------- */
+/* ---------- Fundo de ondas ---------- */
 
-.fundo-cores { position: relative; isolation: isolate; background: #6f63ef; }
+.fundo-cores { position: relative; isolation: isolate; background: #5d6bee; }
+/* Ondas lisas em SVG (vetor: nítido até em 8K, poucos KB). Duas camadas com
+   a mesma caixa, para as geometrias coincidirem: as ondas, desfocadas pelo
+   CSS (na placa de vídeo, sem as emendas do desfoque do SVG), e os fios
+   nítidos com um grão quase invisível, que evita degraus no degradê. */
 .fundo-cores::before,
-.fundo-cores::after { content: ""; position: fixed; z-index: -1; pointer-events: none; }
-.fundo-cores::before {
-  inset: 0;
-  background:
-    radial-gradient(34% 30% at 14% 12%, rgba(255, 255, 255, 0.95), transparent 70%),
-    radial-gradient(28% 34% at 90% 60%, rgba(247, 146, 30, 0.95), transparent 72%),
-    radial-gradient(26% 30% at 6% 92%, rgba(247, 166, 48, 0.85), transparent 70%),
-    radial-gradient(38% 36% at 74% 4%, rgba(132, 70, 228, 0.95), transparent 72%),
-    radial-gradient(42% 44% at 30% 46%, rgba(80, 104, 250, 0.9), transparent 72%),
-    radial-gradient(40% 36% at 56% 100%, rgba(128, 58, 224, 0.95), transparent 70%),
-    linear-gradient(160deg, #8b5cf0 0%, #5e70f6 48%, #8a4fe6 100%);
-}
-/* faixas claras em diagonal, como ondas de luz */
+.fundo-cores::after { content: ""; position: fixed; inset: -80px; z-index: -1; pointer-events: none; }
+.fundo-cores::before { background: url("../assets/fundo-ondas.svg") center / cover no-repeat; filter: blur(28px); }
 .fundo-cores::after {
-  inset: -30%;
   background:
-    radial-gradient(46% 9% at 50% 46%, rgba(255, 255, 255, 0.75), transparent 72%),
-    radial-gradient(40% 7% at 62% 62%, rgba(255, 255, 255, 0.45), transparent 72%);
-  transform: rotate(-14deg);
+    url("../assets/fundo-fios.svg") center / cover no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
 }
 
 /* ---------- Login ---------- */
