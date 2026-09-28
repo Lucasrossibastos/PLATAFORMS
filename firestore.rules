@@ -211,6 +211,18 @@ service cloud.firestore {
       allow write: if moderador();
     }
 
+    // as "pastas" coloridas de Materiais (ex.: Listas de Física)
+    match /areasMateriais/{id} {
+      allow read: if ativo();
+      allow write: if moderador();
+    }
+
+    // provas para simulado: PDF e capa no Storage; aluno vê só as publicadas
+    match /provas/{id} {
+      allow read: if moderador() || (ativo() && (resource == null || resource.data.publicado == true));
+      allow write: if moderador();
+    }
+
     match /playlists/{id} {
       allow read: if moderador() || (ativo() && (resource == null || resource.data.publicada == true));
       allow write: if moderador();

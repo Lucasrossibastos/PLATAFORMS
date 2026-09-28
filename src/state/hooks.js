@@ -45,6 +45,8 @@ export const usePlanosAnteriores = (id) => usar(id && ((s, cb) => s.planos.obser
 
 // conteúdo e configuração
 export const useMateriais = () => usar((s, cb) => s.materiais.observar(cb), []);
+export const useAreasMateriais = () => usar((s, cb) => s.materiais.observarAreas(cb), []);
+export const useProvas = () => usar((s, cb) => s.provas.observar(cb), []);
 export const usePlaylists = () => usar((s, cb) => s.playlists.observar(cb), []);
 export const useConfigTextos = () => usar((s, cb) => s.textos.observar(cb), []);
 export const useTextosDoAluno = (id) => usar(id && ((s, cb) => s.textos.observarDoAluno(id, cb)), [id]);

@@ -12,7 +12,7 @@ import EditalAluno from "./screens/aluno/Edital.jsx";
 import QuestoesAluno from "./screens/aluno/Questoes.jsx";
 import SimuladosAluno from "./screens/aluno/Simulados.jsx";
 import DesempenhoAluno from "./screens/aluno/Desempenho.jsx";
-import MateriaisAluno from "./screens/aluno/Materiais.jsx";
+import MateriaisAluno, { AreaMateriaisAluno } from "./screens/aluno/Materiais.jsx";
 import AvisosAluno from "./screens/aluno/Avisos.jsx";
 import { CursosAluno, PlaylistAluno } from "./screens/aluno/Cursos.jsx";
 import { RedacaoAluno, RedacoesAluno } from "./screens/aluno/Redacao.jsx";
@@ -24,7 +24,9 @@ const Jornadas = sob(() => import("./screens/moderador/Jornadas.jsx"), "Jornadas
 const Jornada = sob(() => import("./screens/moderador/Jornadas.jsx"), "Jornada");
 const Estrutura = sob(() => import("./screens/moderador/Estrutura.jsx"));
 const MateriaisModerador = sob(() => import("./screens/moderador/Materiais.jsx"));
+const AreaMateriaisModerador = sob(() => import("./screens/moderador/Materiais.jsx"), "AreaMateriaisModerador");
 const AvisosModerador = sob(() => import("./screens/moderador/Avisos.jsx"));
+const ProvasModerador = sob(() => import("./screens/moderador/Provas.jsx"));
 const Textos = sob(() => import("./screens/moderador/Textos.jsx"));
 const CursosModerador = sob(() => import("./screens/moderador/Cursos.jsx"), "CursosModerador");
 const PlaylistModerador = sob(() => import("./screens/moderador/Cursos.jsx"), "PlaylistModerador");
@@ -77,6 +79,7 @@ export default function App() {
               <Route path="simulados" element={<SimuladosAluno />} />
               <Route path="desempenho" element={<DesempenhoAluno />} />
               <Route path="materiais" element={<MateriaisAluno />} />
+              <Route path="materiais/:areaId" element={<AreaMateriaisAluno />} />
               <Route path="avisos" element={<AvisosAluno />} />
               <Route path="cursos" element={<CursosAluno />} />
               <Route path="cursos/:id" element={<PlaylistAluno />} />
@@ -95,6 +98,8 @@ export default function App() {
               <Route path="planos/*" element={<Navigate to="/moderador/jornadas" replace />} />
               <Route path="estrutura" element={<Estrutura />} />
               <Route path="materiais" element={<MateriaisModerador />} />
+              <Route path="materiais/:areaId" element={<AreaMateriaisModerador />} />
+              <Route path="simulados" element={<ProvasModerador />} />
               <Route path="avisos" element={<AvisosModerador />} />
               <Route path="textos" element={<Textos />} />
               <Route path="cursos" element={<CursosModerador />} />
