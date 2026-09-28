@@ -332,7 +332,7 @@ export default function Inicio() {
         {materias.length === 0 ? (
           <Vazio icone={Layers} titulo="Monte seu primeiro baralho" texto="Organize por matéria e tópico, como no seu edital. Cada cartão entra na fila de revisão no dia certo para você não esquecer.">
             <Botao variante="primario" icone={Plus} onClick={() => setDialogo({ tipo: "novaMateria" })}>Criar matéria</Botao>
-            <Botao icone={Sparkles} onClick={() => executar(async () => { await criarExemplos(repo); await criarExemploOclusao(repo).catch(() => 0); }, { ok: "Exemplos criados: básico, lacunas e oclusão de imagem." }).then(() => loja.recontar())}>Começar com exemplos</Botao>
+            <Botao icone={Sparkles} onClick={() => executar(async () => { await criarExemplos(repo); await criarExemploOclusao(repo).catch(() => 0); }, { ok: "Exemplos criados: perguntas, trechos escondidos e uma imagem." }).then(() => loja.recontar())}>Começar com exemplos</Botao>
           </Vazio>
         ) : (
           <div className="fc-arvore">

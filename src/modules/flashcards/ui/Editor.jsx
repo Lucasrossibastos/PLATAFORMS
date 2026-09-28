@@ -1,13 +1,19 @@
-/* Editor de notas: básico, cloze e oclusão de imagem, com texto formatado,
-   imagens e pré-visualização ao vivo de como o cartão aparece na revisão.
-   Adicionar mantém o tipo, o tópico e as tags para o próximo (como no
-   Anki); Ctrl+Enter salva. Também abre como diálogo (editar no estudo). */
+/* Editor de cartões: sempre Frente e Verso (o básico). Dois extras, dentro
+   do mesmo formulário, sem precisar escolher "tipo":
+   - Esconder trecho: selecione palavras na frente e toque em Esconder;
+     cada trecho escondido vira um cartão (lacuna, o "cloze" do Anki) e o
+     verso passa a ser opcional (explicação);
+   - Imagem com partes escondidas: troque a frente por uma imagem e cubra o
+     que quer lembrar (a "oclusão de imagem"); cada área vira um cartão.
+   O banco continua com os três tipos (básico, cloze, oclusão).
+   Adicionar mantém tópico e tags para o próximo; Ctrl+Enter salva. Também
+   abre como diálogo (editar no estudo). */
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Eye, Image as IconeImagem, Layers, Pencil, Plus, Square, Type, X } from "lucide-react";
+import { Eye, ImageOff, Layers, Pencil, Plus, Type, X } from "lucide-react";
 import { useBase, useLoja, usePreferencia } from "../estado/hooks.js";
-import { ordinaisDaNota, lacunasDoTexto, normalizarNota } from "../dados/modelo.js";
+import { ordinaisDaNota, lacunasDoTexto, normalizarNota, textoDoHtml } from "../dados/modelo.js";
 import { salvarNota, apagarNotas } from "../servicos/notas.js";
 import { criarTopico } from "../servicos/arvore.js";
 import { Botao, Carregando, Dialogo, Erro, PedirTexto, Vazio, avisar } from "./comum.jsx";
@@ -16,24 +22,35 @@ import { CampoRico } from "./CampoRico.jsx";
 import { EditorOclusao } from "./EditorOclusao.jsx";
 import { semEnderecos } from "./html.js";
 
-const TIPOS = [
-  { valor: "basico", rotulo: "Básico", icone: Type, dica: "Pergunta na frente, resposta no verso." },
-  { valor: "cloze", rotulo: "Lacunas (cloze)", icone: Square, dica: "Um texto com partes escondidas; cada lacuna vira um cartão." },
-  { valor: "oclusao", rotulo: "Oclusão de imagem", icone: IconeImagem, dica: "Esconda partes de uma imagem; cada forma vira um cartão." },
-];
+const formularioVazio = () => ({ frente: "", verso: "", modoImagem: false, imagem: null, formas: [] });
 
-const vazios = (tipo) => (tipo === "basico" ? { frente: "", verso: "" } : tipo === "cloze" ? { texto: "", extra: "" } : { imagem: null, formas: [], extra: "" });
+// nota salva → formulário
+function formularioDaNota(n) {
+  const c = n.campos || {};
+  if (n.tipo === "cloze") return { ...formularioVazio(), frente: c.texto || "", verso: c.extra || "" };
+  if (n.tipo === "oclusao") return { ...formularioVazio(), modoImagem: true, imagem: c.imagem || null, formas: c.formas || [], verso: c.extra || "" };
+  return { ...formularioVazio(), frente: c.frente || "", verso: c.verso || "" };
+}
 
-// ao trocar de tipo, o texto já escrito vai junto quando dá
-function camposAoTrocar(de, para, c) {
-  if (de === "basico" && para === "cloze") return { texto: c.frente || "", extra: c.verso || "" };
-  if (de === "cloze" && para === "basico") return { frente: (c.texto || "").replace(/\{\{c\d+::([\s\S]*?)(?:::[\s\S]*?)?\}\}/g, "$1"), verso: c.extra || "" };
-  return { ...vazios(para), extra: c.extra || c.verso || "" };
+// formulário → nota (o tipo sai do que foi preenchido)
+function notaDoFormulario(f, base) {
+  if (f.modoImagem) return { ...base, tipo: "oclusao", campos: { imagem: f.imagem, formas: f.formas, extra: f.verso } };
+  if (lacunasDoTexto(f.frente).length) return { ...base, tipo: "cloze", campos: { texto: f.frente, extra: f.verso } };
+  return { ...base, tipo: "basico", campos: { frente: f.frente, verso: f.verso } };
 }
 
 // o banco guarda a referência da imagem, não o endereço (que muda)
 function paraSalvar(campos) {
   return Object.fromEntries(Object.entries(campos).map(([k, v]) => [k, typeof v === "string" ? semEnderecos(v) : v]));
+}
+
+// erros da validação (por campo do banco) → campos do formulário
+function errosDoFormulario(e) {
+  const r = { ...e };
+  if (e.texto) r.frente = e.texto.includes("lacuna") ? "Escreva a frente do cartão." : e.texto;
+  if (e.extra) r.verso = e.extra;
+  if (e.imagem || e.formas) r.imagem = e.imagem || e.formas;
+  return r;
 }
 
 function CampoTags({ tags, aoMudar, conhecidas }) {
@@ -71,7 +88,9 @@ function Previa({ nota }) {
   }, [nota]);
   const [ordinal, setOrdinal] = useState(null);
   const atual = ordinais.includes(ordinal) ? ordinal : ordinais[0];
-  const rotuloOrdinal = (o) => (o.startsWith("c") ? `Lacuna ${o.slice(1)}` : o.startsWith("f_") ? `Forma ${nota.campos.formas.findIndex((f) => `f_${f.id}` === o) + 1}` : "");
+  // sem conteúdo ainda: só a dica (nada de cartão em branco)
+  const c = nota.campos;
+  const semConteudo = nota.tipo === "oclusao" ? !c.imagem?.ref : nota.tipo === "basico" && !textoDoHtml(c.frente) && !/<img/i.test(c.frente || "") && !textoDoHtml(c.verso);
   return (
     <aside className="fc-previa" aria-label="Pré-visualização">
       <div className="fc-previa-topo">
@@ -82,13 +101,13 @@ function Previa({ nota }) {
       </div>
       {ordinais.length > 1 && (
         <div className="fc-escolhas fc-escolhas--compactas" role="radiogroup" aria-label="Qual cartão">
-          {ordinais.map((o) => <button key={o} type="button" role="radio" aria-checked={atual === o} className="fc-escolha" onClick={() => setOrdinal(o)}>{rotuloOrdinal(o)}</button>)}
+          {ordinais.map((o, i) => <button key={o} type="button" role="radio" aria-checked={atual === o} className="fc-escolha" onClick={() => setOrdinal(o)}>Cartão {i + 1}</button>)}
         </div>
       )}
-      <div className="fc-previa-cartao">
-        {atual ? <Cartao nota={nota} ordinal={atual} lado={lado} /> : <p className="fc-dica">A pré-visualização aparece quando o cartão tiver conteúdo.</p>}
+      <div className={`fc-previa-cartao${semConteudo || !atual ? " fc-previa-cartao--vazia" : ""}`}>
+        {atual && !semConteudo ? <Cartao nota={nota} ordinal={atual} lado={lado} /> : <p className="fc-dica">Escreva a frente para ver como o cartão aparece na revisão.</p>}
       </div>
-      <p className="fc-dica">{ordinais.length} {ordinais.length === 1 ? "cartão" : "cartões"} de revisão sai{ordinais.length === 1 ? "" : "em"} desta nota.</p>
+      {!semConteudo && ordinais.length > 1 && <p className="fc-dica">{ordinais.length} cartões saem desta nota, um para cada {nota.tipo === "oclusao" ? "área escondida" : "trecho escondido"}.</p>}
     </aside>
   );
 }
@@ -102,7 +121,8 @@ export function EditorNota({ notaId = null, inicial = {}, emDialogo = false, aoF
     const t = estado.topicos.find((x) => x.id === (inicial.topicoId || ultimo.topicoId)) || (inicial.materiaId ? estado.topicos.find((x) => x.materiaId === inicial.materiaId) : null) || estado.topicos[0];
     return t ? { materiaId: t.materiaId, topicoId: t.id } : { materiaId: inicial.materiaId || estado.materias[0]?.id || "", topicoId: "" };
   };
-  const [nota, setNota] = useState(() => (notaId ? null : { tipo: ultimo.tipo || "basico", ...primeiroTopico(), campos: vazios(ultimo.tipo || "basico"), tags: ultimo.tags || [] }));
+  const [lugar, setLugar] = useState(() => (notaId ? null : { ...primeiroTopico(), tags: ultimo.tags || [] }));
+  const [f, setF] = useState(() => (notaId ? null : formularioVazio()));
   const [original, setOriginal] = useState(null);
   const [erros, setErros] = useState({});
   const [erroGeral, setErroGeral] = useState(null);
@@ -130,13 +150,21 @@ export function EditorNota({ notaId = null, inicial = {}, emDialogo = false, aoF
         }));
         campos[k] = t.innerHTML;
       }
-      if (vivo) { setOriginal(n); setNota({ ...n, campos }); }
+      if (vivo) {
+        setOriginal(n);
+        setLugar({ materiaId: n.materiaId, topicoId: n.topicoId, tags: n.tags || [] });
+        setF(formularioDaNota({ ...n, campos }));
+      }
     });
     return () => { vivo = false; };
   }, [repo, notaId]);
 
-  const topicosDaMateria = estado.topicos.filter((t) => t.materiaId === nota?.materiaId);
-  const mudarCampos = (patch) => setNota((n) => ({ ...n, campos: { ...n.campos, ...patch } }));
+  const topicosDaMateria = estado.topicos.filter((t) => t.materiaId === lugar?.materiaId);
+  const mudar = (patch) => {
+    setF((x) => ({ ...x, ...patch }));
+    setErros((e) => { const r = { ...e }; Object.keys(patch).forEach((k) => delete r[k]); if (patch.formas || patch.imagem) delete r.imagem; return r; });
+  };
+  const nota = f && lugar ? notaDoFormulario(f, lugar) : null;
 
   const salvar = async () => {
     if (salvando || !nota) return;
@@ -145,7 +173,7 @@ export function EditorNota({ notaId = null, inicial = {}, emDialogo = false, aoF
     setErroGeral(null);
     try {
       const dados = { ...nota, campos: paraSalvar(nota.campos) };
-      normalizarNota(dados); // mostra os erros campo a campo antes de gravar
+      try { normalizarNota(dados); } catch (e) { if (e.campos) { setErros(errosDoFormulario(e.campos)); return; } throw e; }
       const r = await salvarNota(repo, { ...dados, id: notaId || undefined }, { tagsConhecidas: estado.tagsConhecidas });
       loja.recontar();
       if (notaId) {
@@ -153,16 +181,16 @@ export function EditorNota({ notaId = null, inicial = {}, emDialogo = false, aoF
         aoSalvar?.({ ...dados, id: notaId });
         return;
       }
-      setUltimo({ tipo: nota.tipo, topicoId: nota.topicoId, tags: nota.tags });
+      setUltimo({ topicoId: lugar.topicoId, tags: lugar.tags });
       avisar(`${r.cartoes === 1 ? "Cartão adicionado" : `${r.cartoes} cartões adicionados`}.`, {
         acao: { rotulo: "Desfazer", fn: async () => { await apagarNotas(repo, [{ id: r.id, imagens: [] }]); loja.recontar(); } },
       });
-      setNota((n) => ({ ...n, campos: vazios(n.tipo) }));
+      setF(formularioVazio());
       setVersao((v) => v + 1);
       aoSalvar?.({ ...dados, id: r.id });
       setTimeout(() => raiz.current?.querySelector(".fc-rico-area")?.focus(), 60);
     } catch (e) {
-      if (e.campos) setErros(e.campos); else setErroGeral(e);
+      setErroGeral(e);
     } finally { setSalvando(false); }
   };
 
@@ -175,14 +203,14 @@ export function EditorNota({ notaId = null, inicial = {}, emDialogo = false, aoF
     return () => window.removeEventListener("keydown", tecla);
   });
 
-  if (erroGeral && !nota) return <Vazio titulo="Não foi possível abrir" texto={erroGeral.message} />;
-  if (!nota) return <Carregando />;
+  if (erroGeral && !f) return <Vazio titulo="Não foi possível abrir" texto={erroGeral.message} />;
+  if (!f || !lugar) return <Carregando />;
   if (!estado.materias.length) {
     return <Vazio icone={Layers} titulo="Crie uma matéria primeiro" texto="Os cartões moram dentro de um tópico de uma matéria. Crie na aba Baralhos." />;
   }
 
-  const c = nota.campos;
-  const lacunas = nota.tipo === "cloze" ? lacunasDoTexto(c.texto) : [];
+  const escondidos = f.modoImagem ? 0 : lacunasDoTexto(f.frente).length;
+  const versoOpcional = f.modoImagem || escondidos > 0;
   const corpo = (
     <div ref={raiz} className={`fc-editor${emDialogo ? " fc-editor--dialogo" : ""}`} data-aba={aba}>
       <div className="fc-editor-abas-cel" role="tablist" aria-label="Editor">
@@ -190,27 +218,17 @@ export function EditorNota({ notaId = null, inicial = {}, emDialogo = false, aoF
         <button type="button" role="tab" aria-selected={aba === "previa"} onClick={() => setAba("previa")}><Eye aria-hidden="true" />Pré-visualizar</button>
       </div>
       <div className="fc-editor-form">
-        {!notaId && (
-          <div className="fc-tipos" role="radiogroup" aria-label="Tipo de cartão">
-            {TIPOS.map((t) => (
-              <button key={t.valor} type="button" role="radio" aria-checked={nota.tipo === t.valor} className="fc-tipo" title={t.dica}
-                onClick={() => setNota((n) => (n.tipo === t.valor ? n : { ...n, tipo: t.valor, campos: camposAoTrocar(n.tipo, t.valor, n.campos) }))}>
-                <t.icone aria-hidden="true" /><span>{t.rotulo}</span>
-              </button>
-            ))}
-          </div>
-        )}
         <div className="fc-editor-lugar">
           <label className="fc-campo"><span>Matéria</span>
-            <select className="fc-entrada" value={nota.materiaId} onChange={(e) => {
+            <select className="fc-entrada" value={lugar.materiaId} onChange={(e) => {
               const materiaId = e.target.value;
-              setNota((n) => ({ ...n, materiaId, topicoId: estado.topicos.find((t) => t.materiaId === materiaId)?.id || "" }));
+              setLugar((l) => ({ ...l, materiaId, topicoId: estado.topicos.find((t) => t.materiaId === materiaId)?.id || "" }));
             }}>
               {estado.materias.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
             </select>
           </label>
           <label className="fc-campo"><span>Tópico</span>
-            <select className="fc-entrada" value={nota.topicoId} onChange={(e) => (e.target.value === "__novo" ? setNovoTopico(true) : setNota((n) => ({ ...n, topicoId: e.target.value })))}>
+            <select className="fc-entrada" value={lugar.topicoId} onChange={(e) => (e.target.value === "__novo" ? setNovoTopico(true) : setLugar((l) => ({ ...l, topicoId: e.target.value })))}>
               {!topicosDaMateria.length && <option value="">Crie um tópico…</option>}
               {topicosDaMateria.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
               <option value="__novo">+ Novo tópico</option>
@@ -219,28 +237,30 @@ export function EditorNota({ notaId = null, inicial = {}, emDialogo = false, aoF
           </label>
         </div>
 
-        {nota.tipo === "basico" && (
-          <>
-            <CampoRico key={`f${versao}-${notaId}`} rotulo="Frente" valor={c.frente} aoMudar={(frente) => mudarCampos({ frente })} placeholder="A pergunta" erro={erros.frente} autoFocus={!emDialogo} />
-            <CampoRico key={`v${versao}-${notaId}`} rotulo="Verso" valor={c.verso} aoMudar={(verso) => mudarCampos({ verso })} placeholder="A resposta" erro={erros.verso} />
-          </>
+        {f.modoImagem ? (
+          <div className="fc-frente-imagem">
+            <div className="fc-rico-topo">
+              <span className="fc-rico-rotulo">Frente · imagem com partes escondidas</span>
+              <button type="button" className="fc-link-discreto" onClick={() => mudar({ modoImagem: false })}><Type aria-hidden="true" />Usar texto</button>
+            </div>
+            <EditorOclusao campos={{ imagem: f.imagem, formas: f.formas }} aoMudar={({ imagem, formas }) => mudar({ imagem, formas })} erro={erros.imagem} />
+          </div>
+        ) : (
+          <CampoRico key={`f${versao}-${notaId}`} lacunas rotulo="Frente" valor={f.frente} aoMudar={(frente) => mudar({ frente })} placeholder="A pergunta" erro={erros.frente} autoFocus={!emDialogo}
+            rodape={(
+              <div className="fc-frente-rodape">
+                <span className="fc-dica fc-dica--linha">
+                  {escondidos ? `${escondidos} ${escondidos === 1 ? "trecho escondido → 1 cartão" : `trechos escondidos → ${escondidos} cartões`}. O verso fica opcional.`
+                    : "Dica: selecione palavras e toque em Esconder para completar a lacuna na revisão."}
+                </span>
+                <button type="button" className="fc-link-discreto" onClick={() => mudar({ modoImagem: true })}><ImageOff aria-hidden="true" />Esconder partes de uma imagem</button>
+              </div>
+            )} />
         )}
-        {nota.tipo === "cloze" && (
-          <>
-            <CampoRico key={`t${versao}-${notaId}`} cloze rotulo="Texto" valor={c.texto} aoMudar={(texto) => mudarCampos({ texto })} erro={erros.texto} autoFocus={!emDialogo}
-              placeholder="Selecione a palavra e toque em Lacuna (ou Ctrl+Shift+C). Ex.: A {{c1::mitocôndria}} faz a respiração." />
-            <p className="fc-dica fc-dica--linha">{lacunas.length ? `Lacunas: ${lacunas.map((n) => `c${n}`).join(", ")} → ${lacunas.length} ${lacunas.length === 1 ? "cartão" : "cartões"}. Use o mesmo número para esconder juntas.` : "Nenhuma lacuna ainda."}</p>
-            <CampoRico key={`e${versao}-${notaId}`} rotulo="Extra (opcional, aparece no verso)" valor={c.extra} aoMudar={(extra) => mudarCampos({ extra })} placeholder="Explicação, fonte, mnemônico…" />
-          </>
-        )}
-        {nota.tipo === "oclusao" && (
-          <>
-            <EditorOclusao campos={c} aoMudar={(campos) => setNota((n) => ({ ...n, campos }))} erro={erros.imagem || erros.formas} />
-            <CampoRico key={`x${versao}-${notaId}`} rotulo="Extra (opcional, aparece no verso)" valor={c.extra} aoMudar={(extra) => mudarCampos({ extra })} placeholder="Legenda, explicação…" />
-          </>
-        )}
+        <CampoRico key={`v${versao}-${notaId}`} rotulo={versoOpcional ? "Verso (opcional)" : "Verso"} valor={f.verso} aoMudar={(verso) => mudar({ verso })}
+          placeholder={versoOpcional ? "Explicação, fonte, mnemônico… aparece depois de revelar" : "A resposta"} erro={erros.verso} />
 
-        <CampoTags tags={nota.tags} aoMudar={(tags) => setNota((n) => ({ ...n, tags }))} conhecidas={estado.tagsConhecidas} />
+        <CampoTags tags={lugar.tags} aoMudar={(tags) => setLugar((l) => ({ ...l, tags }))} conhecidas={estado.tagsConhecidas} />
         <Erro erro={erroGeral} />
         <div className="fc-editor-acoes">
           {aoFechar && <Botao onClick={aoFechar}>{notaId ? "Cancelar" : "Fechar"}</Botao>}
@@ -248,13 +268,13 @@ export function EditorNota({ notaId = null, inicial = {}, emDialogo = false, aoF
             {salvando ? "Salvando…" : notaId ? "Salvar" : "Adicionar"}<kbd className="fc-kbd-botao">Ctrl+Enter</kbd>
           </Botao>
         </div>
-        {notaId && original && <p className="fc-dica">Editar mantém o progresso dos cartões que continuam. Lacunas ou formas removidas apagam os cartões delas.</p>}
+        {notaId && original && <p className="fc-dica">Editar mantém o progresso dos cartões que continuam. Trechos ou áreas removidos apagam os cartões deles.</p>}
       </div>
-      <Previa nota={{ ...nota, campos: c }} />
+      <Previa nota={nota} />
       <PedirTexto aberto={novoTopico} titulo="Novo tópico" rotulo="Nome do tópico" confirmar="Criar" aoFechar={() => setNovoTopico(false)}
         aoSalvar={async (nome) => {
-          const id = await criarTopico(repo, { materiaId: nota.materiaId, nome }, topicosDaMateria);
-          setNota((n) => ({ ...n, topicoId: id }));
+          const id = await criarTopico(repo, { materiaId: lugar.materiaId, nome }, topicosDaMateria);
+          setLugar((l) => ({ ...l, topicoId: id }));
         }} />
     </div>
   );
@@ -274,11 +294,11 @@ export default function Editor() {
   const inicial = { topicoId: params.get("topico") || undefined, materiaId: params.get("materia") || undefined };
   return (
     <div className="fc-pagina-editor">
-      <header className="fc-pagina-topo"><h1>{id ? "Editar cartão" : "Adicionar cartões"}</h1></header>
+      <header className="fc-pagina-topo"><h1>{id ? "Editar cartão" : "Novo cartão"}</h1></header>
       <EditorNota key={id || "novo"} notaId={id || null} inicial={inicial}
         aoFechar={id ? () => navigate(-1) : undefined}
         aoSalvar={id ? () => navigate(-1) : undefined} />
-      {!id && <p className="fc-dica">Dica: depois de adicionar, os campos se esvaziam e o tópico e as tags ficam, para você emendar o próximo. Volte em <a href={`#${base}`}>Baralhos</a> para estudar.</p>}
+      {!id && <p className="fc-dica">Depois de adicionar, os campos se esvaziam e o tópico e as tags ficam, para você emendar o próximo. Para estudar, volte em <a href={`#${base}`}>Baralhos</a>.</p>}
     </div>
   );
 }

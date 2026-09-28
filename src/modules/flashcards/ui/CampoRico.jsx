@@ -1,21 +1,24 @@
 /* Campo de texto formatado (TipTap): negrito, itálico, sublinhado, listas,
-   sub/sobrescrito (fórmulas), imagens (comprimidas; também coladas) e, no
-   cloze, o botão de lacuna com os atalhos do Anki:
-     Ctrl+Shift+C      nova lacuna (c1, c2, …)
-     Ctrl+Alt+Shift+C  mesma lacuna da anterior */
+   sub/sobrescrito (fórmulas), imagens (comprimidas; também coladas) e, com
+   `lacunas`, o botão "Esconder": o trecho selecionado fica destacado e vira
+   uma lacuna (cada uma, um cartão). Atalhos do Anki:
+     Ctrl+Shift+C      esconder (nova lacuna)
+     Ctrl+Alt+Shift+C  esconder junto com a anterior (mesmo cartão)
+   O valor emitido usa o formato salvo, {{c1::…}} (ver html.js). */
 
 import { useEffect, useRef } from "react";
-import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
+import { EditorContent, Mark, mergeAttributes, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Subscript from "@tiptap/extension-subscript";
 import Superscript from "@tiptap/extension-superscript";
 import Image from "@tiptap/extension-image";
 import { Placeholder } from "@tiptap/extensions";
-import { Bold, Brackets, ImagePlus, Italic, List, ListOrdered, RemoveFormatting, Subscript as IconeSub, Superscript as IconeSup, Underline } from "lucide-react";
+import { Bold, Eye, EyeOff, ImagePlus, Italic, List, ListOrdered, RemoveFormatting, Subscript as IconeSub, Superscript as IconeSup, Underline } from "lucide-react";
 import { useLoja } from "../estado/hooks.js";
 import { lacunasDoTexto } from "../dados/modelo.js";
 import { comprimirImagem } from "./imagens.js";
 import { guardarEndereco } from "./Cartao.jsx";
+import { lacunasParaMarcas, marcasParaLacunas } from "./html.js";
 import { avisar } from "./comum.jsx";
 
 // imagem com a referência do armazenamento (data-fc-img) além do endereço
@@ -28,6 +31,38 @@ const ImagemFc = Image.extend({
   },
 });
 
+// a lacuna no editor: um trecho marcado (por fora das outras marcas, para não se partir)
+const Lacuna = Mark.create({
+  name: "lacuna",
+  priority: 1000,
+  inclusive: false,
+  excludes: "lacuna",
+  addAttributes() {
+    return {
+      n: { default: 1, parseHTML: (el) => Number(el.getAttribute("data-lacuna")) || 1, renderHTML: (a) => ({ "data-lacuna": String(a.n) }) },
+      dica: { default: null, parseHTML: (el) => el.getAttribute("data-dica"), renderHTML: (a) => (a.dica ? { "data-dica": a.dica } : {}) },
+    };
+  },
+  parseHTML: () => [{ tag: "span[data-lacuna]" }],
+  renderHTML: ({ HTMLAttributes }) => ["span", mergeAttributes(HTMLAttributes, { class: "fc-lacuna-ed" }), 0],
+});
+
+// números das lacunas já usadas (marcadas ou digitadas como {{cN::…}})
+function numerosUsados(editor) {
+  const nums = new Set(lacunasDoTexto(editor.getText()));
+  editor.state.doc.descendants((no) => { no.marks.forEach((m) => { if (m.type.name === "lacuna") nums.add(m.attrs.n); }); });
+  return [...nums];
+}
+
+// o cursor está num trecho escondido (dentro ou encostado nele)
+function naLacuna(editor) {
+  if (editor.isActive("lacuna")) return true;
+  const { $from, empty } = editor.state.selection;
+  if (!empty) return false;
+  const tem = (no) => Boolean(no?.marks.some((m) => m.type.name === "lacuna"));
+  return tem($from.nodeBefore) || tem($from.nodeAfter);
+}
+
 function BotaoFerramenta({ ativo, icone: Icone, rotulo, onClick, desativado }) {
   return (
     <button type="button" className={`fc-ferramenta${ativo ? " fc-ferramenta--ativa" : ""}`} aria-label={rotulo} title={rotulo} aria-pressed={ativo}
@@ -37,10 +72,12 @@ function BotaoFerramenta({ ativo, icone: Icone, rotulo, onClick, desativado }) {
   );
 }
 
-export function CampoRico({ rotulo, valor, aoMudar, cloze = false, placeholder = "", erro, autoFocus = false, id }) {
+export function CampoRico({ rotulo, valor, aoMudar, lacunas = false, placeholder = "", erro, autoFocus = false, id, rodape }) {
   const { repo } = useLoja();
   const arquivo = useRef(null);
   const ultimoEmitido = useRef(valor);
+  const textoGuia = useRef(placeholder);
+  textoGuia.current = placeholder;
 
   const enviarImagens = async (editor, arquivos) => {
     for (const f of arquivos) {
@@ -59,10 +96,10 @@ export function CampoRico({ rotulo, valor, aoMudar, cloze = false, placeholder =
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: false, codeBlock: false, horizontalRule: false, link: false, blockquote: false }),
-      Subscript, Superscript, ImagemFc.configure({ inline: false }),
-      Placeholder.configure({ placeholder }),
+      Subscript, Superscript, ImagemFc.configure({ inline: false }), ...(lacunas ? [Lacuna] : []),
+      Placeholder.configure({ placeholder: () => textoGuia.current }),
     ],
-    content: valor || "",
+    content: lacunasParaMarcas(valor || ""),
     autofocus: autoFocus ? "end" : false,
     editorProps: {
       attributes: { class: "fc-rico-area", "aria-label": rotulo, ...(id ? { id } : {}) },
@@ -82,7 +119,7 @@ export function CampoRico({ rotulo, valor, aoMudar, cloze = false, placeholder =
       },
     },
     onUpdate: ({ editor: ed }) => {
-      const html = ed.isEmpty ? "" : ed.getHTML();
+      const html = ed.isEmpty ? "" : marcasParaLacunas(ed.getHTML());
       ultimoEmitido.current = html;
       aoMudar(html);
     },
@@ -94,8 +131,13 @@ export function CampoRico({ rotulo, valor, aoMudar, cloze = false, placeholder =
   useEffect(() => {
     if (!editor || valor === ultimoEmitido.current) return;
     ultimoEmitido.current = valor;
-    editor.commands.setContent(valor || "", { emitUpdate: false });
+    editor.commands.setContent(lacunasParaMarcas(valor || ""), { emitUpdate: false });
   }, [editor, valor]);
+
+  // o texto-guia mudou (ex.: verso que passou a ser opcional): redesenha
+  useEffect(() => {
+    if (editor && !editor.isDestroyed) editor.view.dispatch(editor.state.tr.setMeta("addToHistory", false));
+  }, [editor, placeholder]);
 
   const marcas = useEditorState({
     editor,
@@ -103,30 +145,38 @@ export function CampoRico({ rotulo, valor, aoMudar, cloze = false, placeholder =
       bold: ed.isActive("bold"), italic: ed.isActive("italic"), underline: ed.isActive("underline"),
       bulletList: ed.isActive("bulletList"), orderedList: ed.isActive("orderedList"),
       subscript: ed.isActive("subscript"), superscript: ed.isActive("superscript"),
+      lacuna: lacunas && naLacuna(ed),
     } : {}),
   }) || {};
 
+  // esconder o trecho selecionado (ou mostrar de novo, se o cursor já está numa lacuna)
   const lacuna = (mesma) => {
     if (!editor || editor.isDestroyed) return;
     // a seleção do navegador chega ao editor de forma assíncrona: sincroniza antes de ler
     editor.view.domObserver?.flush?.();
-    const nums = lacunasDoTexto(editor.getText());
+    if (naLacuna(editor)) {
+      // estende até o trecho inteiro (também com o cursor encostado no fim dele)
+      const { $from } = editor.state.selection;
+      const tem = (no) => Boolean(no?.marks.some((m) => m.type.name === "lacuna"));
+      const pos = !tem($from.nodeAfter) && tem($from.nodeBefore) ? $from.pos - 1 : $from.pos;
+      editor.chain().focus().setTextSelection(pos).extendMarkRange("lacuna").unsetMark("lacuna").run();
+      return;
+    }
+    if (editor.state.selection.empty) { avisar("Selecione a palavra ou o trecho que quer esconder."); editor.commands.focus(); return; }
+    const nums = numerosUsados(editor);
     const n = mesma && nums.length ? Math.max(...nums) : (nums.length ? Math.max(...nums) + 1 : 1);
-    const { from, to, empty } = editor.state.selection;
-    const texto = empty ? "" : editor.state.doc.textBetween(from, to, " ");
-    editor.chain().focus().insertContentAt({ from, to }, `{{c${n}::${texto}}}`).run();
-    if (empty) editor.commands.setTextSelection(from + `{{c${n}::`.length);
+    editor.chain().focus().setMark("lacuna", { n }).run();
   };
 
   useEffect(() => {
-    if (!editor || !cloze) return undefined;
+    if (!editor || !lacunas) return undefined;
     const tecla = (e) => {
       if (!editor.isFocused) return;
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "C" || e.key === "c")) { e.preventDefault(); lacuna(e.altKey); }
     };
     window.addEventListener("keydown", tecla, true);
     return () => window.removeEventListener("keydown", tecla, true);
-  }, [editor, cloze]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [editor, lacunas]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const c = () => editor.chain(); // chamar como método (usa o próprio editor)
   return (
@@ -134,10 +184,11 @@ export function CampoRico({ rotulo, valor, aoMudar, cloze = false, placeholder =
       <div className="fc-rico-topo">
         <span className="fc-rico-rotulo">{rotulo}</span>
         <div className="fc-ferramentas" role="toolbar" aria-label={`Formatação de ${rotulo}`}>
-          {cloze && (
-            <button type="button" className="fc-ferramenta fc-ferramenta--lacuna" title="Nova lacuna (Ctrl+Shift+C) · mesma lacuna: Ctrl+Alt+Shift+C"
+          {lacunas && (
+            <button type="button" className={`fc-ferramenta fc-ferramenta--lacuna${marcas.lacuna ? " fc-ferramenta--ativa" : ""}`} aria-pressed={!!marcas.lacuna}
+              title={marcas.lacuna ? "Mostrar de novo este trecho" : "Esconder o trecho selecionado: vira uma lacuna para completar (Ctrl+Shift+C)"}
               onMouseDown={(e) => e.preventDefault()} onClick={() => lacuna(false)}>
-              <Brackets aria-hidden="true" />Lacuna
+              {marcas.lacuna ? <Eye aria-hidden="true" /> : <EyeOff aria-hidden="true" />}{marcas.lacuna ? "Mostrar" : "Esconder"}
             </button>
           )}
           <BotaoFerramenta icone={Bold} rotulo="Negrito (Ctrl+B)" ativo={marcas.bold} onClick={() => c().focus().toggleBold().run()} />
@@ -153,6 +204,7 @@ export function CampoRico({ rotulo, valor, aoMudar, cloze = false, placeholder =
         </div>
       </div>
       <EditorContent editor={editor} />
+      {rodape}
       {erro && <small className="fc-campo-erro" role="alert">{erro}</small>}
     </div>
   );

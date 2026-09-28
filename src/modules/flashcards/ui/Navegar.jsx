@@ -416,7 +416,7 @@ export default function Navegar() {
               {ESTADOS_FILTRO.map(([v, r]) => <option key={v} value={v}>{r}</option>)}
             </select>
             <select className="fc-entrada fc-nav-sel" value={filtro.tipo} onChange={(e) => mudar({ tipo: e.target.value })} aria-label="Tipo">
-              <option value="">Todos os tipos</option><option value="basico">Básico</option><option value="cloze">Lacunas</option><option value="oclusao">Oclusão</option>
+              <option value="">Todos os formatos</option><option value="basico">Frente e verso</option><option value="cloze">Trechos escondidos</option><option value="oclusao">Imagem</option>
             </select>
             <select className="fc-entrada fc-nav-sel" value={filtro.ordem} onChange={(e) => mudar({ ordem: e.target.value })} aria-label="Ordenar">
               {ORDENS.map(([v, r]) => <option key={v} value={v}>{r}</option>)}
