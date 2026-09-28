@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { criarRepoMemoria } from "../dados/repoMemoria.js";
 import { ESTADOS, cartaoNovo, normalizarNota } from "../dados/modelo.js";
 import { AVALIACOES, criarAgendador } from "../motor/agendador.js";
-import { adiar, definirData, desenterrarVencidos, desfazer, enterrar, resetar, responder, suspender } from "./agenda.js";
+import { adiar, definirData, desenterrarVencidos, desfazer, enterrar, reagendar, resetar, responder, suspender } from "./agenda.js";
 
 const [NOVAMENTE, , BOM, FACIL] = AVALIACOES.map((a) => a.valor);
 const agora = new Date(2026, 8, 28, 10, 0);
@@ -29,7 +29,9 @@ describe("responder e desfazer", () => {
     expect(salvo).toMatchObject({ ordemNovo: null });
     expect(salvo.fila.getTime()).toBe(depois.fsrs.due.getTime());
     expect(await repo.obter("revisoes", revisao.id)).toMatchObject({ cartaoId: c.id, avaliacao: FACIL, estadoAntes: ESTADOS.novo, dia: "2026-09-28", duracaoMs: 4200 });
-    expect((await repo.obter("dias", "2026-09-28")).revisoes[revisao.id]).toMatchObject({ avaliacao: FACIL, estadoAntes: ESTADOS.novo });
+    const dia = await repo.obter("dias", "2026-09-28");
+    expect(dia.dia).toBe("2026-09-28"); // para consultar um período nas estatísticas
+    expect(dia.revisoes[revisao.id]).toMatchObject({ avaliacao: FACIL, estadoAntes: ESTADOS.novo });
   });
 
   it("desfazer devolve o cartão exatamente como era e apaga a revisão", async () => {
@@ -110,5 +112,41 @@ describe("controles manuais", () => {
     tamanhos.length = 0;
     await suspender(r, muitos, true, agora);
     expect(tamanhos).toEqual([400, 400, 100]);
+  });
+});
+
+describe("reagendar com configurações novas (retenção-alvo, intervalo máximo)", () => {
+  it("só os cartões em revisão mudam; a memória (estabilidade, dificuldade) fica", async () => {
+    const c = await criarCartao("n1__1", 1);
+    const novoIntacto = await criarCartao("n2__1", 2);
+    const { depois } = await responder(repo, { cartao: c, avaliacao: FACIL, agendador: ag, agora });
+    const antes = await repo.obter("cartoes", c.id);
+    // retenção maior = intervalos menores
+    const exigente = criarAgendador({ retencao: 0.97 }, { fuzz: false });
+    expect(await reagendar(repo, exigente, agora)).toBe(1);
+    const depoisDe = await repo.obter("cartoes", c.id);
+    expect(depoisDe.fsrs.due.getTime()).toBeLessThan(depois.fsrs.due.getTime());
+    expect(depoisDe.fsrs.stability).toBe(antes.fsrs.stability);
+    expect(depoisDe.fsrs.difficulty).toBe(antes.fsrs.difficulty);
+    expect(depoisDe.fila.getTime()).toBe(depoisDe.fsrs.due.getTime());
+    expect(await repo.obter("cartoes", novoIntacto.id)).toEqual(novoIntacto);
+    // de novo, sem mudança: nada a gravar
+    expect(await reagendar(repo, exigente, agora)).toBe(0);
+  });
+
+  it("intervalo máximo menor puxa os cartões para dentro do limite", async () => {
+    const c = await criarCartao();
+    let atual = c;
+    let t = agora;
+    for (let i = 0; i < 4; i += 1) { // Fácil várias vezes: intervalo longo
+      const { depois } = await responder(repo, { cartao: atual, avaliacao: FACIL, agendador: ag, agora: t });
+      atual = { ...depois, id: c.id };
+      t = new Date(depois.fsrs.due);
+    }
+    expect((atual.fsrs.due - t) / 86400000).toBeGreaterThanOrEqual(0);
+    const curto = criarAgendador({ intervaloMaximo: 7 }, { fuzz: false });
+    await reagendar(repo, curto, t);
+    const salvo = await repo.obter("cartoes", c.id);
+    expect((salvo.fsrs.due.getTime() - t.getTime()) / 86400000).toBeLessThanOrEqual(7);
   });
 });

@@ -74,6 +74,25 @@ export function criarAgendador(config = {}, { fuzz = true } = {}) {
     // curva de esquecimento: R depois de "dias" com estabilidade S
     curva: (dias, estabilidade) => f.forgetting_curve(dias, estabilidade),
 
+    // intervalo ÷ estabilidade com esta retenção-alvo (1 com 90%; maior = intervalos mais longos)
+    modificadorIntervalo: f.interval_modifier,
+
+    /* Reagendar (depois de mudar a retenção-alvo ou o intervalo máximo, como
+       a opção do Anki): o cartão em revisão ganha o intervalo que a
+       estabilidade dele pede com as configurações novas, contado da última
+       revisão. A memória (estabilidade, dificuldade) não muda. Os demais
+       estados voltam sem mudança (null). */
+    reagendar(cartao, agora) {
+      const doc = cartao.fsrs;
+      if (doc?.state !== State.Review || !doc.last_review || !(doc.stability > 0)) return null;
+      const ultima = new Date(doc.last_review);
+      const dias = Math.min(Math.max(1, Math.round(doc.stability * f.interval_modifier)), cfg.intervaloMaximo);
+      const due = new Date(ultima.getTime() + dias * 86400000);
+      // o teto vale a partir de agora também (nada além do intervalo máximo)
+      const limite = new Date(agora.getTime() + tetoMs);
+      return { ...doc, due: due > limite ? limite : due, scheduled_days: dias };
+    },
+
     // volta a "novo"
     novo: (agora) => fsrsParaDoc(createEmptyCard(agora)),
   };

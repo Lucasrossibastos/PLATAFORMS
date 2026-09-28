@@ -45,7 +45,7 @@ export function planejarResposta(repo, { cartao, avaliacao, agendador, agora, du
   const ops = [
     atualizarCartao(depois, agora),
     { tipo: "definir", colecao: "revisoes", id, dados: revisao },
-    { tipo: "mesclar", colecao: "dias", id: dia, dados: { revisoes: { [id]: { avaliacao, estadoAntes: cartao.fsrs.state, materiaId: cartao.materiaId, duracaoMs: duracao } } } },
+    { tipo: "mesclar", colecao: "dias", id: dia, dados: { dia, revisoes: { [id]: { avaliacao, estadoAntes: cartao.fsrs.state, materiaId: cartao.materiaId, duracaoMs: duracao } } } },
   ];
   return { depois, revisao: { id, ...revisao }, ops };
 }
@@ -106,6 +106,19 @@ export function adiar(repo, cartoes, dias, agora = new Date()) {
 // volta a "novo", no fim da fila de novos (o histórico de revisões fica)
 export const resetar = (repo, cartoes, agendador, agora = new Date()) =>
   aplicar(repo, cartoes, (c, i) => ({ fsrs: agendador.novo(agora), enterradoAte: null, posicaoNovo: posicaoNova(agora, i) }), agora);
+
+/* Reagendar os cartões em revisão com as configurações atuais (opção ao
+   mudar a retenção-alvo ou o intervalo máximo). Devolve quantos mudaram. */
+export async function reagendar(repo, agendador, agora = new Date()) {
+  const emRevisao = await repo.listar("cartoes", { onde: [["fsrs.state", "==", ESTADOS.revisao]] });
+  const mudados = [];
+  for (const c of emRevisao) {
+    const fsrs = agendador.reagendar(c, agora);
+    if (fsrs && new Date(fsrs.due).getTime() !== new Date(c.fsrs.due).getTime()) mudados.push(comFila({ ...c, fsrs }));
+  }
+  await emLotes(repo, mudados.map((c) => atualizarCartao(c, agora)));
+  return mudados.length;
+}
 
 // devolve à fila os enterrados/adiados cuja data já passou
 export async function desenterrarVencidos(repo, agora = new Date()) {

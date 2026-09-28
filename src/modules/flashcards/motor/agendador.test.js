@@ -135,3 +135,22 @@ describe("intervalo para mostrar no botão", () => {
     expect(formatarIntervalo(800 * 86400000)).toBe("2,2 anos");
   });
 });
+
+describe("retenção-alvo e reagendamento", () => {
+  it("modificador de intervalo: 1 com 90%, maior abaixo, menor acima", () => {
+    expect(ag({ retencao: 0.9 }).modificadorIntervalo).toBeCloseTo(1, 5);
+    expect(ag({ retencao: 0.8 }).modificadorIntervalo).toBeGreaterThan(1);
+    expect(ag({ retencao: 0.95 }).modificadorIntervalo).toBeLessThan(1);
+  });
+
+  it("reagendar conta da última revisão, respeita o teto e ignora novos/aprendizado", () => {
+    const { cartao } = emRevisao();
+    const agora = hora(3);
+    const r = ag({ retencao: 0.95 }).reagendar(cartao, agora);
+    const dias = Math.max(1, Math.round(cartao.fsrs.stability * ag({ retencao: 0.95 }).modificadorIntervalo));
+    expect(r.due.getTime()).toBe(new Date(cartao.fsrs.last_review).getTime() + dias * 86400000);
+    expect(r.stability).toBe(cartao.fsrs.stability);
+    expect(ag().reagendar(novo(), agora)).toBeNull();
+  });
+});
+
