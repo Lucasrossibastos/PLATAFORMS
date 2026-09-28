@@ -88,8 +88,11 @@ function criarLoja(uid) {
       paradas.push(repo.observarDoc("config", "config", (doc) => {
         const config = configSegura(doc);
         agendador = criarAgendador(config);
-        definir({ config, tagsConhecidas: doc?.tagsConhecidas || [] });
+        const tags = doc?.tagsConhecidas || [];
+        const mudouTags = tags.join("\u0000") !== estado.tagsConhecidas.join("\u0000");
+        definir({ config, tagsConhecidas: tags });
         if (config.viradaDoDia !== viradaAtual) assinarDia();
+        if (mudouTags) recontar();
       }, (e) => definir({ erro: e })));
       paradas.push(repo.observar("materias", { ordem: ["ordem", "asc"] }, (materias) => definir({ materias }), (e) => definir({ erro: e })));
       paradas.push(repo.observar("topicos", { ordem: ["ordem", "asc"] }, (topicos) => { definir({ topicos }); recontar(); }, (e) => definir({ erro: e })));

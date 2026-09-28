@@ -10,7 +10,14 @@ const ATRIBUTOS = ["src", "alt", "data-fc-img", "class"];
 export const limparHtml = (html) => DOMPurify.sanitize(String(html || ""), { ALLOWED_TAGS: TAGS, ALLOWED_ATTR: ATRIBUTOS });
 
 // imagens embutidas: o banco guarda só a referência (data-fc-img); o endereço é resolvido na hora
-export const semEnderecos = (html) => String(html || "").replace(/(<img\b[^>]*?)\s+src="[^"]*"([^>]*data-fc-img=)/gi, "$1$2").replace(/(<img\b[^>]*data-fc-img="[^"]*"[^>]*?)\s+src="[^"]*"/gi, "$1");
+export function semEnderecos(html) {
+  const s = String(html || "");
+  if (!s.includes("data-fc-img")) return s;
+  const t = document.createElement("template");
+  t.innerHTML = s;
+  t.content.querySelectorAll("img[data-fc-img]").forEach((img) => img.removeAttribute("src"));
+  return t.innerHTML;
+}
 
 const escapar = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 

@@ -17,6 +17,7 @@ import { contagensDoDia, somaDe } from "../estado/contagens.js";
 import { apagarMateria, apagarTopico, contarConteudo, criarMateria, criarTopico, moverTopico, renomear, reordenar } from "../servicos/arvore.js";
 import { adiar } from "../servicos/agenda.js";
 import { criarExemplos } from "../servicos/exemplos.js";
+import { criarExemploOclusao } from "./exemploOclusao.js";
 import { formatarIntervalo } from "../motor/agendador.js";
 import { Botao, Confirmar, Contagens, Dialogo, Erro, Menu, PedirTexto, Vazio, avisar, executar } from "./comum.jsx";
 
@@ -306,7 +307,7 @@ export default function Inicio() {
         {materias.length === 0 ? (
           <Vazio icone={Layers} titulo="Monte seu primeiro baralho" texto="Organize por matéria e tópico, como no seu edital. Cada cartão entra na fila de revisão no dia certo para você não esquecer.">
             <Botao variante="primario" icone={Plus} onClick={() => setDialogo({ tipo: "novaMateria" })}>Criar matéria</Botao>
-            <Botao icone={Sparkles} onClick={() => executar(() => criarExemplos(repo), { ok: "Exemplos criados. Abra uma matéria para ver os cartões." }).then(() => loja.recontar())}>Começar com exemplos</Botao>
+            <Botao icone={Sparkles} onClick={() => executar(async () => { await criarExemplos(repo); await criarExemploOclusao(repo).catch(() => 0); }, { ok: "Exemplos criados: básico, lacunas e oclusão de imagem." }).then(() => loja.recontar())}>Começar com exemplos</Botao>
           </Vazio>
         ) : (
           <div className="fc-arvore">
