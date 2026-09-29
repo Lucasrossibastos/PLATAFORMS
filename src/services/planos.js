@@ -1,20 +1,26 @@
-/* studyPlanService: jornadas (planos gerais, "modelos"), plano individual, progresso e revisões.
+/* studyPlanService: jornadas (planos gerais, "modelos"), plano individual e progresso.
 
-   planos/{alunoId}      cópia editável do modelo (materias, ritmo, datas, cronograma)
-   progresso/{alunoId}   { itens: { [itemId]: { minutos, concluido, concluidoEm } } }
-   revisoes/{id}         revisões espaçadas de um item concluído
+   planos/{alunoId}      cópia editável do modelo (materias, ritmo, datas, cronograma),
+                         com horarios (versões do horário semanal) e sobrescritos
+                         (o que o moderador mudou só para este aluno)
+   progresso/{alunoId}   { itens: { [itemId]: { minutos, ciclos } } } (ver core/ciclos.js)
+   revisoes/{id}         revisões automáticas antigas (não nascem mais; as agendadas terminam como metas)
    planosAnteriores/{id} plano substituído, guardado inteiro
    logs/{id}             quem mudou o quê, quando, antes e depois
 
    Toda alteração do plano recalcula só o que falta (recalcularPlano preserva
-   o cronograma dos itens concluídos) e nunca mexe nas sessões de estudo. */
+   o cronograma dos itens concluídos), nunca mexe nas sessões de estudo e
+   refaz as metas das próximas duas semanas (services/metas.js). */
 
 import { apagarCampo, carimbo, ErroDados, novoId } from "../data/contrato.js";
 import {
-  alterarPlano, estadoItem, idItem, impactoAlteracao, itensDoPlano, modeloVazio, planoDoModelo,
-  recalcularPlano, revisoesDoItem, sugerirModelo,
+  alterarPlano, idItem, impactoAlteracao, itensDoPlano, modeloVazio, planoDoModelo,
+  recalcularPlano, sugerirModelo,
 } from "../core/plano.js";
 import { DISP_PADRAO } from "../core/nucleo.js";
+import { estadoDoTopico, marcarTopicoVisto, reabrirTopico, tirarDoFimDaFila } from "../core/ciclos.js";
+import { novaVersaoHorario } from "../core/horario.js";
+import { limparSobrescrito, registrarSobrescritos, sobrescritosDoPlano } from "../core/jornada.js";
 import { ErroValidacao, opsDeLog, porNome } from "./base.js";
 
 /* Qual permissão do aluno cada alteração exige (null = só o moderador). */
@@ -26,36 +32,6 @@ export function permissaoDaOperacao(op) {
     if (campos.length && campos.every((c) => c === "ritmo")) return "ritmo";
   }
   return null;
-}
-
-/* Revisões de um item recém-concluído: uma sessão por intervalo do plano. */
-export function opRevisoesDoItem(plano, item, alunoId, dataConclusao, origem) {
-  const sessoes = revisoesDoItem(dataConclusao, plano?.revisao).map((r) => ({ dia: r.dataPrevista, status: "agendada" }));
-  if (!sessoes.length) return null;
-  const id = novoId();
-  return {
-    tipo: "criar", colecao: "revisoes", id,
-    dados: {
-      alunoId, itemId: item.itemId, materiaId: item.materiaId, topicoId: item.topicoId, subtopicoId: item.subtopicoId || null,
-      concluidoEm: dataConclusao, duracaoMin: plano?.revisao?.duracaoMin || 20, sessoes, origem, criadoEm: carimbo(),
-    },
-  };
-}
-
-/* Tira as revisões que ainda não aconteceram (agendadas) de um item reaberto.
-   Sessões feitas ou ignoradas ficam: são histórico. */
-export function opsCancelarRevisoes(revisoes, itemId, { soIds } = {}) {
-  const ops = [];
-  revisoes
-    .filter((r) => r.itemId === itemId && (!soIds || soIds.includes(r.id)))
-    .forEach((r) => {
-      const restantes = (r.sessoes || []).filter((s) => s.status !== "agendada");
-      if (restantes.length === (r.sessoes || []).length) return;
-      ops.push(restantes.length
-        ? { tipo: "atualizar", colecao: "revisoes", id: r.id, dados: { sessoes: restantes } }
-        : { tipo: "remover", colecao: "revisoes", id: r.id });
-    });
-  return ops;
 }
 
 /* Versão de uma alteração da jornada para o plano de um aluno (null = não levar). */
@@ -103,7 +79,17 @@ export function servicoPlanos(ctx, servicos) {
     if (Object.keys(erros).length) throw new ErroValidacao(erros);
   }
 
-  // grava o plano recalculado + histórico; depois ajusta a semana do aluno
+  // o mapa de sobrescritos de hoje (plano antigo: deduzido da jornada, sem a ordem, que vive em ordemTopicos)
+  async function sobrescritosAtuais(plano) {
+    if (plano.sobrescritos) return plano.sobrescritos;
+    const modelo = plano.modeloId ? await repo.obter("modelosPlano", plano.modeloId) : null;
+    const { mapa } = sobrescritosDoPlano(plano, modelo);
+    return Object.fromEntries(Object.entries(mapa)
+      .map(([id, x]) => { const { ordem: _o, ...resto } = x; return [id, resto]; })
+      .filter(([, x]) => Object.keys(x).length));
+  }
+
+  // grava o plano recalculado + histórico; depois refaz as metas do aluno
   async function gravarPlano(alunoId, plano, prog, ind, entradas, { motivo, extra = [] } = {}) {
     const { plano: calculado, resumo } = recalcularPlano(plano, ind, prog, ctx.hoje());
     const { id: _id, ...dados } = calculado;
@@ -113,8 +99,20 @@ export function servicoPlanos(ctx, servicos) {
       { tipo: "definir", colecao: "planos", id: alunoId, dados: { ...dados, alunoId, ultimoLogId: logId, atualizadoEm: carimbo() } },
       ...extra,
     ]);
-    await servicos.estudo?.aposMudarPlano(alunoId).catch(() => {});
+    await refazerMetas(alunoId, motivo || entradas[0]?.descricao || "plano alterado", "plano");
     return resumo;
+  }
+
+  // as metas acompanham o plano; se o motor falhar, a virada do dia refaz
+  const refazerMetas = (alunoId, motivo, gatilho) => servicos.metas?.recalcular(alunoId, { motivo, gatilho }).catch(() => {});
+
+  // grava os ciclos de um tópico com o registro no mesmo lote
+  async function gravarProgresso(alunoId, itemId, ciclos, entrada, motivo) {
+    const logId = novoId();
+    await repo.lote([
+      ...opsDeLog(ctx, { alunoId, entidade: "plano", entidadeId: alunoId, motivo, logId }, [entrada]),
+      { tipo: "mesclar", colecao: "progresso", id: alunoId, dados: { alunoId, ultimaOperacao: { tipo: "log", id: logId }, itens: { [itemId]: { ciclos } } } },
+    ]);
   }
 
   return {
@@ -233,7 +231,7 @@ export function servicoPlanos(ctx, servicos) {
       for (const p of planos) {
         const doAluno = lista.map((op) => opParaAluno(op, antes, p)).filter(Boolean);
         if (!doAluno.length) continue;
-        const r = await this.alterar(p.id, doAluno, { motivo: motivo || "Levado pela jornada" });
+        const r = await this.alterar(p.id, doAluno, { motivo: motivo || "Levado pela jornada", daJornada: true });
         if (r.mudou) alunos++;
       }
       return { mudou, alunos };
@@ -322,20 +320,78 @@ export function servicoPlanos(ctx, servicos) {
       return { ...impactoAlteracao(plano, novo, ind, prog, ctx.hoje()), alteracoes: log };
     },
 
-    async alterar(alunoId, ops, { motivo = "" } = {}) {
+    /* daJornada: a mudança veio da jornada geral (continua herdada). Mudança
+       do moderador só neste aluno fica marcada como sobrescrita. Mudar as
+       horas da semana acrescenta uma versão do horário (vale de hoje em
+       diante; as metas passadas continuam explicadas pela versão antiga). */
+    async alterar(alunoId, ops, { motivo = "", daJornada = false } = {}) {
       const { plano, prog, ind } = await carregar(alunoId);
       if (!plano) throw new ErroDados("Este aluno ainda não tem plano.", "sem-plano");
+      const lista = Array.isArray(ops) ? ops : [ops];
       let novo = plano;
       const entradas = [];
-      (Array.isArray(ops) ? ops : [ops]).forEach((op) => {
+      lista.forEach((op) => {
         ctx.exigir("alterar:plano", { alunoId, plano, permissao: permissaoDaOperacao(op) });
         const r = alterarPlano(novo, ind, op);
         novo = r.plano;
         entradas.push(...r.log);
       });
       if (!entradas.length) return { mudou: false };
+      if (JSON.stringify(novo.disponibilidade) !== JSON.stringify(plano.disponibilidade)) {
+        const hoje = ctx.hoje();
+        const v = novaVersaoHorario(plano, novo.disponibilidade, { desde: hoje, hojeIso: hoje, por: ctx.usuario.uid });
+        if (!v.ok) throw new ErroValidacao(v.erros);
+        novo = { ...novo, horarios: v.horarios, disponibilidade: v.disponibilidade };
+      }
+      if (ctx.usuario?.role === "moderador" && !daJornada) {
+        let sob = await sobrescritosAtuais(plano);
+        lista.forEach((op) => { sob = registrarSobrescritos(sob, op); });
+        novo = { ...novo, sobrescritos: sob };
+      }
       const resumo = await gravarPlano(alunoId, novo, prog, ind, entradas, { motivo });
       return { mudou: true, resumo, alteracoes: entradas };
+    },
+
+    /* Horário da semana a partir de uma data (hoje ou à frente): nova versão,
+       as anteriores ficam. */
+    async definirHorario(alunoId, dias, { desde, motivo = "" } = {}) {
+      const { plano, prog, ind } = await carregar(alunoId);
+      if (!plano) throw new ErroDados("Este aluno ainda não tem plano.", "sem-plano");
+      ctx.exigir("alterar:plano", { alunoId, plano, permissao: "disponibilidade" });
+      const hoje = ctx.hoje();
+      const v = novaVersaoHorario(plano, dias, { desde: desde || hoje, hojeIso: hoje, por: ctx.usuario.uid });
+      if (!v.ok) throw new ErroValidacao(v.erros);
+      const total = (d) => Object.values(d || {}).reduce((s, x) => s + (Number(x) || 0), 0);
+      return gravarPlano(alunoId, { ...plano, horarios: v.horarios, disponibilidade: v.disponibilidade }, prog, ind, [{
+        tipo: "definirHorario",
+        descricao: `Horário da semana a partir de ${(desde || hoje).split("-").reverse().join("/")}: ${Math.round(total(dias) / 6) / 10} h`,
+        antes: plano.disponibilidade || null, depois: dias,
+      }], { motivo });
+    },
+
+    /* "Voltar ao padrão da jornada" num campo sobrescrito de uma matéria. */
+    async voltarAoPadrao(alunoId, materiaId, campo, { motivo = "" } = {}) {
+      ctx.exigir("gerenciar:alunos");
+      const { plano, prog, ind } = await carregar(alunoId);
+      if (!plano) throw new ErroDados("Este aluno ainda não tem plano.", "sem-plano");
+      const modelo = plano.modeloId ? await repo.obter("modelosPlano", plano.modeloId) : null;
+      const naJornada = modelo?.materias?.find((m) => m.materiaId === materiaId);
+      if (!naJornada) throw new ErroDados("Esta matéria não está na jornada geral.", "nao-encontrado");
+      let novo = structuredClone(plano);
+      const m = novo.materias.find((x) => x.materiaId === materiaId);
+      const antes = campo === "ordem" ? novo.ordemTopicos?.[materiaId] ?? null : campo === "topicos" ? m?.topicos?.length ?? 0 : m?.[campo] ?? null;
+      if (campo === "ordem") {
+        const { [materiaId]: _x, ...resto } = novo.ordemTopicos || {};
+        novo.ordemTopicos = resto;
+      } else if (m && campo === "topicos") m.topicos = structuredClone(naJornada.topicos || []);
+      else if (m) {
+        if (naJornada[campo] === undefined) delete m[campo];
+        else m[campo] = naJornada[campo];
+      }
+      novo.sobrescritos = limparSobrescrito(await sobrescritosAtuais(plano), materiaId, campo);
+      return gravarPlano(alunoId, novo, prog, ind, [{
+        tipo: "voltarAoPadrao", descricao: `${ind.nomeMateria(materiaId)}: ${campo} voltou ao da jornada`, antes, depois: campo === "topicos" ? naJornada.topicos?.length ?? 0 : naJornada[campo] ?? null,
+      }], { motivo });
     },
 
     async recalcular(alunoId, { motivo = "" } = {}) {
@@ -352,49 +408,78 @@ export function servicoPlanos(ctx, servicos) {
       }], { motivo });
     },
 
-    /* Concluir / reabrir um conteúdo à mão. Concluir agenda as revisões;
-       reabrir tira só as revisões que ainda não aconteceram. */
+    /* Marcar um tópico como visto à mão (fecha o ciclo atual) e "rever do
+       zero" (abre um ciclo novo; o anterior fica com a data dele). O tópico
+       revisto vai para o fim da fila da matéria; arrastar para a frente no
+       edital o torna o atual. Tudo com registro; as metas se refazem. */
     async concluirItem(alunoId, itemId, { motivo = "" } = {}) {
       const { plano, prog, ind } = await carregar(alunoId);
       if (!plano) throw new ErroDados("Este aluno ainda não tem plano.", "sem-plano");
       ctx.exigir("alterar:plano", { alunoId, plano, permissao: "concluirItens" });
       const item = itensDoPlano(plano, ind).find((it) => it.itemId === itemId);
       if (!item) throw new ErroDados("Conteúdo não está no plano.", "nao-encontrado");
-      if (estadoItem(item, prog).concluido && prog[itemId]?.concluido === true) return false;
-      const hoje = ctx.hoje();
-      const jaAuto = estadoItem(item, prog).concluido;
-      const logId = novoId();
-      const ops = [
-        ...opsDeLog(ctx, { alunoId, entidade: "plano", entidadeId: alunoId, motivo, logId }, [{
-          tipo: "concluirItem", descricao: `Concluiu ${nomeItem(ind, item)}`, antes: "aberto", depois: "concluído",
-        }]),
-        { tipo: "mesclar", colecao: "progresso", id: alunoId, dados: { alunoId, ultimaOperacao: { tipo: "log", id: logId }, itens: { [itemId]: { concluido: true, concluidoEm: prog[itemId]?.concluidoEm || hoje } } } },
-      ];
-      if (!jaAuto) {
-        const rev = opRevisoesDoItem(plano, item, alunoId, hoje, "conclusao");
-        if (rev) ops.push(rev);
-      }
-      await repo.lote(ops);
-      await servicos.estudo?.sincronizarRevisoes(alunoId).catch(() => {});
+      const r = marcarTopicoVisto(item, prog[itemId], { hojeIso: ctx.hoje(), por: ctx.usuario.uid });
+      if (!r.ok) return false;
+      await gravarProgresso(alunoId, itemId, r.ciclos, { tipo: "concluirItem", descricao: `Marcou como visto: ${nomeItem(ind, item)}`, antes: "aberto", depois: "concluído" }, motivo);
+      await refazerMetas(alunoId, "tópico marcado como visto", "progresso");
       return true;
     },
 
-    async reabrirItem(alunoId, itemId, { motivo = "" } = {}) {
+    async reverDoZero(alunoId, itemId, { motivo = "" } = {}) {
       const { plano, prog, ind } = await carregar(alunoId);
       if (!plano) throw new ErroDados("Este aluno ainda não tem plano.", "sem-plano");
       ctx.exigir("alterar:plano", { alunoId, plano, permissao: "concluirItens" });
       const item = itensDoPlano(plano, ind).find((it) => it.itemId === itemId);
-      if (!item || !estadoItem(item, prog).concluido) return false;
-      const revisoes = await repo.listar("revisoes", [["alunoId", "==", alunoId]]);
+      if (!item) throw new ErroDados("Conteúdo não está no plano.", "nao-encontrado");
+      const r = reabrirTopico(item, prog[itemId], { hojeIso: ctx.hoje(), por: ctx.usuario.uid });
+      if (!r.ok) throw new ErroDados(r.erro, "estado");
+      const n = r.ciclos.length;
+      await gravarProgresso(alunoId, itemId, r.ciclos, {
+        tipo: "reverDoZero", descricao: `Rever do zero: ${nomeItem(ind, item)} (${n}ª vez)`,
+        antes: { ciclo: n - 1, concluido: true }, depois: { ciclo: n, concluido: false, naFila: true },
+      }, motivo);
+      await refazerMetas(alunoId, "tópico para rever do zero", "reverDoZero");
+      return true;
+    },
+    // nome antigo ("Ver de novo")
+    reabrirItem(alunoId, itemId, opcoes) { return this.reverDoZero(alunoId, itemId, opcoes); },
+
+    /* Ordem dos tópicos de uma matéria (arrastar no edital, que mostra a
+       fila de estudo). A ordem gravada passa a ser a fila: o tópico revisto do
+       zero que esperava no fim vale pela posição em que está na lista (puxado
+       para o topo, vira o atual; o que era atual fica pausado, com a %). */
+    async ordenarTopicos(alunoId, materiaId, ordem, { motivo = "" } = {}) {
+      const { plano, prog, ind } = await carregar(alunoId);
+      if (!plano) throw new ErroDados("Este aluno ainda não tem plano.", "sem-plano");
+      ctx.exigir("alterar:plano", { alunoId, plano, permissao: "reordenar" });
+      const m = plano.materias.find((x) => x.materiaId === materiaId);
+      if (!m) throw new ErroDados("Matéria fora do plano.", "nao-encontrado");
+      const ids = new Set((m.topicos || []).map((t) => t.topicoId));
+      if (ordem.length !== ids.size || !ordem.every((id) => ids.has(id))) throw new ErroDados("A ordem precisa ter todos os tópicos da matéria.", "invalido");
+      const itens = itensDoPlano(plano, ind).filter((it) => it.materiaId === materiaId);
+      const antes = itens.map((it) => it.topicoId);
+      // os que esperavam no fim da fila passam a valer pela posição na lista
+      const soltos = itens.filter((it) => estadoDoTopico(it, prog[it.itemId]).naFila);
+      if (JSON.stringify(antes) === JSON.stringify(ordem) && !soltos.length) return false;
       const logId = novoId();
-      await repo.lote([
+      const novo = { ...plano, ordemTopicos: { ...(plano.ordemTopicos || {}), [materiaId]: ordem } };
+      const { plano: calculado } = recalcularPlano(novo, ind, prog, ctx.hoje());
+      const { id: _id, ...dados } = calculado;
+      const ops = [
         ...opsDeLog(ctx, { alunoId, entidade: "plano", entidadeId: alunoId, motivo, logId }, [{
-          tipo: "reabrirItem", descricao: `Reabriu ${nomeItem(ind, item)}`, antes: "concluído", depois: "aberto",
+          tipo: "ordenarTopicos", descricao: `Nova ordem em ${ind.nomeMateria(materiaId)}${soltos.length ? ` (a rever: ${soltos.map((it) => ind.nomeTopico(it.topicoId)).join(", ")})` : ""}`,
+          antes, depois: ordem,
         }]),
-        { tipo: "mesclar", colecao: "progresso", id: alunoId, dados: { alunoId, ultimaOperacao: { tipo: "log", id: logId }, itens: { [itemId]: { concluido: false, concluidoEm: apagarCampo() } } } },
-        ...opsCancelarRevisoes(revisoes, itemId),
-      ]);
-      await servicos.estudo?.sincronizarRevisoes(alunoId).catch(() => {});
+        { tipo: "definir", colecao: "planos", id: alunoId, dados: { ...dados, alunoId, ultimoLogId: logId, atualizadoEm: carimbo() } },
+      ];
+      if (soltos.length) {
+        ops.push({
+          tipo: "mesclar", colecao: "progresso", id: alunoId,
+          dados: { alunoId, ultimaOperacao: { tipo: "log", id: logId }, itens: Object.fromEntries(soltos.map((it) => [it.itemId, { ciclos: tirarDoFimDaFila(it, prog[it.itemId]) }])) },
+        });
+      }
+      await repo.lote(ops);
+      await refazerMetas(alunoId, "ordem dos tópicos", "ordem");
       return true;
     },
 

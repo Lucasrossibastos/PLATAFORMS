@@ -3,7 +3,8 @@ import { criarRepositorioLocal } from "../data/local.js";
 import { semearDemonstracao, SENHA_DEMO } from "../data/semente.js";
 import { ErroPermissao } from "../core/permissoes.js";
 import { itensDoPlano, estadoItem } from "../core/plano.js";
-import { chaveDoDia } from "../core/semana.js";
+import { filaDaMateria, progressoVisto } from "../core/ciclos.js";
+import { conteudoPlanejado } from "../core/motorMetas.js";
 import { criarServicos } from "./index.js";
 import { ErroValidacao } from "./base.js";
 import { painelDoAluno, metricasAluno } from "./desempenho.js";
@@ -189,87 +190,167 @@ describe("notificações", () => {
   });
 });
 
-describe("semana, sessões e progresso", () => {
-  it("marcar meta cria sessão e soma progresso; desfazer volta e registra no histórico", async () => {
+describe("metas diárias, sessões e progresso", () => {
+  const metasDe = (alunoId) => t.repo.listar("metas", [["alunoId", "==", alunoId]]);
+  const deHoje = async (alunoId, dia = "2026-09-28") => (await metasDe(alunoId)).filter((m) => m.dataPlanejada === dia && m.status === "pendente");
+
+  it("duas semanas de metas; concluir cria sessão, soma progresso e grava a % vista; desfazer volta com registro", async () => {
     const ana = await t.uidDe("aluno@curso.com");
     await t.entrar("aluno@curso.com");
-    const est = await t.s.estudo.garantirSemana(ana);
-    expect(est.chave).toBe("2026-09-28");
-    const meta = est.metas[chaveDoDia("2026-09-28")].find((m) => m.tipo === "ciclo");
-    expect(meta).toBeTruthy();
+    await t.s.metas.garantir(ana);
+    const metas = await metasDe(ana);
+    expect(new Set(metas.map((m) => m.dataPlanejada)).size).toBeGreaterThanOrEqual(12);
+    expect(metas.every((m) => m.status === "pendente" && m.categoria === "progressao")).toBe(true);
+    const [meta] = await deHoje(ana);
 
-    const r = await t.s.estudo.alternarMeta(ana, meta.id);
-    expect(r.feita).toBe(true);
+    const r = await t.s.metas.concluir(ana, meta.id);
     const sessao = await t.repo.obter("sessoesEstudo", r.sessaoId);
-    expect(sessao).toMatchObject({ alunoId: ana, minutos: meta.minutos, materiaId: meta.materiaId, data: "2026-09-28", origem: "meta" });
+    expect(sessao).toMatchObject({ alunoId: ana, minutos: meta.duracaoPlanejada, materiaId: meta.materiaId, data: "2026-09-28", origem: "meta", metaId: meta.id });
+    const feita = await t.repo.obter("metas", meta.id);
+    expect(feita).toMatchObject({ status: "concluida", concluidaEm: "2026-09-28", duracaoReal: meta.duracaoPlanejada, sessaoId: r.sessaoId });
+    expect(feita.partes[0]).toMatchObject({ pctAntes: 0, ciclo: 1 });
+    expect(feita.partes[0].pctDepois).toBeGreaterThan(0);
     const prog = (await t.repo.obter("progresso", ana)).itens;
-    const somado = sessao.partes.reduce((s, p) => s + prog[p.itemId].minutos, 0);
-    expect(somado).toBe(meta.minutos);
+    expect(sessao.partes.reduce((x, p) => x + prog[p.itemId].minutos, 0)).toBe(meta.duracaoPlanejada);
 
-    await t.s.estudo.alternarMeta(ana, meta.id);
+    await t.s.metas.desfazer(ana, meta.id);
     expect(await t.repo.obter("sessoesEstudo", r.sessaoId)).toBeNull();
+    expect(await t.repo.obter("metas", meta.id)).toMatchObject({ status: "pendente" });
     const prog2 = (await t.repo.obter("progresso", ana)).itens;
     expect(sessao.partes.every((p) => prog2[p.itemId].minutos === 0)).toBe(true);
-    const logs = await t.repo.listar("logs", [["alunoId", "==", ana], ["tipo", "==", "desfazerMeta"]]);
+    expect(await t.repo.listar("logs", [["alunoId", "==", ana], ["tipo", "==", "desfazerMeta"]])).toHaveLength(1);
+  });
+
+  it("toda execução do motor fica registrada, com quem, antes e depois", async () => {
+    const ana = await t.uidDe("aluno@curso.com");
+    await t.entrar("aluno@curso.com");
+    await t.s.metas.garantir(ana);
+    await t.s.metas.garantir(ana); // mesmo dia: não roda de novo
+    const logs = await t.repo.listar("logs", [["alunoId", "==", ana], ["tipo", "==", "recalcularMetas"]]);
     expect(logs).toHaveLength(1);
+    expect(logs[0]).toMatchObject({ papel: "aluno", antes: { metas: 0 }, depois: { mudancas: { criadas: expect.any(Number) } } });
+    expect(logs[0].depois.metas).toBeGreaterThan(0);
   });
 
   it("depois de 24 h o aluno não desfaz a meta de ontem", async () => {
     const ana = await t.uidDe("aluno@curso.com");
     await t.entrar("aluno@curso.com");
-    const est = await t.s.estudo.garantirSemana(ana);
-    const meta = est.metas.seg.find((m) => m.tipo === "ciclo");
-    await t.s.estudo.alternarMeta(ana, meta.id);
+    await t.s.metas.garantir(ana);
+    const [meta] = await deHoje(ana);
+    await t.s.metas.concluir(ana, meta.id);
     agora = new Date(2026, 8, 29, 12, 0);
-    await expect(t.s.estudo.alternarMeta(ana, meta.id)).rejects.toThrow(ErroPermissao);
+    await expect(t.s.metas.desfazer(ana, meta.id)).rejects.toThrow(ErroPermissao);
   });
 
-  it("concluir conteúdo agenda revisões (7/15/30 dias); reabrir tira só as que não aconteceram", async () => {
+  it("virada do dia: a meta não feita vai para a frente guardando o dia perdido; a concluída não muda", async () => {
+    const ana = await t.uidDe("aluno@curso.com");
+    await t.entrar("aluno@curso.com");
+    await t.s.metas.garantir(ana);
+    const [feita, perdida] = await deHoje(ana);
+    await t.s.metas.concluir(ana, feita.id);
+    const antes = await t.repo.obter("metas", feita.id);
+    agora = new Date(2026, 8, 29, 9, 0);
+    await t.s.metas.garantir(ana);
+    expect(await t.repo.obter("metas", feita.id)).toEqual(antes);
+    const depois = await t.repo.obter("metas", perdida.id);
+    expect(depois.datasAnteriores).toEqual(["2026-09-28"]);
+    expect(depois.dataPlanejada >= "2026-09-29").toBe(true);
+  });
+
+  it("arrastar fixa a meta no dia; organizar de novo solta", async () => {
+    const ana = await t.uidDe("aluno@curso.com");
+    await t.entrar("aluno@curso.com");
+    await t.s.metas.garantir(ana);
+    const [meta] = await deHoje(ana);
+    await t.s.metas.mover(ana, meta.id, "2026-10-01");
+    expect(await t.repo.obter("metas", meta.id)).toMatchObject({ dataPlanejada: "2026-10-01", fixada: true, datasAnteriores: [] });
+    await expect(t.s.metas.mover(ana, meta.id, "2026-09-27")).rejects.toThrow(/hoje ou um dia à frente/);
+    await t.s.metas.reorganizar(ana);
+    expect((await t.repo.obter("metas", meta.id))?.fixada).not.toBe(true);
+  });
+
+  it("rever do zero reabre o tópico sem duplicar estado: ciclo novo no fim da fila, o anterior fica com a data", async () => {
     const ana = await t.uidDe("aluno@curso.com");
     await t.entrar("aluno@curso.com");
     const plano = await t.repo.obter("planos", ana);
     const ind = await t.s.ctx.indice();
-    const item = itensDoPlano(plano, ind)[0];
-    await t.s.planos.concluirItem(ana, item.itemId);
-    const [rev] = await t.repo.listar("revisoes", [["alunoId", "==", ana]]);
-    expect(rev.sessoes.map((s) => s.dia)).toEqual(["2026-10-05", "2026-10-13", "2026-10-28"]);
-    expect(rev.sessoes.every((s) => s.status === "agendada")).toBe(true);
+    const itens = itensDoPlano(plano, ind);
+    const comDois = itens.find((it) => itens.filter((x) => x.materiaId === it.materiaId).length >= 2).materiaId;
+    const [primeiro, segundo] = itens.filter((it) => it.materiaId === comDois);
+    await t.s.planos.concluirItem(ana, primeiro.itemId);
+    expect(await t.repo.listar("revisoes", [["alunoId", "==", ana]])).toEqual([]); // não cria mais revisões automáticas
+    const pctAntes = progressoVisto(itens, (await t.repo.obter("progresso", ana)).itens).plano;
 
-    await t.s.planos.reabrirItem(ana, item.itemId);
-    expect(await t.repo.listar("revisoes", [["alunoId", "==", ana]])).toEqual([]);
-    const prog = (await t.repo.obter("progresso", ana)).itens;
-    expect(estadoItem(item, prog).concluido).toBe(false);
+    await t.s.planos.reverDoZero(ana, primeiro.itemId);
+    let prog = (await t.repo.obter("progresso", ana)).itens;
+    expect(Object.keys(prog)).toEqual([primeiro.itemId]); // um registro por tópico, sem cópia
+    expect(prog[primeiro.itemId].ciclos).toMatchObject([
+      { n: 1, concluido: true, concluidoEm: "2026-09-28" },
+      { n: 2, origem: "rever_do_zero", naFila: true, reabertoEm: "2026-09-28" },
+    ]);
+    expect(progressoVisto(itens, prog).plano).toBe(pctAntes); // já visto uma vez: o progresso não cai
+    const materia = itens.filter((it) => it.materiaId === primeiro.materiaId);
+    let fila = filaDaMateria(materia, prog);
+    expect(fila.atual.itemId).toBe(segundo.itemId); // um só tópico atual por matéria; o revisto espera no fim
+    expect(fila.fila.at(-1).itemId).toBe(primeiro.itemId);
+    await expect(t.s.planos.reverDoZero(ana, primeiro.itemId)).rejects.toThrow(/já concluído/);
+    const [log] = await t.repo.listar("logs", [["alunoId", "==", ana], ["tipo", "==", "reverDoZero"]]);
+    expect(log).toMatchObject({ papel: "aluno", antes: { ciclo: 1 }, depois: { ciclo: 2, naFila: true } });
+
+    // arrastado para a frente, vira o tópico atual e as metas da matéria passam a ser "rever do zero"
+    const ordem = [primeiro.topicoId, ...materia.filter((it) => it !== primeiro).map((it) => it.topicoId)];
+    await t.s.planos.ordenarTopicos(ana, primeiro.materiaId, ordem);
+    prog = (await t.repo.obter("progresso", ana)).itens;
+    fila = filaDaMateria(itensDoPlano(await t.repo.obter("planos", ana), ind).filter((it) => it.materiaId === primeiro.materiaId), prog);
+    expect(fila.atual.itemId).toBe(primeiro.itemId);
+    expect(fila.status[segundo.itemId]).toBe("nao_visto");
+    const metas = await metasDe(ana);
+    const conteudo = conteudoPlanejado(metas, itensDoPlano(await t.repo.obter("planos", ana), ind), prog);
+    const daMateria = metas.filter((m) => m.materiaId === primeiro.materiaId && m.status === "pendente").sort((a, b) => a.dataPlanejada.localeCompare(b.dataPlanejada));
+    expect(conteudo[daMateria[0].id]).toMatchObject({ categoria: "rever_do_zero", partes: [{ itemId: primeiro.itemId, ciclo: 2 }] });
   });
 
-  it("revisão agendada para esta semana entra como meta no dia certo", async () => {
+  it("revisão recorrente: só o moderador ativa, só em tópico concluído, uma por tópico; vira meta no dia do ciclo", async () => {
     const ana = await t.uidDe("aluno@curso.com");
+    const ind = await t.s.ctx.indice();
+    const item = itensDoPlano(await t.repo.obter("planos", ana), ind)[0];
     await t.entrar("aluno@curso.com");
-    await t.s.estudo.garantirSemana(ana);
-    const plano = await t.repo.obter("planos", ana);
+    await t.s.metas.garantir(ana);
+    await expect(t.s.revisoes.ativar(ana, item.itemId, { intervaloDias: 3, duracaoMin: 20 })).rejects.toThrow(ErroPermissao);
     await t.entrar("moderador@curso.com");
-    await t.s.planos.alterar(ana, { tipo: "definirPlano", campos: { revisao: { intervalos: [2], duracaoMin: 25 } } });
-    const item = itensDoPlano(await t.repo.obter("planos", ana), await t.s.ctx.indice())[1];
+    await expect(t.s.revisoes.ativar(ana, item.itemId, { intervaloDias: 3, duracaoMin: 20 })).rejects.toThrow(/concluído/);
     await t.s.planos.concluirItem(ana, item.itemId);
-    const semana = await t.repo.obter("semanas", ana);
-    const rev = semana.metas.qua.find((m) => m.tipo === "revisao");
-    expect(rev).toMatchObject({ dia: "2026-09-30", minutos: 25, itemId: item.itemId });
-    expect(plano).toBeTruthy();
+    await t.s.revisoes.ativar(ana, item.itemId, { intervaloDias: 3, duracaoMin: 20, dataBase: "2026-09-29" });
+    await expect(t.s.revisoes.ativar(ana, item.itemId, { intervaloDias: 5, duracaoMin: 20 })).rejects.toThrow(/Edite a existente/);
+    const rev = (await metasDe(ana)).filter((m) => m.categoria === "revisao_recorrente").map((m) => m.dataPlanejada).sort();
+    expect(rev).toEqual(["2026-09-29", "2026-10-02", "2026-10-05", "2026-10-08", "2026-10-11"]);
+
+    await t.s.revisoes.editar(ana, item.itemId, { intervaloDias: 7 });
+    const depois = (await metasDe(ana)).filter((m) => m.categoria === "revisao_recorrente").map((m) => m.dataPlanejada).sort();
+    expect(depois).toEqual(["2026-09-29", "2026-10-06"]);
+    await t.s.revisoes.desativar(ana, item.itemId);
+    expect((await metasDe(ana)).filter((m) => m.categoria === "revisao_recorrente")).toEqual([]);
+    expect((await t.repo.obter("revisoesRecorrentes", `${ana}__${item.itemId}`)).parametros).toHaveLength(2); // nada apagado
+    const tipos = (await t.repo.listar("logs", [["alunoId", "==", ana]])).map((l) => l.tipo);
+    expect(tipos).toEqual(expect.arrayContaining(["ativarRevisao", "editarRevisao", "desativarRevisao"]));
   });
 
-  it("virada de semana: pendências viram atrasadas e a semana fechada vai para o histórico", async () => {
+  it("menos horas na semana: revisões não são cortadas; o dia fica em conflito, visível ao moderador", async () => {
     const ana = await t.uidDe("aluno@curso.com");
-    await t.entrar("aluno@curso.com");
-    const est = await t.s.estudo.garantirSemana(ana);
-    const meta = est.metas.seg.find((m) => m.tipo === "ciclo");
-    await t.s.estudo.alternarMeta(ana, meta.id);
-    const total = Object.values(est.metas).flat().length;
-
-    agora = new Date(2026, 9, 6, 9, 0); // terça da semana seguinte
-    const nova = await t.s.estudo.garantirSemana(ana);
-    expect(nova.chave).toBe("2026-10-05");
-    expect(nova.pendentes.length).toBe(Object.values(est.metas).flat().filter((m) => m.tipo === "ciclo").length - 1);
-    const resumo = await t.repo.obter("resumosSemana", `${ana}_2026-09-28`);
-    expect(resumo).toMatchObject({ metas: total, cumpridas: 1, naoCumpridas: total - 1 });
+    const ind = await t.s.ctx.indice();
+    const itens = itensDoPlano(await t.repo.obter("planos", ana), ind).slice(0, 3);
+    await t.entrar("moderador@curso.com");
+    for (const it of itens) {
+      await t.s.planos.concluirItem(ana, it.itemId);
+      await t.s.revisoes.ativar(ana, it.itemId, { intervaloDias: 7, duracaoMin: 40, dataBase: "2026-09-30" });
+    }
+    await t.s.planos.alterar(ana, { tipo: "definirPlano", campos: { disponibilidade: { seg: 60, ter: 60, qua: 60, qui: 60, sex: 60, sab: 0, dom: 0 } } });
+    const agenda = await t.repo.obter("agendas", ana);
+    expect(agenda.conflitos[0]).toEqual({ data: "2026-09-30", minutosRevisoes: 120, minutosDia: 60 });
+    const doDia = (await metasDe(ana)).filter((m) => m.dataPlanejada === "2026-09-30");
+    expect(doDia.map((m) => m.categoria)).toEqual(["revisao_recorrente", "revisao_recorrente", "revisao_recorrente"]);
+    // a versão antiga do horário continua valendo para o passado
+    expect((await t.repo.obter("planos", ana)).horarios).toHaveLength(2);
   });
 });
 
@@ -277,9 +358,10 @@ describe("plano individual: alterações, histórico e recálculo", () => {
   it("alteração do moderador registra antes/depois e preserva o que já foi estudado", async () => {
     const ana = await t.uidDe("aluno@curso.com");
     await t.entrar("aluno@curso.com");
-    const est = await t.s.estudo.garantirSemana(ana);
-    const meta = est.metas.seg.find((m) => m.tipo === "ciclo");
-    const { sessaoId } = await t.s.estudo.alternarMeta(ana, meta.id);
+    await t.s.metas.garantir(ana);
+    const [meta] = (await t.repo.listar("metas", [["alunoId", "==", ana]])).filter((m) => m.dataPlanejada === "2026-09-28");
+    const { sessaoId } = await t.s.metas.concluir(ana, meta.id);
+    const feita = await t.repo.obter("metas", meta.id);
     const progAntes = (await t.repo.obter("progresso", ana)).itens;
 
     await t.entrar("moderador@curso.com");
@@ -291,8 +373,8 @@ describe("plano individual: alterações, histórico e recálculo", () => {
 
     expect(await t.repo.obter("sessoesEstudo", sessaoId)).toBeTruthy();
     expect((await t.repo.obter("progresso", ana)).itens).toEqual(progAntes);
-    const semana = await t.repo.obter("semanas", ana);
-    expect(semana.metas.seg.find((m) => m.id === meta.id)?.done).toBe(true);
+    expect(await t.repo.obter("metas", meta.id)).toEqual(feita); // o motor nunca reescreve o passado
+    expect((await t.repo.obter("planos", ana)).sobrescritos.biologia).toEqual({ peso: true }); // só para a Ana
     const [log] = await t.repo.listar("logs", [["alunoId", "==", ana], ["tipo", "==", "definirMateria"]]);
     expect(log).toMatchObject({ autorNome: "Prof. Moderador", papel: "moderador", depois: 600, motivo: "reforço" });
   });
@@ -388,9 +470,10 @@ describe("jornadas práticas e edital por aluno", () => {
     await t.entrar("moderador@curso.com");
     await t.s.planos.alterar(ana, { tipo: "definirMateria", materiaId: "historia", campos: { ativa: false, minutosSemanais: 240 } });
     await t.entrar("aluno@curso.com");
-    const est = await t.s.estudo.garantirSemana(ana);
-    const materias = new Set(Object.values(est.metas).flat().map((m) => m.materiaId));
+    await t.s.metas.garantir(ana);
+    const materias = new Set((await t.repo.listar("metas", [["alunoId", "==", ana]])).map((m) => m.materiaId));
     expect(materias.has("historia")).toBe(false);
+    expect(materias.size).toBeGreaterThan(3);
     expect((await t.repo.obter("planos", ana)).materias.find((m) => m.materiaId === "historia").ativa).toBe(false);
   });
 

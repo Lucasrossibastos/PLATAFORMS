@@ -101,9 +101,10 @@ export function jornadaEfetiva(plano, modelo) {
    já fica marcada por ordemTopicos. */
 export function registrarSobrescritos(sobrescritos = {}, op) {
   const s = structuredClone(sobrescritos || {});
-  const marcar = (materiaId, campos) => { s[materiaId] = { ...(s[materiaId] || {}), ...Object.fromEntries(campos.map((c) => [c, true])) }; };
+  const marcar = (materiaId, campos) => { if (campos.length) s[materiaId] = { ...(s[materiaId] || {}), ...Object.fromEntries(campos.map((c) => [c, true])) }; };
   switch (op.tipo) {
-    case "definirMateria": marcar(op.materiaId, Object.keys(op.campos || {}).filter((c) => CAMPOS_MATERIA.includes(c))); break;
+    // minutos por semana é o peso dos planos antigos (sem peso explícito)
+    case "definirMateria": marcar(op.materiaId, [...new Set(Object.keys(op.campos || {}).map((c) => (c === "minutosSemanais" ? "peso" : c)).filter((c) => CAMPOS_MATERIA.includes(c)))]); break;
     case "adicionarTopico": case "removerTopico": case "definirCarga":
     case "adicionarSubtopico": case "removerSubtopico": case "moverSubtopico": marcar(op.materiaId, ["topicos"]); break;
     case "adicionarMateria": marcar(op.materiaId, ["soNoAluno"]); break;

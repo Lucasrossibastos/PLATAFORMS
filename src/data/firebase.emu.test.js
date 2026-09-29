@@ -6,6 +6,7 @@ import { criarRepositorioFirebase } from "./firebase.js";
 import { modelosIniciais } from "./semente.js";
 import { criarServicos } from "../services/index.js";
 import { ErroPermissao } from "../core/permissoes.js";
+import { itensDoPlano } from "../core/plano.js";
 
 const PROJETO = "demo-aprova";
 const HOST = "127.0.0.1";
@@ -78,23 +79,41 @@ describe("Firebase (emuladores): fluxo moderador → aluno", () => {
     expect(envio.destinatarios).toBe(1);
   });
 
-  it("aluna estuda: semana, meta, desfazer, questões, aviso lido, material", async () => {
+  it("aluna estuda: metas, concluir, desfazer, rever do zero, questões, aviso lido, material", async () => {
     await s.auth.sair();
     await entrarComo("ana@teste.com");
     expect(usuario.role).toBe("aluno");
 
-    const est = await s.estudo.garantirSemana(ids.ana);
-    const meta = Object.values(est.metas).flat().find((m) => m.tipo === "ciclo");
-    const feita = await s.estudo.alternarMeta(ids.ana, meta.id);
+    await s.metas.garantir(ids.ana);
+    const hojeIso = s.ctx.hoje();
+    const metas = await repo.listar("metas", [["alunoId", "==", ids.ana]]);
+    const meta = metas.find((m) => m.dataPlanejada === hojeIso && m.status === "pendente");
+    const feita = await s.metas.concluir(ids.ana, meta.id);
     const prog = (await repo.obter("progresso", ids.ana)).itens;
     const sessao = await repo.obter("sessoesEstudo", feita.sessaoId);
-    expect(sessao.partes.reduce((t, p) => t + prog[p.itemId].minutos, 0)).toBe(meta.minutos);
+    expect(sessao.partes.reduce((t, p) => t + prog[p.itemId].minutos, 0)).toBe(meta.duracaoPlanejada);
     expect(sessao.criadoEm).toMatch(/^\d{4}-\d{2}-\d{2}T/); // carimbo do servidor lido como texto
+    expect((await repo.obter("metas", meta.id)).status).toBe("concluida");
 
-    await s.estudo.alternarMeta(ids.ana, meta.id); // desfaz (dentro de 24 h, com log)
+    await s.metas.desfazer(ids.ana, meta.id); // dentro de 24 h, com log
     expect(await repo.obter("sessoesEstudo", feita.sessaoId)).toBeNull();
+    expect((await repo.obter("metas", meta.id)).status).toBe("pendente");
     const logs = await repo.listar("logs", [["alunoId", "==", ids.ana]]);
     expect(logs.some((l) => l.id === `rm_${feita.sessaoId}`)).toBe(true);
+
+    // meta concluída não se apaga nem se reescreve sem registro
+    const outra = await s.metas.concluir(ids.ana, meta.id);
+    await expect(repo.remover("metas", meta.id)).rejects.toMatchObject({ codigo: "permissao" });
+    await expect(repo.atualizar("metas", meta.id, { duracaoReal: 500 })).rejects.toMatchObject({ codigo: "permissao" });
+    expect(outra.sessaoId).toBeTruthy();
+
+    // marcar como visto e rever do zero: ciclos com registro, sem apagar a conclusão
+    const ind = await s.ctx.indice();
+    const item = itensDoPlano(await repo.obter("planos", ids.ana), ind).find((it) => it.materiaId === "matematica");
+    await s.planos.concluirItem(ids.ana, item.itemId);
+    await s.planos.reverDoZero(ids.ana, item.itemId);
+    const ciclos = (await repo.obter("progresso", ids.ana)).itens[item.itemId].ciclos;
+    expect(ciclos.map((c) => [c.n, !!c.concluido])).toEqual([[1, true], [2, false]]);
 
     const hoje = s.ctx.hoje();
     const q = await s.questoes.registrar(ids.ana, { data: hoje, materiaId: "biologia", topicoId: "bi1", total: 20, acertos: 12, erros: 6 });
@@ -121,6 +140,8 @@ describe("Firebase (emuladores): fluxo moderador → aluno", () => {
     const [q] = await repo.listar("questoes", [["alunoId", "==", ids.ana]]);
     await expect(repo.atualizar("questoes", q.id, { acertos: 20, erros: 0 })).rejects.toMatchObject({ codigo: "permissao" });
     await expect(repo.remover("questoes", q.id)).rejects.toMatchObject({ codigo: "permissao" });
+    // revisão recorrente é só do moderador
+    await expect(repo.definir("revisoesRecorrentes", `${ids.ana}__t:x`, { alunoId: ids.ana, itemId: "t:x", ativo: true, parametros: [{}] })).rejects.toMatchObject({ codigo: "permissao" });
   });
 
   it("moderador vê a turma e o histórico de alterações", async () => {
@@ -129,7 +150,17 @@ describe("Firebase (emuladores): fluxo moderador → aluno", () => {
     const alunos = await new Promise((ok) => { const parar = s.alunos.observarTodos((l) => { if (l.length === 2) { parar(); ok(l); } }); });
     expect(alunos.map((a) => a.nome)).toEqual(["Ana Teste", "Bia Teste"]);
     const logs = await repo.listar("logs", [["alunoId", "==", ids.ana]]);
-    expect(logs.map((l) => l.tipo)).toEqual(expect.arrayContaining(["cadastro", "aplicarPlano", "desfazerMeta", "corrigir", "definirPlano"]));
+    expect(logs.map((l) => l.tipo)).toEqual(expect.arrayContaining(["cadastro", "aplicarPlano", "desfazerMeta", "corrigir", "definirPlano", "recalcularMetas", "reverDoZero"]));
     expect(logs.find((l) => l.tipo === "definirPlano")).toMatchObject({ papel: "aluno", antes: "Normal", depois: "Acelerada" });
+
+    // revisão recorrente num tópico já concluído: uma por tópico, vira meta, desativar não apaga
+    const ind = await s.ctx.indice();
+    const item = itensDoPlano(await repo.obter("planos", ids.ana), ind).find((it) => it.materiaId === "matematica");
+    await s.revisoes.ativar(ids.ana, item.itemId, { intervaloDias: 2, duracaoMin: 20 });
+    const rev = (await repo.listar("metas", [["alunoId", "==", ids.ana]])).filter((m) => m.categoria === "revisao_recorrente");
+    expect(rev.length).toBeGreaterThanOrEqual(7);
+    await s.revisoes.desativar(ids.ana, item.itemId);
+    expect((await repo.obter("revisoesRecorrentes", `${ids.ana}__${item.itemId}`)).ativo).toBe(false);
+    await expect(repo.remover("revisoesRecorrentes", `${ids.ana}__${item.itemId}`)).rejects.toMatchObject({ codigo: "permissao" });
   });
 });

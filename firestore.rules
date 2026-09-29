@@ -151,7 +151,8 @@ service cloud.firestore {
       return (op.tipo == 'sessao' && !exists(doc('sessoesEstudo/' + op.id)) && existsAfter(doc('sessoesEstudo/' + op.id))
               && getAfter(doc('sessoesEstudo/' + op.id)).data.alunoId == alunoId)
         || (op.tipo == 'remocao' && exists(doc('sessoesEstudo/' + op.id)) && !existsAfter(doc('sessoesEstudo/' + op.id)))
-        || (op.tipo == 'log' && logNoLote(op.id, alunoId) && perfilPlanoPermite(alunoId, 'concluirItens'));
+        || (op.tipo == 'log' && logNoLote(op.id, alunoId)
+            && (perfilPlanoPermite(alunoId, 'concluirItens') || perfilPlanoPermite(alunoId, 'reordenar')));
     }
     function perfilPlanoPermite(alunoId, permissao) {
       return get(doc('planos/' + alunoId)).data.get('permissoesAluno', {}).get(permissao, false) == true;
@@ -190,8 +191,13 @@ service cloud.firestore {
         && d.categoria in ['progressao', 'rever_do_zero', 'revisao_recorrente', 'revisao_automatica']
         && d.materiaId is string && dataIso(d.dataPlanejada)
         && d.duracaoPlanejada is int && d.duracaoPlanejada >= 5 && d.duracaoPlanejada <= 720
-        && d.status in ['pendente', 'concluida']
+        && d.status in ['pendente', 'concluida', 'dispensada']
         && d.get('datasAnteriores', []) is list;
+    }
+    // a progressão vira "rever do zero" (e volta) conforme o tópico que ela estuda
+    function categoriaOk() {
+      return novo().categoria == antigo().categoria
+        || (novo().categoria in ['progressao', 'rever_do_zero'] && antigo().categoria in ['progressao', 'rever_do_zero']);
     }
     // os dias perdidos só crescem; mudar de dia uma meta que já passou registra o dia perdido
     function diasPerdidosOk() {
@@ -210,11 +216,13 @@ service cloud.firestore {
       allow read: if podeLerRegistro();
       allow create: if (moderador() || proprio(novo().alunoId)) && metaValida(novo()) && novo().status == 'pendente'
         && novo().get('datasAnteriores', []).size() == 0;
+      // pendente: muda de dia, é concluída (com a hora do servidor) ou dispensada (sobrou, fica no histórico);
+      // dispensada não volta; concluída só muda com registro
       allow update: if (moderador() || proprio(antigo().alunoId)) && metaValida(novo())
-        && imutaveis(['alunoId', 'categoria', 'geradaEm'])
+        && imutaveis(['alunoId', 'geradaEm']) && categoriaOk()
         && (antigo().status == 'pendente'
-              ? diasPerdidosOk() && (novo().status == 'pendente' || novo().concluidaEmTs == request.time)
-              : correcaoDeMetaOk(antigo().alunoId));
+              ? diasPerdidosOk() && (novo().status == 'pendente' || novo().status == 'dispensada' || novo().concluidaEmTs == request.time)
+              : antigo().status == 'concluida' && correcaoDeMetaOk(antigo().alunoId));
       allow delete: if (moderador() || proprio(antigo().alunoId))
         && (antigo().status == 'pendente'
               ? antigo().get('datasAnteriores', []).size() == 0 && !diaPassado(antigo().dataPlanejada)
@@ -230,17 +238,25 @@ service cloud.firestore {
     }
     match /revisoesRecorrentes/{id} {
       allow read: if podeLerRegistro();
+      // uma por tópico: o id é alunoId__itemId (reativar usa o mesmo documento)
       allow create: if moderador() && novo().alunoId is string && novo().itemId is string
+        && id == novo().alunoId + '__' + novo().itemId
         && novo().ativo is bool && novo().parametros is list && novo().parametros.size() == 1;
       allow update: if moderador() && imutaveis(['alunoId', 'itemId', 'topicoId', 'materiaId']) && parametrosSoAcrescentam();
       allow delete: if false;
     }
 
-    /* ---------- semana e sessões de estudo ---------- */
+    // quando o motor de metas rodou e os conflitos do horizonte (o moderador vê)
+    match /agendas/{alunoId} {
+      allow read: if podeVer(alunoId);
+      allow write: if moderador() || (proprio(alunoId) && request.resource != null && novo().alunoId == alunoId);
+    }
+
+    /* ---------- semana (sistema antigo, só leitura do histórico) e sessões de estudo ---------- */
 
     match /semanas/{alunoId} {
       allow read: if podeVer(alunoId);
-      allow write: if moderador() || (proprio(alunoId) && (request.resource == null || novo().alunoId == alunoId));
+      allow write: if moderador();
     }
 
     match /resumosSemana/{id} {

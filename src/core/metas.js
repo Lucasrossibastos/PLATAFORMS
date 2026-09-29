@@ -8,10 +8,13 @@
                                 hora de estudar (a meta é contínua: pode terminar
                                 um tópico e seguir no próximo)
      dataPlanejada, duracaoPlanejada,
-     status: "pendente" | "concluida",
+     status: "pendente" | "concluida" | "dispensada" (sobrou sem ser feita:
+             fica no histórico como não cumprida, nunca é apagada),
      datasAnteriores: []        dias em que ela estava planejada e não foi feita
      ordemNoDia, geracao, geradaEm, geradaPor ("motor" | uid do moderador/aluno)
+     fixada                     o aluno pôs neste dia (o motor não tira)
      revisaoRecorrenteId, ocorrenciaEm       só na revisão recorrente
+     revisaoAntigaId, revisaoDia             só na revisão automática antiga
      — ao concluir —
      concluidaEm, duracaoReal, sessaoId,
      partes: [{ itemId, topicoId, minutos, ciclo, pctAntes, pctDepois, concluiu }]
@@ -57,6 +60,7 @@ export function novaMeta(d, { geradaEm, geradaPor = "motor", geracao = 0 } = {})
       status: "pendente", datasAnteriores: [], ordemNoDia: d.ordemNoDia ?? 0,
       geracao, geradaEm: geradaEm || null, geradaPor,
       ...(d.categoria === "revisao_recorrente" ? { revisaoRecorrenteId: d.revisaoRecorrenteId, ocorrenciaEm: d.ocorrenciaEm || d.dataPlanejada } : {}),
+      ...(d.categoria === "revisao_automatica" && d.revisaoAntigaId ? { revisaoAntigaId: d.revisaoAntigaId, revisaoDia: d.revisaoDia || d.dataPlanejada } : {}),
     },
   };
 }
@@ -68,11 +72,12 @@ export const ehAtrasada = (m, hojeIso) => m.status === "pendente" && m.dataPlane
 export function moverMeta(m, novaData, hojeIso) {
   if (m.status !== "pendente") return { ok: false, erro: "Meta concluída não muda de dia." };
   if (!DATA.test(novaData || "") || novaData < hojeIso) return { ok: false, erro: "Escolha hoje ou um dia à frente." };
-  if (novaData === m.dataPlanejada) return { ok: true, meta: m };
+  if (novaData === m.dataPlanejada) return { ok: true, meta: m, mesmoDia: true };
   const perdeu = m.dataPlanejada < hojeIso;
   return {
     ok: true,
-    meta: { ...m, dataPlanejada: novaData, datasAnteriores: perdeu ? [...(m.datasAnteriores || []), m.dataPlanejada] : [...(m.datasAnteriores || [])] },
+    // o aluno escolheu o dia: fica fixada (o motor não tira dali)
+    meta: { ...m, dataPlanejada: novaData, fixada: true, datasAnteriores: perdeu ? [...(m.datasAnteriores || []), m.dataPlanejada] : [...(m.datasAnteriores || [])] },
   };
 }
 

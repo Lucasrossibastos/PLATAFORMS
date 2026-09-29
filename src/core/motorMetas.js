@@ -262,6 +262,41 @@ export function reconciliar({ metas, slots, hojeIso, estrategia = "redistribuir"
   return { criar, atualizar, apagar, dispensar };
 }
 
+/* Uma execução completa do motor: revisões antigas que ainda faltam,
+   revisões recorrentes e, com o que sobra de cada dia, a progressão.
+   Devolve as mudanças (ninguém grava aqui) e os conflitos do horizonte. */
+export function recalcularMetas({ hojeIso, plano, itens, progresso = {}, metas = [], revisoes = [], revisoesAntigas = [], dias = HORIZONTE_DIAS }) {
+  const estrategia = plano?.atraso === "manter" ? "manter" : "redistribuir";
+  const antigas = metasDasRevisoesAntigas({ revisoes: revisoesAntigas, metas, hojeIso, dias });
+  const rec = planejarRevisoes({ revisoes, metas, hojeIso, dias });
+  const comRevisoes = aplicarMudancas(metas, { criar: [...antigas, ...rec.criar], atualizar: rec.atualizar, apagar: rec.apagar, dispensar: rec.dispensar });
+  const h = planejarHorizonte({ hojeIso, plano, itens, progresso, metas: comRevisoes, dias, estrategia });
+  const prog = reconciliar({ metas: comRevisoes, slots: h.slots, hojeIso, estrategia });
+  return {
+    criar: [...antigas, ...rec.criar, ...prog.criar.map((c) => ({ categoria: "progressao", ...c }))],
+    atualizar: [...rec.atualizar, ...prog.atualizar],
+    apagar: [...rec.apagar, ...prog.apagar],
+    dispensar: [...rec.dispensar, ...prog.dispensar],
+    conflitos: h.conflitos,
+    capacidade: h.capacidade,
+  };
+}
+
+// as metas depois das mudanças (para simular e para o registro de antes/depois)
+export function aplicarMudancas(metas, { criar = [], atualizar = [], apagar = [], dispensar = [] }, novoId = (i) => `nova${i}`) {
+  const fora = new Set(apagar);
+  const disp = new Set(dispensar);
+  const patch = new Map();
+  atualizar.forEach((a) => patch.set(a.id, { ...(patch.get(a.id) || {}), ...a.patch }));
+  return [
+    ...metas.filter((m) => !fora.has(m.id)).map((m) => {
+      const x = patch.has(m.id) ? { ...m, ...patch.get(m.id) } : m;
+      return disp.has(m.id) ? { ...x, status: "dispensada" } : x;
+    }),
+    ...criar.map((c, i) => ({ status: "pendente", datasAnteriores: [], ...c, id: c.id || novoId(i) })),
+  ];
+}
+
 // resumo das metas pendentes de progressão no horizonte (para o registro do recálculo)
 export function resumoDoHorizonte(metas, hojeIso) {
   const fim = somarDias(hojeIso, HORIZONTE_DIAS - 1);

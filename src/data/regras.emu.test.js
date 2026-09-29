@@ -351,15 +351,37 @@ describe("metas: horário versionado, registro de metas e revisões recorrentes"
   it("revisão recorrente: só o moderador ativa e edita (parâmetros só acrescentam); ninguém apaga", async () => {
     const p1 = { desde: "2026-09-01", intervaloDias: 7, duracaoMin: 20, dataBase: "2026-09-01", modoAtraso: "fixo" };
     const rev = { alunoId: "ana", materiaId: "biologia", topicoId: "bi1", itemId: "t:bi1", ativo: true, ativadoPor: "mod", parametros: [p1] };
-    await assertFails(setDoc(doc(db("ana"), "revisoesRecorrentes/r1"), rev));
-    await assertSucceeds(setDoc(doc(db("mod"), "revisoesRecorrentes/r1"), rev));
-    await assertSucceeds(getDoc(doc(db("ana"), "revisoesRecorrentes/r1")));
-    await assertFails(getDoc(doc(db("carlos"), "revisoesRecorrentes/r1")));
-    await assertFails(updateDoc(doc(db("ana"), "revisoesRecorrentes/r1"), { ativo: false }));
-    await assertSucceeds(updateDoc(doc(db("mod"), "revisoesRecorrentes/r1"), { parametros: [p1, { ...p1, desde: "2026-09-15", intervaloDias: 14 }] }));
-    await assertFails(updateDoc(doc(db("mod"), "revisoesRecorrentes/r1"), { parametros: [{ ...p1, intervaloDias: 3 }] }));
-    await assertFails(updateDoc(doc(db("mod"), "revisoesRecorrentes/r1"), { itemId: "t:outro" }));
-    await assertSucceeds(updateDoc(doc(db("mod"), "revisoesRecorrentes/r1"), { ativo: false, desativadoPor: "mod" }));
-    await assertFails(deleteDoc(doc(db("mod"), "revisoesRecorrentes/r1")));
+    const R = "revisoesRecorrentes/ana__t:bi1"; // uma por tópico: o id é aluno__tópico
+    await assertFails(setDoc(doc(db("mod"), "revisoesRecorrentes/outro-id"), rev));
+    await assertFails(setDoc(doc(db("ana"), R), rev));
+    await assertSucceeds(setDoc(doc(db("mod"), R), rev));
+    await assertSucceeds(getDoc(doc(db("ana"), R)));
+    await assertFails(getDoc(doc(db("carlos"), R)));
+    await assertFails(updateDoc(doc(db("ana"), R), { ativo: false }));
+    await assertSucceeds(updateDoc(doc(db("mod"), R), { parametros: [p1, { ...p1, desde: "2026-09-15", intervaloDias: 14 }] }));
+    await assertFails(updateDoc(doc(db("mod"), R), { parametros: [{ ...p1, intervaloDias: 3 }] }));
+    await assertFails(updateDoc(doc(db("mod"), R), { itemId: "t:outro" }));
+    await assertSucceeds(updateDoc(doc(db("mod"), R), { ativo: false, desativadoPor: "mod" }));
+    await assertFails(deleteDoc(doc(db("mod"), R)));
+  });
+
+  it("meta que sobrou é dispensada (fica no histórico, não volta); progressão pode virar 'rever do zero'", async () => {
+    await semRegras(async (d) => {
+      await setDoc(doc(d, "metas/d1"), meta({ dataPlanejada: diaUTC(-3) }));
+      await setDoc(doc(d, "metas/c1"), meta());
+    });
+    const a = db("ana");
+    await assertSucceeds(updateDoc(doc(a, "metas/d1"), { status: "dispensada", dispensadaEm: hojeIso }));
+    await assertFails(updateDoc(doc(a, "metas/d1"), { status: "pendente" }));
+    await assertFails(deleteDoc(doc(a, "metas/d1")));
+    await assertSucceeds(updateDoc(doc(a, "metas/c1"), { categoria: "rever_do_zero" }));
+    await assertFails(updateDoc(doc(a, "metas/c1"), { categoria: "revisao_recorrente" }));
+  });
+
+  it("agenda do motor: o aluno grava a própria; outro aluno nem lê", async () => {
+    await assertSucceeds(setDoc(doc(db("ana"), "agendas/ana"), { alunoId: "ana", geradaEm: hojeIso, conflitos: [] }));
+    await assertFails(setDoc(doc(db("ana"), "agendas/carlos"), { alunoId: "carlos", geradaEm: hojeIso }));
+    await assertFails(getDoc(doc(db("carlos"), "agendas/ana")));
+    await assertSucceeds(getDoc(doc(db("mod"), "agendas/ana")));
   });
 });
