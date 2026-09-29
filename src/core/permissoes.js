@@ -4,6 +4,7 @@
 
 export const PAPEIS = { ALUNO: "aluno", MODERADOR: "moderador" };
 export const JANELA_CORRECAO_H = 24; // o aluno corrige/apaga os próprios registros por 24 h
+const LIBERADAS_SE_AUSENTES = ["tempos"];
 
 export class ErroPermissao extends Error {
   constructor(mensagem = "Você não tem permissão para fazer isso.") {
@@ -39,8 +40,9 @@ export function pode(u, acao, alvo = {}, agora = Date.now()) {
       return moderador(u) || proprio(u, alvo.alunoId);
 
     // plano individual: moderador sempre; aluno só no que o plano permite
+    // (permissão criada depois do plano vale como liberada até o moderador mudar)
     case "alterar:plano":
-      return moderador(u) || (proprio(u, alvo.alunoId) && !!alvo.plano?.permissoesAluno?.[alvo.permissao]);
+      return moderador(u) || (proprio(u, alvo.alunoId) && !!(alvo.plano?.permissoesAluno?.[alvo.permissao] ?? LIBERADAS_SE_AUSENTES.includes(alvo.permissao)));
 
     // estudo e registros próprios
     case "registrar:estudo":

@@ -5,7 +5,8 @@ React 19 + Vite. Dois papéis, **aluno** e **moderador**, sobre dados reais.
 - **Aluno**: Dashboard (metas de hoje, com a % de cada tópico, ou as
   próximas duas semanas, com arrastar para outro dia e o resumo da semana),
   Edital (matérias em blocos → fila de estudo de cada matéria; marca o que
-  já viu, revê do zero, arrasta para mudar a ordem), Meus cursos (aulas em vídeo), Redação, Desempenho e, em Extra,
+  já viu, toca no riscado para ver de novo, arrasta para mudar a ordem,
+  ajusta a duração das metas e o tempo de cada tópico), Meus cursos (aulas em vídeo), Redação, Desempenho e, em Extra,
   Questões, Simulados e Materiais. Materiais abre em blocos coloridos por
   área (Listas de Física…); dentro, cada lista mostra matéria, tópico e
   número de questões, e "Registrar acertos" já vem preenchido. Simulados
@@ -140,6 +141,10 @@ firestore.rules, storage.rules   controle de acesso real
   tira das listas, mas o histórico continua mostrando o nome.
 - **Datas locais**: nada de `toISOString()` para datas do dia; ver
   `core/datas.js`.
+- **Tempo**: a jornada não tem horas por semana. O tempo vem das horas-base
+  de cada tópico e se encaixa no horário de cada aluno, dividido pelo peso
+  das matérias. A duração de cada meta e o tempo de cada tópico são minutos
+  livres (5 a 720), definidos na jornada e ajustáveis por aluno.
 - **Metas diárias**: `core/motorMetas.js` planeja as próximas duas semanas
   (roda na virada do dia e depois de toda mudança que afeta o plano, sempre
   com registro de antes/depois). Em cada dia, as revisões entram primeiro
@@ -152,7 +157,8 @@ firestore.rules, storage.rules   controle de acesso real
   com histórico é dispensada, não apagada. Peças: `core/jornada.js` (peso e
   herdado × sobrescrito em `plano.sobrescritos`), `core/horario.js`
   (horário em versões, `plano.horarios`), `core/ciclos.js` (cada estudo de
-  um tópico é um ciclo; "rever do zero" abre outro sem apagar a conclusão;
+  um tópico é um ciclo; ver de novo abre outro, o tópico volta a contar
+  como não visto e a conclusão anterior fica gravada;
   fila com um tópico atual por matéria), `core/metas.js`,
   `core/revisaoRecorrente.js`. Dados antigos são lidos no formato novo sem
   regravação; a semana do sistema antigo vira um resumo parcial.
@@ -164,7 +170,7 @@ firestore.rules, storage.rules   controle de acesso real
 | `usuarios/{uid}` | papel (`aluno`/`moderador`), nome, e-mail, vestibular, curso, turma, acesso |
 | `areas`, `materias`, `topicos`, `subtopicos`, `vestibulares`, `cursos` | estrutura acadêmica (id, nome, ordem, pai, carga, arquivado) |
 | `modelosPlano` | jornadas (vestibular, curso, modalidade, matérias em ordem com peso, duração de cada meta, prioridade, velocidade e visibilidade, tópicos, permissões do aluno) |
-| `planos/{alunoId}` | edital do aluno (cópia editável da jornada) + cronograma recalculado |
+| `planos/{alunoId}` | edital do aluno (cópia editável da jornada) + cronograma recalculado; `duracaoMeta` e `tempoTopico` guardam os tempos ajustados só para ele (aluno ou moderador) |
 | `planosAnteriores` | edital substituído, guardado inteiro |
 | `vistos/{alunoId}` | subtópicos que o aluno marcou como vistos |
 | `progresso/{alunoId}` | minutos e ciclos por tópico (somados junto com cada sessão) |

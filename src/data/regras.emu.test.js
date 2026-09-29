@@ -307,6 +307,19 @@ describe("metas: horário versionado, registro de metas e revisões recorrentes"
     await assertFails(apaga.commit());
   });
 
+  it("tempos do aluno: duração das metas e tempo dos tópicos (com log); sem a permissão, não", async () => {
+    const a = db("ana");
+    const ok = writeBatch(a);
+    ok.set(doc(a, "logs/t1"), log("ana", "ana"));
+    ok.update(doc(a, "planos/ana"), { duracaoMeta: { biologia: 37 }, tempoTopico: { bi1: 95 }, cronograma: { z: { fim: "2027-03-01" } }, ultimoLogId: "t1" });
+    await assertSucceeds(ok.commit());
+    await env.withSecurityRulesDisabled((ctx) => updateDoc(doc(ctx.firestore(), "planos/ana"), { "permissoesAluno.tempos": false }));
+    const nao = writeBatch(a);
+    nao.set(doc(a, "logs/t2"), log("ana", "ana"));
+    nao.update(doc(a, "planos/ana"), { duracaoMeta: { biologia: 50 }, ultimoLogId: "t2" });
+    await assertFails(nao.commit());
+  });
+
   it("meta: o aluno cria a própria, pendente e válida", async () => {
     await assertSucceeds(setDoc(doc(db("ana"), "metas/m1"), meta()));
     await assertFails(setDoc(doc(db("ana"), "metas/m2"), meta({ alunoId: "carlos" })));

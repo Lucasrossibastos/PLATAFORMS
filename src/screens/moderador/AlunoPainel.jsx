@@ -113,7 +113,7 @@ function Estudo({ v }) {
   const [motivo, setMotivo] = useState("");
   const { executar, ocupado, erro } = useAcao();
   const origem = { meta: "Meta", extra: "Tempo extra", revisao: "Revisão", fora: "Por fora" };
-  const categoria = { rever_do_zero: "Rever do zero", revisao_recorrente: "Revisão recorrente", revisao_automatica: "Revisão (antiga)" };
+  const categoria = { revisao_recorrente: "Revisão recorrente", revisao_automatica: "Revisão (antiga)" };
   if (!v.sessoes.length) return <div className="cartao"><Vazio icone={BookOpen} titulo="Nenhuma sessão de estudo registrada" /></div>;
   return (
     <>

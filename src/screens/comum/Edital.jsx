@@ -10,7 +10,9 @@ import {
 } from "lucide-react";
 import { DIAS, fmtMin } from "../../core/nucleo.js";
 import { fmtDataCurta, fmtDataLonga } from "../../core/datas.js";
-import { CARGA_PADRAO, PERMISSOES_ALUNO, PRIORIDADES, RITMOS, capacidadeSemanal, idItem, itensDoPlano, nomeRitmo, topicosEmOrdem } from "../../core/plano.js";
+import {
+  CARGA_PADRAO, MINUTOS_MAX, MINUTOS_MIN, PERMISSOES_ALUNO, PRIORIDADES, RITMOS, capacidadeSemanal, duracaoDaMeta, idItem, itensDoPlano, nomeRitmo, topicosEmOrdem,
+} from "../../core/plano.js";
 import { PESO_MAX, PESO_MIN, jornadaEfetiva, pesosDoPlano } from "../../core/jornada.js";
 import { horariosDoPlano } from "../../core/horario.js";
 import { ESTRATEGIAS_ATRASO } from "../../core/motorMetas.js";
@@ -130,9 +132,17 @@ export function ResumoEdital({ v, acoes }) {
 
 /* ---------- Blocos de matérias ---------- */
 
+/* Cada matéria: tópicos, % vista e o tempo de conteúdo (as horas-base dos
+   tópicos): no aluno, quanto falta; na jornada, o total e o peso. */
 export function BlocosMaterias({ plano, progresso, selecionada, aoSelecionar, mostrarOcultas = false }) {
   const { ind } = useApp();
   const materias = (plano.materias || []).filter((m) => ind.materia(m.materiaId) && (mostrarOcultas || m.ativa !== false));
+  const conteudo = useMemo(() => {
+    const r = {};
+    itensDoPlano({ ...plano, materias: (plano.materias || []).map((m) => ({ ...m, ativa: true })) }, ind).forEach((it) => { r[it.materiaId] = (r[it.materiaId] || 0) + it.duracao; });
+    return r;
+  }, [plano, ind]);
+  const pesos = pesosDoPlano(plano);
   if (!materias.length) return <div className="cartao"><Vazio icone={Settings2} titulo="Nenhuma matéria no edital" /></div>;
   return (
     <div className="blocos-materias">
@@ -140,7 +150,7 @@ export function BlocosMaterias({ plano, progresso, selecionada, aoSelecionar, mo
         const pm = progresso?.porMateria.find((x) => x.materiaId === m.materiaId);
         const topicos = (m.topicos || []).filter((t) => ind.topico(t.topicoId)).length;
         const oculta = m.ativa === false;
-        const horas = plano.alocacaoSemanal?.[m.materiaId] ?? m.minutosSemanais ?? 0;
+        const falta = pm ? Math.max(0, Math.round(pm.total - pm.feito)) : null;
         return (
           <button key={m.materiaId} type="button" className={`bloco-materia${oculta ? " bloco-materia--oculta" : ""}`}
             style={{ "--cor": ind.corDaMateria(m.materiaId) }} aria-pressed={selecionada === m.materiaId}
@@ -152,7 +162,9 @@ export function BlocosMaterias({ plano, progresso, selecionada, aoSelecionar, mo
             </span>
             {pm && <span className="bloco-materia-barra"><Barra valor={pm.pct} cor="var(--cor)" /><small className="num">{pctTxt(pm.pct)}</small></span>}
             <span className="bloco-materia-rodape">
-              {oculta ? <span className="etiqueta">Oculta para o aluno</span> : <span className="num">{fmtMin(horas)} por semana</span>}
+              {oculta ? <span className="etiqueta">Oculta para o aluno</span>
+                : pm ? <span className="num">{falta ? `faltam ${fmtMin(falta)} de estudo` : "tudo visto"}</span>
+                  : <span className="num">{fmtMin(conteudo[m.materiaId] || 0)} de conteúdo · peso {pesos[m.materiaId]}</span>}
             </span>
           </button>
         );
@@ -163,14 +175,23 @@ export function BlocosMaterias({ plano, progresso, selecionada, aoSelecionar, mo
 
 /* ---------- Tópicos de uma matéria ---------- */
 
-function CargaEditor({ valor, padrao, aoSalvar, rotulo }) {
+/* Tempo em minutos, livre (tocar para mudar; vazio volta ao padrão). */
+function CargaEditor({ valor, padrao, aoSalvar, rotulo, titulo = "Mudar o tempo de estudo" }) {
   const [editando, setEditando] = useState(false);
   const [x, setX] = useState(valor ?? "");
-  if (!editando) return <button type="button" className="carga" onClick={() => { setX(valor ?? ""); setEditando(true); }} title="Mudar o tempo de estudo">{fmtMin(valor ?? padrao)}{valor != null && <i aria-label="(personalizado)">*</i>}</button>;
+  const salvar = () => {
+    const n = x === "" ? null : Number(x);
+    if (n != null && !minutosOk(n)) return;
+    setEditando(false);
+    if (n !== (valor ?? null)) aoSalvar(n);
+  };
+  if (!editando) return <button type="button" className="carga" onClick={() => { setX(valor ?? ""); setEditando(true); }} title={titulo}>{fmtMin(valor ?? padrao)}{valor != null && <i aria-label="(personalizado)">*</i>}</button>;
   return (
     <span className="carga-edicao">
-      <input className="entrada num" type="number" min="5" step="5" aria-label={rotulo} value={x} placeholder={String(padrao)} autoFocus onChange={(e) => setX(e.target.value)} />
-      <button type="button" className="icone-btn" aria-label="Salvar" onClick={() => { setEditando(false); aoSalvar(x === "" ? null : Number(x)); }}><Check /></button>
+      <input className={`entrada num${x !== "" && !minutosOk(Number(x)) ? " entrada--erro" : ""}`} type="number" min={MINUTOS_MIN} max={MINUTOS_MAX} step="1" aria-label={rotulo} value={x} placeholder={String(padrao)} autoFocus
+        onChange={(e) => setX(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") salvar(); if (e.key === "Escape") setEditando(false); }} />
+      <small>min</small>
+      <button type="button" className="icone-btn" aria-label="Salvar" onClick={salvar}><Check /></button>
       <button type="button" className="icone-btn" aria-label="Cancelar" onClick={() => setEditando(false)}><Undo2 /></button>
     </span>
   );
@@ -208,7 +229,7 @@ function NovoNome({ rotulo, aoCriar, ocupado }) {
   );
 }
 
-/* pode: { reordenar, cortar, vistos, estrutura, criar, carga, revisoes }
+/* pode: { reordenar, cortar, vistos, estrutura, criar, carga, tempos, revisoes }
    Com `v` e `aoOrdenar` (edital de um aluno), os tópicos aparecem como a
    fila de estudo dele (FilaTopicos); sem isso (jornada), na ordem do plano. */
 export function TopicosDaMateria({
@@ -227,10 +248,14 @@ export function TopicosDaMateria({
   const nomeM = ind.nomeMateria(materiaId);
   const comoFila = !!(v && aoOrdenar);
 
-  const carga = (t) => pode.carga && (
+  // tempo do tópico: na jornada, a hora-base; no aluno, o ajuste dele por cima dela
+  const carga = (t) => pode.carga && (comoFila ? (
+    <CargaEditor valor={plano.tempoTopico?.[t.topicoId] ?? null} padrao={t.cargaMin ?? ind.topico(t.topicoId)?.cargaMin ?? CARGA_PADRAO} rotulo={`Minutos de estudo de ${ind.nomeTopico(t.topicoId)}`}
+      aoSalvar={(c) => op({ tipo: "definirTempoTopico", materiaId, topicoId: t.topicoId, minutos: c }, "Mudar o tempo do tópico")} />
+  ) : (
     <CargaEditor valor={t.cargaMin} padrao={ind.topico(t.topicoId)?.cargaMin ?? CARGA_PADRAO} rotulo={`Minutos de estudo de ${ind.nomeTopico(t.topicoId)}`}
       aoSalvar={(c) => op({ tipo: "definirCarga", materiaId, topicoId: t.topicoId, cargaMin: c }, "Mudar o tempo de estudo")} />
-  );
+  ));
   const subtopicos = (t) => {
     const subs = (t.subtopicos || []).filter((x) => ind.subtopico(x.subtopicoId));
     const subsFora = ind.subtopicosDoTopico(t.topicoId).filter((x) => !t.subtopicos?.some((y) => y.subtopicoId === x.id));
@@ -268,6 +293,15 @@ export function TopicosDaMateria({
             {comoFila ? `Fila de estudo · ${plural(topicos.length, "tópico", "tópicos")}${pode.reordenar ? " · arraste para mudar a ordem" : ""}` : `${plural(topicos.length, "tópico", "tópicos")} na ordem de estudo`}
             {m.ativa === false ? " · oculta para o aluno (não gera metas)" : ""}
           </p>
+          {comoFila && (
+            <p className="previa-linha duracao-meta">
+              Cada meta:{" "}
+              {pode.tempos ? (
+                <CargaEditor valor={plano.duracaoMeta?.[materiaId] ?? null} padrao={m.maxSessao ?? 60} rotulo={`Minutos de cada meta de ${nomeM}`} titulo="Mudar a duração das metas desta matéria"
+                  aoSalvar={(c) => op({ tipo: "definirDuracaoMeta", materiaId, minutos: c }, "Mudar a duração das metas")} />
+              ) : <b className="num">{fmtMin(duracaoDaMeta(plano, m))}</b>}
+            </p>
+          )}
         </div>
         {aoFechar && <button type="button" className="icone-btn" aria-label="Fechar" onClick={aoFechar}><X /></button>}
       </header>
@@ -316,7 +350,7 @@ export function TopicosDaMateria({
 
 /* ---------- Peso e metas por matéria (rascunho + aplicar de uma vez) ---------- */
 
-const DURACOES = [30, 45, 60, 75, 90, 120];
+const minutosOk = (v) => Number.isInteger(v) && v >= MINUTOS_MIN && v <= MINUTOS_MAX;
 const ROTULO_CAMPO = { peso: "peso", maxSessao: "duração", prioridade: "prioridade", ritmo: "velocidade", ativa: "aparece" };
 
 /* Cada matéria: se aparece, o PESO (1 a 10: a fatia de cada matéria nas
@@ -328,9 +362,10 @@ export function TabelaIncidencia({ plano, aoAplicar, ocupado, capacidade, efetiv
   const { ind } = useApp();
   const [rascunho, setRascunho] = useState({});
   useEffect(() => setRascunho({}), [plano]); // aplicado (ou mudou por fora): começa de novo
+  const doAluno = capacidade != null; // edital de um aluno (senão, a jornada)
   const materias = (plano.materias || []).filter((m) => ind.materia(m.materiaId));
   const pesos = pesosDoPlano(plano);
-  const camposDe = (m) => ({ peso: pesos[m.materiaId], maxSessao: m.maxSessao || 60, prioridade: m.prioridade ?? 2, ritmo: m.ritmo ?? 1, ativa: m.ativa !== false });
+  const camposDe = (m) => ({ peso: pesos[m.materiaId], maxSessao: duracaoDaMeta(plano, m), prioridade: m.prioridade ?? 2, ritmo: m.ritmo ?? 1, ativa: m.ativa !== false });
   // só vale o que ainda difere do plano (depois de aplicar, o rascunho some sozinho)
   const pendentes = Object.fromEntries(materias.map((m) => {
     const orig = camposDe(m);
@@ -339,10 +374,13 @@ export function TabelaIncidencia({ plano, aoAplicar, ocupado, capacidade, efetiv
   }).filter(([, c]) => Object.keys(c).length));
   const valor = (m) => ({ ...camposDe(m), ...(pendentes[m.materiaId] || {}) });
   const mudar = (m, campos) => setRascunho((r) => ({ ...r, [m.materiaId]: { ...(pendentes[m.materiaId] || {}), ...campos } }));
-  const ops = Object.entries(pendentes).map(([materiaId, campos]) => ({ tipo: "definirMateria", materiaId, campos }));
+  // no aluno, a duração da meta é um ajuste dele (duracaoMeta), por cima da jornada
+  const ops = Object.entries(pendentes).flatMap(([materiaId, { maxSessao, ...campos }]) => [
+    ...(Object.keys(campos).length ? [{ tipo: "definirMateria", materiaId, campos }] : []),
+    ...(maxSessao === undefined ? [] : doAluno ? [{ tipo: "definirDuracaoMeta", materiaId, minutos: maxSessao }] : [{ tipo: "definirMateria", materiaId, campos: { maxSessao } }]),
+  ]);
+  const invalida = Object.values(pendentes).some((c) => c.maxSessao !== undefined && !minutosOk(c.maxSessao));
   const somaPesos = materias.reduce((acc, m) => { const x = valor(m); return acc + (x.ativa ? x.peso : 0); }, 0);
-  // jornada sem horário de aluno: a referência é o total de horas previsto nela
-  const semana = capacidade ?? materias.reduce((acc, m) => acc + (m.ativa !== false ? m.minutosSemanais || 0 : 0), 0);
   const fora = ind.materias.filter((m) => !plano.materias?.some((x) => x.materiaId === m.id));
   const origem = (materiaId, campo) => efetiva?.materias.find((x) => x.materiaId === materiaId)?.campos[campo];
   const marca = (m, campo) => {
@@ -359,18 +397,21 @@ export function TabelaIncidencia({ plano, aoAplicar, ocupado, capacidade, efetiv
     <section className="secao" aria-labelledby="t-incidencia">
       <div className="secao-cabeca">
         <h2 id="t-incidencia" className="subtitulo">Peso de cada matéria nas metas</h2>
-        <p className="previa-linha">Quanto maior o peso, mais a matéria aparece nas metas (engenharia: Matemática 10, Filosofia 2). A prioridade só desempata.</p>
+        <p className="previa-linha">
+          Quanto maior o peso, mais a matéria aparece nas metas (engenharia: Matemática 10, Filosofia 2); a prioridade só desempata.
+          Cada meta dura o que você definir, em minutos. {doAluno ? "O horário do aluno é dividido pelos pesos." : "O tempo se encaixa no horário de cada aluno."}
+        </p>
       </div>
       <div className="tabela-rolagem">
         <table className="tabela tabela-incidencia tabela--cartoes">
-          <thead><tr><th>Matéria</th><th>Aparece</th><th>Peso</th><th>Cada meta</th><th className="num">≈ por semana</th><th>Prioridade</th><th>Velocidade</th></tr></thead>
+          <thead><tr><th>Matéria</th><th>Aparece</th><th>Peso</th><th>Cada meta</th><th className="num">Fatia</th><th>Prioridade</th><th>Velocidade</th></tr></thead>
           <tbody>
             {materias.map((m) => {
               const x = valor(m);
               const mudou = !!pendentes[m.materiaId];
               const nome = ind.nomeMateria(m.materiaId);
-              const minutos = x.ativa && somaPesos ? Math.round((x.peso / somaPesos) * semana) : 0;
-              const metas = minutos ? Math.max(1, Math.round(minutos / x.maxSessao)) : 0;
+              const fatia = x.ativa && somaPesos ? x.peso / somaPesos : 0;
+              const minutos = doAluno ? Math.round(fatia * capacidade) : 0;
               return (
                 <tr key={m.materiaId} className={`${mudou ? "linha-mudou" : ""}${x.ativa ? "" : " linha-oculta"}`}>
                   <td className="celula-principal"><span className="celula-conteudo"><i className="ponto-materia" style={{ "--cor": ind.corDaMateria(m.materiaId) }} aria-hidden="true" /><strong>{nome}</strong>{mudou && <small className="etiqueta etiqueta--rev">alterada</small>}</span></td>
@@ -387,12 +428,14 @@ export function TabelaIncidencia({ plano, aoAplicar, ocupado, capacidade, efetiv
                     {marca(m, "peso")}
                   </td>
                   <td data-rotulo="Cada meta">
-                    <select className="entrada entrada--sm" value={x.maxSessao} aria-label={`Duração de cada meta de ${nome}`} onChange={(e) => mudar(m, { maxSessao: Number(e.target.value) })}>
-                      {[...new Set([...DURACOES, x.maxSessao])].sort((a, b) => a - b).map((d) => <option key={d} value={d}>até {fmtMin(d)}</option>)}
-                    </select>
+                    <span className="minutos">
+                      <input className={`entrada entrada--sm num${minutosOk(x.maxSessao) ? "" : " entrada--erro"}`} type="number" min={MINUTOS_MIN} max={MINUTOS_MAX} step="1"
+                        value={x.maxSessao} aria-label={`Minutos de cada meta de ${nome}`} onChange={(e) => mudar(m, { maxSessao: e.target.value === "" ? "" : Number(e.target.value) })} />
+                      <small>min</small>
+                    </span>
                     {marca(m, "maxSessao")}
                   </td>
-                  <td className="num" data-rotulo="≈ por semana">{x.ativa ? <>{fmtMin(minutos)}<small className="bloco-pequeno">{plural(metas, "meta", "metas")}</small></> : "—"}</td>
+                  <td className="num" data-rotulo="Fatia">{x.ativa ? <>{Math.round(fatia * 100)}%{doAluno && <small className="bloco-pequeno">≈ {fmtMin(minutos)}/semana</small>}</> : "—"}</td>
                   <td data-rotulo="Prioridade">
                     <select className="entrada entrada--sm" value={x.prioridade} aria-label={`Prioridade de ${nome}`} onChange={(e) => mudar(m, { prioridade: Number(e.target.value) })}>
                       {PRIORIDADES.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
@@ -412,11 +455,14 @@ export function TabelaIncidencia({ plano, aoAplicar, ocupado, capacidade, efetiv
         </table>
       </div>
       <div className="barra-incidencia">
-        <span className="num">{capacidade != null ? <>Horas livres: <b>{fmtMin(capacidade)}</b> por semana, divididas pelo peso</> : <>Referência: <b>{fmtMin(semana)}</b> por semana</>}</span>
+        <span className="num">
+          {invalida ? <span className="txt-erro">Duração: minutos de {MINUTOS_MIN} a {MINUTOS_MAX}</span>
+            : doAluno ? <>Horário do aluno: <b>{fmtMin(capacidade)}</b> por semana, dividido pelo peso</> : null}
+        </span>
         {fora.length > 0 && <AdicionarSelect rotulo="Incluir matéria" opcoes={fora} aoEscolher={(id) => aoAplicar([{ tipo: "adicionarMateria", materiaId: id }], `Incluir ${ind.nomeMateria(id)}`)} />}
         {ops.length > 0 && <>
           <Botao variante="texto" tamanho="sm" onClick={() => setRascunho({})}>Descartar</Botao>
-          <Botao variante="solido" tamanho="sm" disabled={ocupado} onClick={() => aoAplicar(ops, "Peso e metas por matéria")}>Aplicar {plural(ops.length, "alteração", "alterações")}</Botao>
+          <Botao variante="solido" tamanho="sm" disabled={ocupado || invalida} onClick={() => aoAplicar(ops, "Peso e metas por matéria")}>Aplicar {plural(Object.keys(pendentes).length, "alteração", "alterações")}</Botao>
         </>}
       </div>
     </section>
@@ -588,10 +634,10 @@ export function EditalDoAluno({ v, modo }) {
   const efetiva = useMemo(() => (modelo ? jornadaEfetiva(v.plano, modelo) : null), [modelo, v.plano]);
 
   const pode = moderador
-    ? { reordenar: true, cortar: true, vistos: true, estrutura: true, criar: true, carga: true, recalcular: true, revisoes: true,
+    ? { reordenar: true, cortar: true, vistos: true, estrutura: true, criar: true, carga: true, tempos: true, recalcular: true, revisoes: true,
       disponibilidade: true, ritmo: true, prazo: true, atraso: true, permissoes: true }
     : { reordenar: !!perm.reordenar, cortar: !!perm.concluirItens, vistos: !!perm.concluirItens, recalcular: !!perm.recalcular,
-      disponibilidade: !!perm.disponibilidade, ritmo: !!perm.ritmo };
+      disponibilidade: !!perm.disponibilidade, ritmo: !!perm.ritmo, carga: perm.tempos !== false, tempos: perm.tempos !== false };
 
   // tirar conteúdo e mexer no peso passam pela prévia; ordem, inclusão e tempo vão direto (com log)
   const operar = (op, titulo) => (REMOCOES.includes(op.tipo) ? confirmada : direta).propor(op, titulo);

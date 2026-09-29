@@ -48,9 +48,10 @@ export function ciclosDoItem(item, p = {}) {
   return [cicloAberto(1, 0)];
 }
 
-/* Estado do tópico agora: ciclo atual, minutos e porcentagem do ciclo, e a
-   porcentagem VISTA (a que entra no progresso: tópico já concluído uma vez
-   conta como visto, mesmo sendo revisto do zero). */
+/* Estado do tópico agora: ciclo atual, minutos e porcentagem do ciclo. A
+   porcentagem VISTA (a que entra no progresso) é a do ciclo atual: tópico que
+   o aluno pôs para ver de novo volta a contar como não visto; a conclusão
+   anterior continua gravada no ciclo dela (histórico). */
 export function estadoDoTopico(item, p = {}) {
   const ciclos = ciclosDoItem(item, p);
   const atual = ciclos[ciclos.length - 1];
@@ -65,7 +66,7 @@ export function estadoDoTopico(item, p = {}) {
     concluido,
     restante: concluido ? 0 : Math.max(0, item.duracao - minutosCiclo),
     pctCiclo,
-    pctVisto: vezesConcluido ? 1 : pctCiclo,
+    pctVisto: pctCiclo,
     vezesConcluido,
     naFila: !concluido && atual.naFila === true,
   };
@@ -93,9 +94,10 @@ export function filaDaMateria(itens, progresso = {}) {
   return { fila, atual, status, estados };
 }
 
-/* "Rever do zero": abre um ciclo novo num tópico concluído. O ciclo anterior
-   fica como está (com a data da conclusão). O tópico volta para o fim da fila
-   da matéria (naFila); o aluno pode puxá-lo para a frente. */
+/* Ver de novo ("rever do zero"): abre um ciclo novo num tópico concluído;
+   ele volta a ser não visto. O ciclo anterior fica como está (com a data da
+   conclusão). O tópico volta para o fim da fila da matéria (naFila); o aluno
+   pode puxá-lo para a frente. */
 export function reabrirTopico(item, p = {}, { hojeIso, por }) {
   const e = estadoDoTopico(item, p);
   if (!e.concluido) return { ok: false, erro: "Só dá para rever do zero um tópico já concluído." };

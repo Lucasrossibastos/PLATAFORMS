@@ -69,6 +69,23 @@ describe("peso define a frequência", () => {
   });
 });
 
+describe("duração das metas livre (minutos exatos)", () => {
+  it("usa a duração que o aluno ou o moderador definiu, sem arredondar", () => {
+    const plano = { ...eng, duracaoMeta: { mat: 47 }, materias: eng.materias.map((m) => (m.materiaId === "fis" ? { ...m, maxSessao: 38 } : m)) };
+    const { slots } = planejarHorizonte({ hojeIso: HOJE, plano, itens: itensEng });
+    const durs = (id) => new Set(slots.filter((x) => x.materiaId === id).map((x) => x.minutos));
+    expect([...durs("mat")].every((d) => d <= 47)).toBe(true);
+    expect(durs("mat").has(47)).toBe(true);
+    expect(durs("fis").has(38)).toBe(true);
+  });
+
+  it("metas curtas (10 min) não são barradas pelo mínimo padrão", () => {
+    const plano = planoCom([{ materiaId: "mat", peso: 5, maxSessao: 10 }], { ...TODO_DIA, seg: 30 });
+    const { slots } = planejarHorizonte({ hojeIso: HOJE, plano, itens: topicos("mat", 5) });
+    expect(slots.filter((x) => x.data === HOJE).map((x) => x.minutos)).toEqual([10, 10, 10]);
+  });
+});
+
 describe("orçamento do dia", () => {
   it("revisões entram primeiro; quando só elas passam do dia, o dia fica em conflito e nada é cortado", () => {
     const rev = (id, data, dur) => ({ id, categoria: "revisao_recorrente", status: "pendente", dataPlanejada: data, duracaoPlanejada: dur, materiaId: "bio", itemId: "t:b", revisaoRecorrenteId: id });

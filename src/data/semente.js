@@ -6,7 +6,7 @@
 
 import { CICLO_TEMPLATES, DISP_PADRAO, INSTRUCOES_REDACAO_INICIAL, isoLocal } from "../core/nucleo.js";
 import { estruturaInicial, indiceEstrutura, materiaDoCurso } from "../core/estrutura.js";
-import { REVISAO_PADRAO, PERMISSOES_PADRAO, capacidadeSemanal, planoDoModelo, recalcularPlano } from "../core/plano.js";
+import { REVISAO_PADRAO, PERMISSOES_PADRAO, planoDoModelo, recalcularPlano } from "../core/plano.js";
 import { COR_DESTAQUE_PADRAO } from "../textos.js";
 import { carimbo } from "./contrato.js";
 
@@ -28,7 +28,9 @@ export const BOAS_VINDAS_PADRAO = {
 };
 
 // jornadas (planos gerais) a partir dos ciclos do núcleo, nas 9 matérias do
-// curso: Português, Literatura, Redação e Inglês somam em Linguagens
+// curso: Português, Literatura, Redação e Inglês somam em Linguagens. O peso
+// de cada matéria sai da carga que o ciclo dava a ela (a maior vale 10); não
+// há horas por semana na jornada (o tempo se encaixa no horário do aluno).
 export function modelosIniciais(ind) {
   return Object.entries(CICLO_TEMPLATES).map(([vestibularId, t], i) => {
     const porMateria = new Map();
@@ -37,19 +39,17 @@ export function modelosIniciais(ind) {
       const atual = porMateria.get(id) || { minutos: 0, maxSessao: 0 };
       porMateria.set(id, { minutos: atual.minutos + a.minutosSemanais, maxSessao: Math.max(atual.maxSessao, a.maxSessao || 60) });
     });
-    // cabe nas horas livres padrão (com folga): a demonstração não nasce estourada
-    const somar = () => ind.materias.reduce((x, m) => x + (porMateria.get(m.id)?.minutos ?? 60), 0);
-    const fator = Math.min(1, (capacidadeSemanal(DISP_PADRAO) * 0.9) / somar());
-    porMateria.forEach((v, id) => porMateria.set(id, { ...v, minutos: Math.max(45, Math.round((v.minutos * fator) / 15) * 15) }));
+    const maior = Math.max(...[...porMateria.values()].map((v) => v.minutos));
+    const peso = (id) => Math.min(10, Math.max(1, Math.round((10 * (porMateria.get(id)?.minutos ?? 60)) / maior)));
     return {
       id: `modelo-${vestibularId}`,
       nome: `${t.nome} · Extensivo`,
       descricao: t.desc || "",
       vestibularId, cursoId: "", modalidade: "extensivo", periodo: "", versao: 1, dataAlvo: null, ritmo: 1,
       revisao: { ...REVISAO_PADRAO }, permissoesAluno: { ...PERMISSOES_PADRAO }, ordem: i,
-      // todas as matérias do curso; as que o ciclo não previa entram com 1h por semana
+      // todas as matérias do curso; as que o ciclo não previa entram com peso baixo
       materias: ind.materias.map((m) => ({
-        materiaId: m.id, minutosSemanais: porMateria.get(m.id)?.minutos ?? 60, maxSessao: porMateria.get(m.id)?.maxSessao ?? 60,
+        materiaId: m.id, peso: peso(m.id), maxSessao: porMateria.get(m.id)?.maxSessao ?? 60,
         prioridade: porMateria.has(m.id) ? 2 : 3, ritmo: 1,
         topicos: ind.topicosDaMateria(m.id).map((tp) => ({ topicoId: tp.id, subtopicos: ind.subtopicosDoTopico(tp.id).map((x) => ({ subtopicoId: x.id })) })),
       })),

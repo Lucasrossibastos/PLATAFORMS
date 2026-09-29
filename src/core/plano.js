@@ -1,8 +1,16 @@
 /* Plano de estudos: modelo (plano geral) → plano individual → itens.
 
    Modelo (plano geral, do moderador) e plano individual têm a mesma forma:
-     materias: [{ materiaId, minutosSemanais, maxSessao, prioridade, ritmo,
+     materias: [{ materiaId, peso, maxSessao, prioridade, ritmo,
                   topicos: [{ topicoId, cargaMin?, subtopicos: [{ subtopicoId, cargaMin? }] }] }]
+   Não há "horas por semana" na jornada: o tempo vem das horas-base de cada
+   tópico e se encaixa no horário de cada aluno (plano.disponibilidade).
+   maxSessao é a duração de cada meta da matéria (minutos, qualquer valor).
+   Planos antigos têm minutosSemanais: só servem para deduzir o peso.
+
+   Ajustes do próprio aluno (ou do moderador para aquele aluno), por cima da
+   cópia da jornada: plano.duracaoMeta[materiaId] e plano.tempoTopico[topicoId]
+   (minutos).
    A ordem dos arrays é a sequência recomendada. O plano individual é uma
    CÓPIA editável do modelo (com modeloId/modeloVersao para rastrear a origem):
    mudar o plano de um aluno não mexe no modelo nem nos outros alunos.
@@ -36,6 +44,7 @@ export const PERMISSOES_ALUNO = [
   { id: "disponibilidade", nome: "Ajustar as horas livres de cada dia" },
   { id: "ritmo", nome: "Mudar o ritmo do plano" },
   { id: "recalcular", nome: "Recalcular o plano" },
+  { id: "tempos", nome: "Ajustar a duração das metas e o tempo de cada tópico" },
 ];
 // autonomia por padrão; o moderador restringe o que quiser
 export const PERMISSOES_PADRAO = Object.fromEntries(PERMISSOES_ALUNO.map((p) => [p.id, true]));
@@ -58,6 +67,12 @@ export const STATUS_ITEM = {
 };
 
 export const idItem = (topicoId, subtopicoId) => subtopicoId || `t:${topicoId}`;
+
+// duração de cada meta da matéria (a do aluno, se ele ou o moderador ajustou)
+export const duracaoDaMeta = (plano, m) => plano?.duracaoMeta?.[m.materiaId] ?? m.maxSessao ?? 60;
+export const MINUTOS_MIN = 5;
+export const MINUTOS_MAX = 720;
+const minutosValidos = (v) => Number.isInteger(v) && v >= MINUTOS_MIN && v <= MINUTOS_MAX;
 const arred5 = (n) => Math.ceil(n / 5) * 5;
 
 /* ---------- Leitura ---------- */
@@ -85,7 +100,7 @@ export function itensDoPlano(plano, ind) {
     topicosEmOrdem(plano, m).forEach((t, posTopico) => {
       const topico = ind.topico(t.topicoId);
       if (!topico) return;
-      const carga = t.cargaMin ?? topico.cargaMin ?? CARGA_PADRAO;
+      const carga = plano.tempoTopico?.[t.topicoId] ?? t.cargaMin ?? topico.cargaMin ?? CARGA_PADRAO;
       itens.push({
         materiaId: m.materiaId, topicoId: t.topicoId, subtopicoId: null, itemId: idItem(t.topicoId),
         prioridade: m.prioridade ?? 2, posMateria, posTopico, posSub: 0, carga, duracao: Math.max(5, Math.round(carga / fator)),
@@ -372,7 +387,7 @@ export function alterarPlano(plano, ind, op) {
     case "adicionarMateria": {
       if (mat(op.materiaId) || !ind.materia(op.materiaId)) break;
       p.materias.push({
-        materiaId: op.materiaId, minutosSemanais: op.minutosSemanais ?? 120, maxSessao: op.maxSessao ?? 60,
+        materiaId: op.materiaId, peso: op.peso ?? 5, maxSessao: op.maxSessao ?? 60,
         prioridade: op.prioridade ?? 2, ritmo: 1, topicos: op.vazia ? [] : topicosCompletos(ind, op.materiaId),
       });
       registrar(op.tipo, `Adicionou a matéria ${nomeM}`, null, nomeM);
@@ -398,6 +413,7 @@ export function alterarPlano(plano, ind, op) {
         const atual = k === "ativa" ? m.ativa !== false : m[k];
         if (!(k in rotulos) || atual === v) return;
         if (k === "peso" && !(Number.isInteger(v) && v >= 1 && v <= 10)) throw new Error("Peso: número inteiro de 1 a 10.");
+        if (k === "maxSessao" && !minutosValidos(v)) throw new Error(`Duração: minutos inteiros de ${MINUTOS_MIN} a ${MINUTOS_MAX}.`);
         registrar(op.tipo, `Mudou ${rotulos[k]} de ${nomeM}`, fmt(k, atual ?? null), fmt(k, v));
         m[k] = v;
       });
@@ -459,6 +475,33 @@ export function alterarPlano(plano, ind, op) {
       if (!alvo || alvo.cargaMin === op.cargaMin) break;
       registrar(op.tipo, `Mudou a carga de ${op.subtopicoId ? nomeS : nomeT}`, alvo.cargaMin ?? null, op.cargaMin);
       alvo.cargaMin = op.cargaMin;
+      break;
+    }
+    case "definirDuracaoMeta": { // só do aluno: por cima da jornada
+      const m = mat(op.materiaId);
+      if (!m) break;
+      if (op.minutos != null && !minutosValidos(op.minutos)) throw new Error(`Duração: minutos inteiros de ${MINUTOS_MIN} a ${MINUTOS_MAX}.`);
+      const antes = duracaoDaMeta(p, m);
+      const mapa = { ...(p.duracaoMeta || {}) };
+      if (op.minutos == null || op.minutos === (m.maxSessao ?? 60)) delete mapa[op.materiaId]; // igual à jornada: volta a herdar
+      else mapa[op.materiaId] = op.minutos;
+      const mudou = JSON.stringify(p.duracaoMeta || {}) !== JSON.stringify(mapa);
+      p.duracaoMeta = mapa;
+      if (mudou) registrar(op.tipo, `Mudou a duração das metas de ${nomeM}`, antes, duracaoDaMeta(p, m));
+      break;
+    }
+    case "definirTempoTopico": { // só do aluno: por cima da jornada
+      const t = top(mat(op.materiaId), op.topicoId);
+      if (!t) break;
+      if (op.minutos != null && !minutosValidos(op.minutos)) throw new Error(`Tempo: minutos inteiros de ${MINUTOS_MIN} a ${MINUTOS_MAX}.`);
+      const base = t.cargaMin ?? ind.topico(op.topicoId)?.cargaMin ?? CARGA_PADRAO;
+      const antes = p.tempoTopico?.[op.topicoId] ?? base;
+      const mapa = { ...(p.tempoTopico || {}) };
+      if (op.minutos == null || op.minutos === base) delete mapa[op.topicoId];
+      else mapa[op.topicoId] = op.minutos;
+      p.tempoTopico = mapa;
+      const depois = mapa[op.topicoId] ?? base;
+      if (antes !== depois) registrar(op.tipo, `Mudou o tempo de ${nomeT}`, antes, depois);
       break;
     }
     case "definirPlano": {

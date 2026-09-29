@@ -26,6 +26,7 @@ import { ErroValidacao, opsDeLog, porNome } from "./base.js";
 /* Qual permissão do aluno cada alteração exige (null = só o moderador). */
 export function permissaoDaOperacao(op) {
   if (op.tipo === "moverTopico") return "reordenar"; // grava só ordemTopicos
+  if (op.tipo === "definirDuracaoMeta" || op.tipo === "definirTempoTopico") return "tempos"; // gravam só duracaoMeta / tempoTopico
   if (op.tipo === "definirPlano") {
     const campos = Object.keys(op.campos || {});
     if (campos.length && campos.every((c) => c === "disponibilidade")) return "disponibilidade";
@@ -176,26 +177,20 @@ export function servicoPlanos(ctx, servicos) {
     sugerir: (modelos, aluno) => sugerirModelo(modelos.filter((m) => !m.arquivado), aluno),
 
     /* Jornada em um passo: todas as matérias do curso, com todos os tópicos,
-       e as horas da semana divididas por igual (depois é só ajustar). */
-    async criarJornada({ nome, vestibularId, cursoId = "", dataAlvo = null, modalidade = "extensivo", horasSemanais = 20 }) {
+       o mesmo peso para todas e metas de 1 h (depois é só ajustar). Não há
+       horas por semana na jornada: cada aluno encaixa o tempo dos tópicos no
+       horário dele. */
+    async criarJornada({ nome, vestibularId, cursoId = "", dataAlvo = null, modalidade = "extensivo" }) {
       ctx.exigir("gerenciar:modelos");
       const ind = await ctx.indice();
-      const materias = ind.materias;
-      const total = Math.max(15, Math.round(horasSemanais * 60));
-      const base = Math.floor(total / materias.length / 15) * 15;
-      let sobra = total - base * materias.length;
       const nomePadrao = [ind.nomeVestibular(vestibularId), ind.nomeCurso(cursoId)].filter(Boolean).join(" · ");
       return this.salvarModelo({
         ...modeloVazio(),
         nome: String(nome || "").trim() || nomePadrao, vestibularId, cursoId, dataAlvo, modalidade,
-        materias: materias.map((m) => {
-          const extra = sobra >= 15 ? 15 : 0;
-          sobra -= extra;
-          return {
-            materiaId: m.id, minutosSemanais: base + extra, maxSessao: 60, prioridade: 2, ritmo: 1,
-            topicos: ind.topicosDaMateria(m.id).map((t) => ({ topicoId: t.id, subtopicos: ind.subtopicosDoTopico(t.id).map((x) => ({ subtopicoId: x.id })) })),
-          };
-        }),
+        materias: ind.materias.map((m) => ({
+          materiaId: m.id, peso: 5, maxSessao: 60, prioridade: 2, ritmo: 1,
+          topicos: ind.topicosDaMateria(m.id).map((t) => ({ topicoId: t.id, subtopicos: ind.subtopicosDoTopico(t.id).map((x) => ({ subtopicoId: x.id })) })),
+        })),
       });
     },
 
@@ -379,10 +374,15 @@ export function servicoPlanos(ctx, servicos) {
       if (!naJornada) throw new ErroDados("Esta matéria não está na jornada geral.", "nao-encontrado");
       let novo = structuredClone(plano);
       const m = novo.materias.find((x) => x.materiaId === materiaId);
-      const antes = campo === "ordem" ? novo.ordemTopicos?.[materiaId] ?? null : campo === "topicos" ? m?.topicos?.length ?? 0 : m?.[campo] ?? null;
+      const antes = campo === "ordem" ? novo.ordemTopicos?.[materiaId] ?? null : campo === "topicos" ? m?.topicos?.length ?? 0
+        : campo === "maxSessao" ? novo.duracaoMeta?.[materiaId] ?? m?.maxSessao ?? null : m?.[campo] ?? null;
       if (campo === "ordem") {
         const { [materiaId]: _x, ...resto } = novo.ordemTopicos || {};
         novo.ordemTopicos = resto;
+      }
+      if (campo === "maxSessao" && novo.duracaoMeta?.[materiaId] != null) {
+        const { [materiaId]: _d, ...resto } = novo.duracaoMeta;
+        novo.duracaoMeta = resto;
       } else if (m && campo === "topicos") m.topicos = structuredClone(naJornada.topicos || []);
       else if (m) {
         if (naJornada[campo] === undefined) delete m[campo];
@@ -435,10 +435,10 @@ export function servicoPlanos(ctx, servicos) {
       if (!r.ok) throw new ErroDados(r.erro, "estado");
       const n = r.ciclos.length;
       await gravarProgresso(alunoId, itemId, r.ciclos, {
-        tipo: "reverDoZero", descricao: `Rever do zero: ${nomeItem(ind, item)} (${n}ª vez)`,
+        tipo: "reverDoZero", descricao: `Voltou para não visto: ${nomeItem(ind, item)}`,
         antes: { ciclo: n - 1, concluido: true }, depois: { ciclo: n, concluido: false, naFila: true },
       }, motivo);
-      await refazerMetas(alunoId, "tópico para rever do zero", "reverDoZero");
+      await refazerMetas(alunoId, "tópico voltou para não visto", "reverDoZero");
       return true;
     },
     // nome antigo ("Ver de novo")

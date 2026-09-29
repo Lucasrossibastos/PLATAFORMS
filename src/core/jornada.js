@@ -6,14 +6,16 @@
                                          ritmo?, topicos?, removida? : true } }
    A ordem própria dos tópicos já fica à parte em plano.ordemTopicos[materiaId]
    (o aluno ou o moderador reordenou): a presença dela é o override de ordem.
+   Do mesmo jeito, plano.duracaoMeta[materiaId] é o override da duração das
+   metas (e plano.tempoTopico, o do tempo de cada tópico).
 
    Plano antigo, sem `sobrescritos`: o mapa é deduzido comparando com a
    jornada (marcado como inferido; ajuste o que ficar errado no painel).
 
    Peso: número de 1 a 10, relativo — a fatia de cada matéria nas metas é
-   peso ÷ soma dos pesos. Plano antigo, sem peso: deduzido dos minutos por
-   semana de hoje (a matéria com mais minutos vale 10; as outras, na mesma
-   proporção, no mínimo 1). */
+   peso ÷ soma dos pesos (do horário de cada aluno). Plano antigo, sem peso:
+   deduzido dos antigos minutos por semana (a matéria com mais minutos vale
+   10; as outras, na mesma proporção, no mínimo 1). */
 
 export const PESO_MIN = 1;
 export const PESO_MAX = 10;
@@ -46,7 +48,12 @@ export function participacao(plano) {
   return Object.fromEntries(ativas.map((m) => [m.materiaId, soma ? pesos[m.materiaId] / soma : 0]));
 }
 
-const valorCampo = (plano, m, campo) => (campo === "peso" ? pesosDoPlano(plano)[m.materiaId] : campo === "ativa" ? m?.ativa !== false : m?.[campo] ?? PADRAO[campo] ?? null);
+const valorCampo = (plano, m, campo) => {
+  if (campo === "peso") return pesosDoPlano(plano)[m.materiaId];
+  if (campo === "ativa") return m?.ativa !== false;
+  if (campo === "maxSessao") return plano?.duracaoMeta?.[m?.materiaId] ?? m?.maxSessao ?? PADRAO.maxSessao; // a do aluno, se houver
+  return m?.[campo] ?? PADRAO[campo] ?? null;
+};
 const assinaturaTopicos = (m) => JSON.stringify((m?.topicos || []).map((t) => [t.topicoId, t.cargaMin ?? null, (t.subtopicos || []).map((s) => s.subtopicoId)]));
 
 /* Mapa do que está sobrescrito no aluno (explícito, ou deduzido da jornada
@@ -54,7 +61,11 @@ const assinaturaTopicos = (m) => JSON.stringify((m?.topicos || []).map((t) => [t
 export function sobrescritosDoPlano(plano, modelo) {
   const ordem = plano?.ordemTopicos || {};
   const comOrdem = (mapa) => Object.fromEntries((plano?.materias || []).map((m) => [
-    m.materiaId, { ...(mapa[m.materiaId] || {}), ...(Array.isArray(ordem[m.materiaId]) && ordem[m.materiaId].length ? { ordem: true } : {}) },
+    m.materiaId, {
+      ...(mapa[m.materiaId] || {}),
+      ...(Array.isArray(ordem[m.materiaId]) && ordem[m.materiaId].length ? { ordem: true } : {}),
+      ...(plano?.duracaoMeta?.[m.materiaId] != null ? { maxSessao: true } : {}),
+    },
   ]));
   if (plano?.sobrescritos) return { mapa: { ...plano.sobrescritos, ...comOrdem(plano.sobrescritos) }, inferido: false };
   const inferido = {};

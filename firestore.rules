@@ -116,19 +116,21 @@ service cloud.firestore {
     }
 
     // O aluno só muda o que o moderador liberou em permissoesAluno, e sempre
-    // com log no mesmo lote. `materias` (incidência, matérias visíveis,
-    // tópicos) é só do moderador: a ordem que o aluno escolhe fica em
-    // ordemTopicos. Os campos do recálculo acompanham as mudanças liberadas;
+    // com log no mesmo lote. `materias` (peso, matérias visíveis, tópicos) é
+    // só do moderador: a ordem que o aluno escolhe fica em ordemTopicos, e os
+    // tempos que ele ajusta em duracaoMeta e tempoTopico ("tempos" vale como
+    // liberada nos planos criados antes dela). Os campos do recálculo acompanham as mudanças liberadas;
     // sozinhos, exigem a permissão "recalcular".
     function planoDoAlunoOk(alunoId) {
       let perm = antigo().get('permissoesAluno', {});
       let m = mudou();
-      return m.hasOnly(['ordemTopicos', 'disponibilidade', 'horarios', 'ritmo', 'alocacaoSemanal', 'cronograma', 'fimPrevisto', 'recalculadoEm', 'atualizadoEm', 'ultimoLogId'])
+      return m.hasOnly(['ordemTopicos', 'disponibilidade', 'horarios', 'ritmo', 'duracaoMeta', 'tempoTopico', 'alocacaoSemanal', 'cronograma', 'fimPrevisto', 'recalculadoEm', 'atualizadoEm', 'ultimoLogId'])
         && (!m.hasAny(['ordemTopicos']) || (perm.get('reordenar', false) == true && novo().ordemTopicos is map))
+        && (!m.hasAny(['duracaoMeta', 'tempoTopico']) || (perm.get('tempos', true) == true && novo().get('duracaoMeta', {}) is map && novo().get('tempoTopico', {}) is map))
         && (!m.hasAny(['disponibilidade']) || perm.get('disponibilidade', false) == true)
         && (!m.hasAny(['horarios']) || (perm.get('disponibilidade', false) == true && horariosSoAcrescentam()))
         && (!m.hasAny(['ritmo']) || perm.get('ritmo', false) == true)
-        && (!m.hasAny(['alocacaoSemanal', 'cronograma', 'fimPrevisto']) || m.hasAny(['ordemTopicos', 'disponibilidade', 'ritmo']) || perm.get('recalcular', false) == true)
+        && (!m.hasAny(['alocacaoSemanal', 'cronograma', 'fimPrevisto']) || m.hasAny(['ordemTopicos', 'disponibilidade', 'ritmo', 'duracaoMeta', 'tempoTopico']) || perm.get('recalcular', false) == true)
         && logNoLote(novo().ultimoLogId, alunoId);
     }
 

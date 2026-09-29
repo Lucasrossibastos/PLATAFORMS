@@ -1,7 +1,8 @@
 /* Jornadas: o conteúdo programático de cada curso (vestibular + curso).
-   Criar é um passo só (todas as matérias, com todos os tópicos, e as horas
-   divididas); depois se ajusta tudo na mesma tela: incidência das matérias,
-   tópicos e subtópicos (novos ou existentes) e regras. Com "levar aos
+   Criar é um passo só (todas as matérias, com todos os tópicos e o mesmo
+   peso); depois se ajusta tudo na mesma tela: peso e duração das metas de
+   cada matéria, tópicos (com as horas-base) e subtópicos, e regras. Não há
+   horas por semana na jornada: o tempo se encaixa no horário de cada aluno. Com "levar aos
    alunos", cada mudança vai também para o edital de quem está na jornada,
    sem desfazer o que foi ajustado individualmente. */
 
@@ -18,11 +19,11 @@ import { Botao, Campo, Carregando, Dialogo, MensagemErro, TituloPagina, Vazio } 
 const nomeModalidade = (id) => MODALIDADES.find((m) => m.id === id)?.nome || "";
 const NOVO = "__novo";
 
+// o tamanho da jornada é o conteúdo (horas-base dos tópicos); o ritmo de cada aluno sai do horário dele
 function resumoDa(modelo, ind) {
   const itens = itensDoPlano(modelo, ind);
-  const semanal = (modelo.materias || []).filter((m) => m.ativa !== false).reduce((x, m) => x + (m.minutosSemanais || 0), 0);
   const carga = itens.reduce((x, it) => x + it.duracao, 0);
-  return { topicos: itens.length, semanal, carga, semanas: semanal ? Math.ceil(carga / semanal) : null, materias: (modelo.materias || []).filter((m) => m.ativa !== false).length };
+  return { topicos: itens.length, carga, materias: (modelo.materias || []).filter((m) => m.ativa !== false).length };
 }
 
 /* Escolha com "+ Novo…" no fim: cria o item da estrutura ali mesmo. */
@@ -42,7 +43,7 @@ function EscolhaOuNovo({ rotulo, valor, novoNome, opcoes, vazio, aoMudar, aoMuda
 function NovaJornada({ fechar }) {
   const { s, ind } = useApp();
   const navigate = useNavigate();
-  const [f, setF] = useState({ vestibularId: "", novoVestibular: "", cursoId: "", novoCurso: "", modalidade: "extensivo", horas: 20, dataAlvo: "", nome: "" });
+  const [f, setF] = useState({ vestibularId: "", novoVestibular: "", cursoId: "", novoCurso: "", modalidade: "extensivo", dataAlvo: "", nome: "" });
   const { executar, ocupado, erro } = useAcao();
   const erros = errosDeCampo(erro);
   const nomeVest = f.vestibularId === NOVO ? f.novoVestibular.trim() : ind.nomeVestibular(f.vestibularId);
@@ -52,7 +53,7 @@ function NovaJornada({ fechar }) {
     const vestibularId = f.vestibularId === NOVO ? await s.estrutura.salvar("vestibular", { nome: f.novoVestibular }) : f.vestibularId;
     const cursoId = f.cursoId === NOVO ? await s.estrutura.salvar("curso", { nome: f.novoCurso }) : f.cursoId;
     const id = await s.planos.criarJornada({
-      nome: f.nome || sugestao, vestibularId, cursoId, modalidade: f.modalidade, dataAlvo: f.dataAlvo || null, horasSemanais: Number(f.horas) || 20,
+      nome: f.nome || sugestao, vestibularId, cursoId, modalidade: f.modalidade, dataAlvo: f.dataAlvo || null,
     });
     fechar();
     navigate(id);
@@ -60,20 +61,19 @@ function NovaJornada({ fechar }) {
   return (
     <Dialogo aberto aoFechar={fechar} titulo="Nova jornada" largura={560}>
       <div className="form">
-        <p className="previa-linha">A jornada nasce com as {ind.materias.length} matérias do curso e todos os tópicos delas; as horas da semana são divididas por igual. Depois é só ajustar.</p>
+        <p className="previa-linha">A jornada nasce com as {ind.materias.length} matérias do curso, todos os tópicos (com as horas-base de cada um) e o mesmo peso para todas. O tempo de estudo se encaixa no horário de cada aluno. Depois é só ajustar.</p>
         <div className="form-linha">
           <EscolhaOuNovo rotulo="Vestibular" valor={f.vestibularId} novoNome={f.novoVestibular} opcoes={ind.vestibulares} vazio="Selecione…" erro={erros.vestibularId || erros.nome}
             aoMudar={(v) => setF({ ...f, vestibularId: v })} aoMudarNovo={(v) => setF({ ...f, novoVestibular: v })} />
           <EscolhaOuNovo rotulo="Curso (opcional)" valor={f.cursoId} novoNome={f.novoCurso} opcoes={ind.cursos} vazio="Qualquer curso"
             aoMudar={(v) => setF({ ...f, cursoId: v })} aoMudarNovo={(v) => setF({ ...f, novoCurso: v })} />
         </div>
-        <div className="form-linha form-linha--3">
+        <div className="form-linha">
           <Campo rotulo="Modalidade">
             <select className="entrada" value={f.modalidade} onChange={(e) => setF({ ...f, modalidade: e.target.value })}>
               {MODALIDADES.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
             </select>
           </Campo>
-          <Campo rotulo="Horas por semana"><input className="entrada num" type="number" min="1" max="80" value={f.horas} onChange={(e) => setF({ ...f, horas: e.target.value })} /></Campo>
           <Campo rotulo="Data da prova (opcional)"><input className="entrada" type="date" value={f.dataAlvo} onChange={(e) => setF({ ...f, dataAlvo: e.target.value })} /></Campo>
         </div>
         <Campo rotulo="Nome (opcional)"><input className="entrada" value={f.nome} placeholder={sugestao || "Ex.: FUVEST · Medicina"} onChange={(e) => setF({ ...f, nome: e.target.value })} /></Campo>
@@ -102,7 +102,7 @@ export function Jornadas() {
   return (
     <>
       <TituloPagina eyebrow="Conteúdo programático" frase="*Jornadas* por vestibular"
-        texto="Cada jornada é o edital de um vestibular (e curso): matérias, tópicos e quanto cada uma pesa na semana. O aluno recebe uma cópia, que você ajusta no painel dele."
+        texto="Cada jornada é o edital de um vestibular (e curso): matérias, tópicos com as horas-base de cada um e o peso de cada matéria. O aluno recebe uma cópia, que se encaixa no horário dele e que você ajusta no painel dele."
         direita={<Botao variante="solido" icone={Plus} onClick={() => setNova(true)}>Nova jornada</Botao>} />
       {arquivadas > 0 && (
         <div className="filtros" role="tablist">
@@ -119,7 +119,7 @@ export function Jornadas() {
               <Link key={m.id} to={m.id} className="cartao cartao-jornada" style={{ "--cor": ind.vestibular(m.vestibularId)?.cor }}>
                 <span className="eyebrow">{[ind.nomeVestibular(m.vestibularId), m.cursoId ? ind.nomeCurso(m.cursoId) : null, nomeModalidade(m.modalidade)].filter(Boolean).join(" · ")}</span>
                 <strong>{m.nome}</strong>
-                <span className="previa-linha">{r.materias} matérias · {r.topicos} tópicos · {fmtMin(r.semanal)} por semana</span>
+                <span className="previa-linha">{r.materias} matérias · {r.topicos} tópicos · {fmtMin(r.carga)} de conteúdo</span>
                 <span className="cartao-jornada-rodape">{alunos ? `${alunos} ${alunos === 1 ? "aluno" : "alunos"}` : "nenhum aluno ainda"}</span>
               </Link>
             );
@@ -203,7 +203,7 @@ export function Jornada() {
         <div>
           <span className="eyebrow">{[ind.nomeVestibular(modelo.vestibularId), modelo.cursoId ? ind.nomeCurso(modelo.cursoId) : null, nomeModalidade(modelo.modalidade), modelo.periodo].filter(Boolean).join(" · ")}{modelo.arquivado ? " · arquivada" : ""}</span>
           <h1>{modelo.nome}</h1>
-          <p className="previa-linha">{r.materias} matérias · {r.topicos} tópicos · {fmtMin(r.semanal)} por semana{r.semanas ? ` · ≈ ${r.semanas} semanas` : ""}</p>
+          <p className="previa-linha">{r.materias} matérias · {r.topicos} tópicos · {fmtMin(r.carga)} de conteúdo</p>
         </div>
         <div className="titulo-direita">
           <Botao variante="vidro" tamanho="sm" icone={Pencil} onClick={() => setEditar(true)}>Dados</Botao>

@@ -2,7 +2,6 @@ import { useState } from "react";
 import { ArrowRight, Check, Hand, Pin, RotateCcw, TriangleAlert } from "lucide-react";
 import { fmtMin } from "../../core/nucleo.js";
 import { fmtDataCurta, inicioDaSemana, somarDias } from "../../core/datas.js";
-import { CATEGORIAS } from "../../core/metas.js";
 import { ehProgressao, HORIZONTE_DIAS } from "../../core/motorMetas.js";
 import { useApp } from "../../state/AppContext.jsx";
 import { useAcao } from "../../state/hooks.js";
@@ -13,12 +12,9 @@ const diaDaSemana = (iso) => DIA_CURTO[new Date(`${iso}T12:00:00`).getDay()];
 const pct = (x) => `${Math.round((x || 0) * 100)}%`;
 const ehRevisao = (m) => !ehProgressao(m);
 
-// etiqueta da categoria (a progressão comum não precisa)
+// só a revisão tem etiqueta; estudar de novo um tópico é progressão comum
 function Categoria({ meta }) {
-  const c = meta.categoriaViva || meta.categoria;
-  if (c === "rever_do_zero") return <span className="etiqueta etiqueta--rever">Rever do zero</span>;
-  if (c === "revisao_recorrente" || c === "revisao_automatica") return <span className="etiqueta etiqueta--rev">Revisão</span>;
-  return null;
+  return ehRevisao(meta) ? <span className="etiqueta etiqueta--rev">Revisão</span> : null;
 }
 
 /* O que a meta estuda: tópico(s) com a % de agora; concluída, antes → depois. */
@@ -93,7 +89,9 @@ export function ResumoSemana({ semana, compacto }) {
   const planejado = r.minutosPlanejados + (leg?.minutosPlanejados || 0);
   const feito = r.minutosFeitos + (leg?.minutosFeitos || 0);
   const naoCumpridas = r.naoCumpridas + (leg?.naoCumpridas || 0);
-  const cats = Object.entries(r.porCategoria).filter(([, c]) => c.minutosFeitos > 0);
+  // tempo por tipo: estudo (progressão, inclusive tópico visto de novo) e revisão
+  const feitoEm = (ks) => ks.reduce((x, k) => x + (r.porCategoria[k]?.minutosFeitos || 0), 0);
+  const cats = [["Estudo", feitoEm(["progressao", "rever_do_zero"])], ["Revisão", feitoEm(["revisao_recorrente", "revisao_automatica"])]].filter(([, min]) => min > 0);
   return (
     <div className={`resumo-semana${compacto ? " resumo-semana--compacto" : ""}`}>
       <div className="resumo-semana-topo">
@@ -103,7 +101,7 @@ export function ResumoSemana({ semana, compacto }) {
       <Barra valor={metas ? (cumpridas / metas) * 100 : 0} />
       {!compacto && (cats.length > 0 || naoCumpridas > 0) && (
         <p className="resumo-semana-cats">
-          {cats.map(([k, c]) => <span key={k}>{CATEGORIAS[k]}: <b className="num">{fmtMin(c.minutosFeitos)}</b></span>)}
+          {cats.map(([k, min]) => <span key={k}>{k}: <b className="num">{fmtMin(min)}</b></span>)}
           {naoCumpridas > 0 && <span className="perigo">{naoCumpridas} não {naoCumpridas === 1 ? "cumprida" : "cumpridas"}</span>}
         </p>
       )}
@@ -184,12 +182,11 @@ export function Agenda({ v, somenteLeitura, texto }) {
                     const cor = ehRevisao(m) ? "var(--rev)" : ind?.corDaMateria(m.materiaId);
                     const nome = ind?.nomeMateria(m.materiaId);
                     const topico = m.partes?.[0]?.topicoId;
-                    const cat = m.categoriaViva || m.categoria;
                     const texto = (
                       <>
                         <strong>{nome}{m.fixada && m.status === "pendente" && <Pin aria-label="fixada" />}</strong>
                         {topico && <span className="chip-topico">{ind?.nomeTopico(topico)}</span>}
-                        {cat !== "progressao" && <small>{cat === "rever_do_zero" ? "REVER DO ZERO · " : "REVISÃO · "}</small>}
+                        {ehRevisao(m) && <small>REVISÃO · </small>}
                         <span className="num">{fmtMin(m.status === "concluida" ? m.duracaoReal || m.duracaoPlanejada : m.duracaoPlanejada)}</span>
                       </>
                     );

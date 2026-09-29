@@ -1,26 +1,25 @@
 /* Tópicos de uma matéria no edital de um aluno, como FILA DE ESTUDO: os
    pendentes na ordem em que vão ser estudados (o primeiro é o atual; os
-   pausados guardam a %), depois os já vistos. Arrastar muda a ordem (e a
-   fila); "Estudar agora" leva direto para o topo. Visto: "Rever do zero"
-   abre um ciclo novo (a conclusão anterior fica no histórico). */
+   pausados guardam a %), depois os já vistos, riscados. Arrastar muda a
+   ordem (e a fila); "Estudar agora" leva direto para o topo. Tocar num
+   tópico riscado o devolve como não visto, no fim da fila (a conclusão
+   anterior fica no histórico). */
 
-import { useState } from "react";
 import { DndContext, KeyboardSensor, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowUpToLine, Check, GripVertical, Repeat, RotateCcw, Trash2 } from "lucide-react";
+import { ArrowUpToLine, Check, GripVertical, Repeat, Trash2 } from "lucide-react";
 import { fmtMin } from "../../core/nucleo.js";
 import { fmtDataCurta } from "../../core/datas.js";
 import { filaDaMateria } from "../../core/ciclos.js";
 import { parametrosAtuais, proximaOcorrencia } from "../../core/revisaoRecorrente.js";
 import { useApp } from "../../state/AppContext.jsx";
-import { Barra, Botao, Confirmar } from "../../ui/ui.jsx";
+import { Barra, Botao } from "../../ui/ui.jsx";
 
 const pct = (x) => `${Math.round((x || 0) * 100)}%`;
 const ETIQUETA = {
   atual: ["Estudando agora", "etiqueta--rev"],
   pausado: ["Pausado", ""],
-  a_rever: ["Para rever do zero", "etiqueta--rever"],
   concluido: ["Visto", "etiqueta--ok"],
 };
 
@@ -48,7 +47,6 @@ function vistoEm(e) {
 export function FilaTopicos({ materiaId, topicos, itens, v, pode, ocupado, aoOrdenar, aoCortar, aoReverDoZero, aoRevisao, aoOperar, renderSubtopicos, carga }) {
   const { ind } = useApp();
   const sensores = useSensores();
-  const [rever, setRever] = useState(null);
   const itensM = topicos.map((t) => itens.get(`t:${t.topicoId}`)).filter(Boolean);
   const { fila, atual, status, estados } = filaDaMateria(itensM, v.progresso);
   const doTopico = new Map(topicos.map((t) => [t.topicoId, t]));
@@ -71,8 +69,8 @@ export function FilaTopicos({ materiaId, topicos, itens, v, pode, ocupado, aoOrd
     const rev = revisaoDe(it.itemId);
     const pRev = rev?.ativo ? parametrosAtuais(rev) : null;
     const info = visto
-      ? [vistoEm(e), e.vezesConcluido > 1 && `${e.vezesConcluido}×`, pRev && `revisão a cada ${pRev.intervaloDias} dias · próxima ${fmtDataCurta(proximaOcorrencia(rev, v.hoje))}`]
-      : [`${fmtMin(it.duracao)} de estudo`, e.minutosCiclo > 0 && `${fmtMin(Math.min(e.minutosCiclo, it.duracao))} feitos`, e.ciclo > 1 && `${e.ciclo}ª vez`];
+      ? [vistoEm(e), pRev && `revisão a cada ${pRev.intervaloDias} dias · próxima ${fmtDataCurta(proximaOcorrencia(rev, v.hoje))}`]
+      : [`${fmtMin(it.duracao)} de estudo`, e.minutosCiclo > 0 && `${fmtMin(Math.min(e.minutosCiclo, it.duracao))} feitos`];
     return (
       <li key={t.topicoId} ref={ref} style={estilo} className={`topico${visto ? " topico--cortado" : ""}${st === "atual" ? " topico--atual" : ""}${arrastando ? " topico--arrastando" : ""}`}>
         <div className="topico-cabeca">
@@ -80,8 +78,11 @@ export function FilaTopicos({ materiaId, topicos, itens, v, pode, ocupado, aoOrd
             ? <button type="button" className="icone-btn alca" aria-label={`Arrastar ${nomeT}`} title="Arraste para mudar a ordem" {...alca}><GripVertical /></button>
             : <span className="topico-num num" aria-hidden="true">{visto ? <Check width={13} height={13} /> : i + 1}</span>}
           <div className="topico-texto">
-            <strong>{nomeT}{rotulo && <span className={`etiqueta ${classe}`}>{rotulo}</span>}</strong>
-            <small>{info.filter(Boolean).join(" · ")}</small>
+            {visto && pode.cortar ? (
+              <button type="button" className="topico-riscado" disabled={ocupado} aria-label={`${nomeT}: visto. Tocar para voltar a não visto`}
+                title="Tocar para voltar a não visto" onClick={() => aoReverDoZero(it)}><strong>{nomeT}</strong></button>
+            ) : <strong>{nomeT}{rotulo && <span className={`etiqueta ${classe}`}>{rotulo}</span>}</strong>}
+            <small>{info.filter(Boolean).join(" · ")}{visto && pode.cortar ? " · toque para ver de novo" : ""}</small>
             {!visto && e.pctCiclo > 0 && <span className="topico-barra"><Barra valor={e.pctCiclo * 100} cor="var(--cor)" /><small className="num">{pct(e.pctCiclo)}</small></span>}
           </div>
           <span className="topico-acoes">
@@ -91,7 +92,6 @@ export function FilaTopicos({ materiaId, topicos, itens, v, pode, ocupado, aoOrd
                 onClick={() => ordenar([t, ...pendentes.filter((x) => x !== t)])}><ArrowUpToLine /></button>
             )}
             {pode.cortar && !visto && <Botao variante="vidro" tamanho="sm" icone={Check} disabled={ocupado} aria-label={`Marcar ${nomeT} como visto`} onClick={() => aoCortar(it)}>Já vi</Botao>}
-            {pode.cortar && visto && <Botao variante="texto" tamanho="sm" icone={RotateCcw} disabled={ocupado} aria-label={`Rever do zero: ${nomeT}`} onClick={() => setRever({ it, e, nomeT })}>Rever do zero</Botao>}
             {pode.revisoes && e.vezesConcluido > 0 && (
               <Botao variante={rev?.ativo ? "vidro" : "texto"} tamanho="sm" icone={Repeat} disabled={ocupado} aria-label={`Revisão recorrente de ${nomeT}`} onClick={() => aoRevisao(it, rev)}>
                 {rev?.ativo ? `${pRev.intervaloDias}d` : "Revisão"}
@@ -125,16 +125,6 @@ export function FilaTopicos({ materiaId, topicos, itens, v, pode, ocupado, aoOrd
           <ol className="lista-topicos">{vistos.map((t, i) => linha(t, i))}</ol>
         </>
       )}
-      <Confirmar aberto={!!rever} titulo="Rever do zero" rotulo="Rever do zero" ocupado={ocupado}
-        aoFechar={() => setRever(null)} aoConfirmar={() => { aoReverDoZero(rever.it); setRever(null); }}>
-        {rever && (
-          <p className="texto-dialogo">
-            <strong>{rever.nomeT}</strong> volta para o fim da fila de {ind.nomeMateria(materiaId)} com o tempo inteiro
-            ({fmtMin(rever.it.duracao)}). A conclusão anterior ({vistoEm(rever.e)}) continua no histórico e o tópico segue contando como visto no progresso.
-            Para estudar já, depois é só arrastar para o topo.
-          </p>
-        )}
-      </Confirmar>
     </>
   );
 }

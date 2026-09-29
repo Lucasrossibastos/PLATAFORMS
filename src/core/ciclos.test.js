@@ -20,7 +20,7 @@ describe("ciclos deduzidos dos dados antigos (nada é gravado)", () => {
     expect(ciclos).toHaveLength(2);
     expect(ciclos[0]).toMatchObject({ concluido: true, concluidoEm: null, dataPerdida: true });
     // antes: restante 0 e a matéria presa; agora o ciclo 2 tem os 60 min de novo
-    expect(estadoDoTopico(cito, antigo)).toMatchObject({ ciclo: 2, concluido: false, restante: 60, pctCiclo: 0, pctVisto: 1 });
+    expect(estadoDoTopico(cito, antigo)).toMatchObject({ ciclo: 2, concluido: false, restante: 60, pctCiclo: 0, pctVisto: 0, vezesConcluido: 1 });
   });
 });
 
@@ -97,12 +97,14 @@ describe("porcentagem vista", () => {
     expect(r.plano).toBe(50); // (60 + 30 + 30) / 240
   });
 
-  it("rever do zero não derruba o progresso do plano: o tópico já foi visto uma vez", () => {
+  it("ver de novo: o tópico volta a contar como não visto; a conclusão anterior fica no ciclo 1", () => {
     const antes = progressoVisto([cito, gene], { "t:cito": { minutos: 60, concluidoEm: "2026-09-01" } });
     const { ciclos } = reabrirTopico(cito, { minutos: 60, concluidoEm: "2026-09-01" }, { hojeIso: "2026-09-28", por: "ana" });
     const depois = progressoVisto([cito, gene], { "t:cito": { minutos: 60, ciclos } });
-    expect(depois.plano).toBe(antes.plano);
-    expect(depois.topicos["t:cito"]).toMatchObject({ pctVisto: 1, pctCiclo: 0, ciclo: 2, vezesConcluido: 1 });
+    expect(antes.plano).toBe(50);
+    expect(depois.plano).toBe(0);
+    expect(depois.topicos["t:cito"]).toMatchObject({ pctVisto: 0, pctCiclo: 0, ciclo: 2, vezesConcluido: 1 });
+    expect(ciclos[0]).toMatchObject({ n: 1, concluido: true, concluidoEm: "2026-09-01" });
   });
 
   it("marcar como visto conclui o ciclo atual; tópico já concluído dá erro", () => {

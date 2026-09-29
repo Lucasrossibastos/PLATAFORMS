@@ -1,7 +1,6 @@
 /* Revisões de um aluno (painel do moderador): as recorrentes (ativar,
-   editar, desativar), a carga delas por semana, os dias em conflito, o
-   histórico do "rever do zero" e as revisões automáticas antigas que ainda
-   estão terminando o ciclo. */
+   editar, desativar), a carga delas por semana, os dias em conflito e as
+   revisões automáticas antigas que ainda estão terminando o ciclo. */
 
 import { useState } from "react";
 import { Repeat, TriangleAlert } from "lucide-react";
@@ -9,9 +8,8 @@ import { fmtMin } from "../../core/nucleo.js";
 import { fmtDataCurta } from "../../core/datas.js";
 import { LIMITES_REVISAO, MODOS_ATRASO, parametrosAtuais, proximaOcorrencia } from "../../core/revisaoRecorrente.js";
 import { useApp } from "../../state/AppContext.jsx";
-import { errosDeCampo, useAcao, useLogs } from "../../state/hooks.js";
-import { Botao, Campo, Carregando, Dialogo, MensagemErro, Vazio } from "../../ui/ui.jsx";
-import { quando } from "../aluno/Avisos.jsx";
+import { errosDeCampo, useAcao } from "../../state/hooks.js";
+import { Botao, Campo, Dialogo, MensagemErro, Vazio } from "../../ui/ui.jsx";
 
 const INTERVALOS = [3, 7, 14, 30];
 
@@ -80,7 +78,6 @@ export function DialogoRevisao({ alunoId, alvo, aoFechar }) {
 
 export function PainelRevisoes({ v }) {
   const { ind } = useApp();
-  const logs = useLogs(v.aluno.id);
   const [alvo, setAlvo] = useState(null);
   const revs = v.revisoesRecorrentes || [];
   const ativas = revs.filter((r) => r.ativo);
@@ -89,7 +86,6 @@ export function PainelRevisoes({ v }) {
   const ultimaFeita = (r) => v.metas.filter((m) => m.revisaoRecorrenteId === r.id && m.status === "concluida").map((m) => m.concluidaEm).sort().at(-1) || null;
   const cargaSemanal = ativas.reduce((x, r) => { const p = parametrosAtuais(r); return x + (p.duracaoMin * 7) / p.intervaloDias; }, 0);
   const conflitos = (v.dias || []).filter((d) => d.conflito);
-  const reverDoZero = (logs || []).filter((l) => l.tipo === "reverDoZero");
   const antigas = (v.revisoes || []).flatMap((r) => (r.sessoes || []).filter((x) => x.status === "agendada").map((x) => ({ r, dia: x.dia })));
 
   return (
@@ -148,15 +144,6 @@ export function PainelRevisoes({ v }) {
         )}
       </section>
 
-      <section className="secao" aria-labelledby="t-rever">
-        <h2 id="t-rever" className="subtitulo">Rever do zero</h2>
-        {!logs ? <Carregando /> : reverDoZero.length === 0 ? <p className="previa-linha">Nenhum tópico foi revisto do zero.</p> : (
-          <ul className="lista-simples">
-            {reverDoZero.map((l) => <li key={l.id} className="linha-simples"><span>{l.descricao}</span><small>{quando(l.em)} · {l.autorNome} ({l.papel === "moderador" ? "moderador" : "aluno"})</small></li>)}
-          </ul>
-        )}
-      </section>
-
       {antigas.length > 0 && (
         <section className="secao" aria-labelledby="t-antigas">
           <h2 id="t-antigas" className="subtitulo">Revisões automáticas antigas</h2>
@@ -164,7 +151,7 @@ export function PainelRevisoes({ v }) {
         </section>
       )}
 
-      {!revs.length && !reverDoZero.length && !antigas.length && logs && (
+      {!revs.length && !antigas.length && (
         <div className="cartao"><Vazio icone={Repeat} titulo="Nada de revisão ainda" texto="Revisões recorrentes são ativadas por tópico, no Edital do aluno." /></div>
       )}
       {alvo && <DialogoRevisao key={alvo.it.itemId} alunoId={v.aluno.id} alvo={alvo} aoFechar={() => setAlvo(null)} />}

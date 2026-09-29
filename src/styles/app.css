@@ -412,7 +412,6 @@
 
 /* ---------- Metas diárias (Dashboard e agenda de 2 semanas) ---------- */
 
-.etiqueta--rever { color: var(--rever); background: color-mix(in srgb, var(--rever) 14%, transparent); }
 .meta { transition: opacity 0.2s ease, border-color 0.2s ease; }
 .meta-partes { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; }
 .meta-parte { display: inline-flex; align-items: center; gap: 6px; }
