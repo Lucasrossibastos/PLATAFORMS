@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ativarRevisao, desativarRevisao, editarRevisao, parametrosAtuais, proximaOcorrencia } from "./revisaoRecorrente.js";
 
-const alvo = { alunoId: "ana", materiaId: "bio", topicoId: "cito", itemId: "t:cito", intervaloDias: 7, duracaoMin: 20, dataBase: "2026-09-01" };
+const alvo = { alunoId: "ana", materiaId: "bio", topicoId: "cito", itemId: "t:cito", intervaloDias: 7, duracaoMin: 30, dataBase: "2026-09-01" };
 const ctx = { topicoConcluido: true, hojeIso: "2026-09-01", por: "mod" };
 const ativa = () => ativarRevisao(alvo, ctx).revisao;
 
@@ -9,12 +9,14 @@ describe("ativação", () => {
   it("só para tópico concluído, e nunca duas ativas no mesmo tópico", () => {
     expect(ativarRevisao(alvo, { ...ctx, topicoConcluido: false }).erros.itemId).toMatch(/concluído/);
     expect(ativarRevisao(alvo, { ...ctx, existente: ativa() }).erros.itemId).toMatch(/Edite a existente/);
-    expect(ativa()).toMatchObject({ ativo: true, ativadoPor: "mod", ativadoEm: "2026-09-01", parametros: [{ desde: "2026-09-01", intervaloDias: 7, duracaoMin: 20, dataBase: "2026-09-01", modoAtraso: "fixo" }] });
+    expect(ativa()).toMatchObject({ ativo: true, ativadoPor: "mod", ativadoEm: "2026-09-01", parametros: [{ desde: "2026-09-01", intervaloDias: 7, duracaoMin: 30, dataBase: "2026-09-01", modoAtraso: "fixo" }] });
   });
 
   it("valida intervalo e duração", () => {
     expect(ativarRevisao({ ...alvo, intervaloDias: 0 }, ctx).erros.intervaloDias).toBeTruthy();
     expect(ativarRevisao({ ...alvo, duracaoMin: 400 }, ctx).erros.duracaoMin).toBeTruthy();
+    expect(ativarRevisao({ ...alvo, duracaoMin: 20 }, ctx).erros.duracaoMin).toMatch(/30 em 30/); // metas nunca têm menos de 30
+    expect(ativarRevisao({ ...alvo, duracaoMin: 45 }, ctx).erros.duracaoMin).toBeTruthy();
   });
 
   it("reativar usa o mesmo documento e acrescenta ao histórico", () => {
@@ -32,7 +34,7 @@ describe("edição só para a frente", () => {
     const r = editarRevisao(ativa(), { intervaloDias: 14 }, { hojeIso: "2026-09-15", por: "mod" });
     expect(r.mudou).toBe(true);
     expect(r.revisao.parametros[0]).toMatchObject({ desde: "2026-09-01", intervaloDias: 7 });
-    expect(parametrosAtuais(r.revisao)).toMatchObject({ desde: "2026-09-15", intervaloDias: 14, duracaoMin: 20 });
+    expect(parametrosAtuais(r.revisao)).toMatchObject({ desde: "2026-09-15", intervaloDias: 14, duracaoMin: 30 });
     expect(editarRevisao(r.revisao, { intervaloDias: 14 }, { hojeIso: "2026-09-16", por: "mod" }).mudou).toBe(false);
   });
 });

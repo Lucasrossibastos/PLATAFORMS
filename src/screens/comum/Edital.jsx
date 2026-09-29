@@ -11,7 +11,7 @@ import {
 import { DIAS, fmtMin } from "../../core/nucleo.js";
 import { fmtDataCurta, fmtDataLonga } from "../../core/datas.js";
 import {
-  CARGA_PADRAO, MINUTOS_MAX, MINUTOS_MIN, PERMISSOES_ALUNO, PRIORIDADES, RITMOS, capacidadeSemanal, duracaoDaMeta, idItem, itensDoPlano, nomeRitmo, topicosEmOrdem,
+  BLOCO_META, CARGA_PADRAO, ERRO_DURACAO, MINUTOS_MAX, MINUTOS_MIN, PERMISSOES_ALUNO, duracaoValida, PRIORIDADES, RITMOS, capacidadeSemanal, duracaoDaMeta, idItem, itensDoPlano, nomeRitmo, topicosEmOrdem,
 } from "../../core/plano.js";
 import { PESO_MAX, PESO_MIN, jornadaEfetiva, pesosDoPlano } from "../../core/jornada.js";
 import { horariosDoPlano } from "../../core/horario.js";
@@ -177,19 +177,21 @@ export function BlocosMaterias({ plano, progresso, selecionada, aoSelecionar, mo
 /* ---------- Tópicos de uma matéria ---------- */
 
 /* Tempo em minutos, livre (tocar para mudar; vazio volta ao padrão). */
-function CargaEditor({ valor, padrao, aoSalvar, rotulo, titulo = "Mudar o tempo de estudo" }) {
+// meta = true: duração máxima das metas (de 30 em 30); senão, tempo de estudo do tópico (qualquer minuto)
+function CargaEditor({ valor, padrao, aoSalvar, rotulo, titulo = "Mudar o tempo de estudo", meta = false }) {
+  const ok = meta ? duracaoValida : minutosOk;
   const [editando, setEditando] = useState(false);
   const [x, setX] = useState(valor ?? "");
   const salvar = () => {
     const n = x === "" ? null : Number(x);
-    if (n != null && !minutosOk(n)) return;
+    if (n != null && !ok(n)) return;
     setEditando(false);
     if (n !== (valor ?? null)) aoSalvar(n);
   };
   if (!editando) return <button type="button" className="carga" onClick={() => { setX(valor ?? ""); setEditando(true); }} title={titulo}>{fmtMin(valor ?? padrao)}{valor != null && <i aria-label="(personalizado)">*</i>}</button>;
   return (
     <span className="carga-edicao">
-      <input className={`entrada num${x !== "" && !minutosOk(Number(x)) ? " entrada--erro" : ""}`} type="number" min={MINUTOS_MIN} max={MINUTOS_MAX} step="1" aria-label={rotulo} value={x} placeholder={String(padrao)} autoFocus
+      <input className={`entrada num${x !== "" && !ok(Number(x)) ? " entrada--erro" : ""}`} type="number" min={meta ? BLOCO_META : MINUTOS_MIN} max={MINUTOS_MAX} step={meta ? BLOCO_META : 1} aria-label={rotulo} value={x} placeholder={String(padrao)} autoFocus
         onChange={(e) => setX(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") salvar(); if (e.key === "Escape") setEditando(false); }} />
       <small>min</small>
       <button type="button" className="icone-btn" aria-label="Salvar" onClick={salvar}><Check /></button>
@@ -298,7 +300,7 @@ export function TopicosDaMateria({
             <p className="previa-linha duracao-meta">
               Metas de até{" "}
               {pode.tempos ? (
-                <CargaEditor valor={plano.duracaoMeta?.[materiaId] ?? null} padrao={m.maxSessao ?? 60} rotulo={`Minutos de cada meta de ${nomeM}`} titulo="Mudar a duração máxima das metas desta matéria"
+                <CargaEditor valor={plano.duracaoMeta?.[materiaId] ?? null} padrao={m.maxSessao ?? 60} rotulo={`Minutos de cada meta de ${nomeM}`} titulo="Mudar a duração máxima das metas desta matéria (de 30 em 30 minutos)" meta
                   aoSalvar={(c) => op({ tipo: "definirDuracaoMeta", materiaId, minutos: c }, "Mudar a duração das metas")} />
               ) : <b className="num">{fmtMin(duracaoDaMeta(plano, m))}</b>}
             </p>
@@ -380,7 +382,7 @@ export function TabelaIncidencia({ plano, aoAplicar, ocupado, capacidade, efetiv
     ...(Object.keys(campos).length ? [{ tipo: "definirMateria", materiaId, campos }] : []),
     ...(maxSessao === undefined ? [] : doAluno ? [{ tipo: "definirDuracaoMeta", materiaId, minutos: maxSessao }] : [{ tipo: "definirMateria", materiaId, campos: { maxSessao } }]),
   ]);
-  const invalida = Object.values(pendentes).some((c) => c.maxSessao !== undefined && !minutosOk(c.maxSessao));
+  const invalida = Object.values(pendentes).some((c) => c.maxSessao !== undefined && !duracaoValida(c.maxSessao));
   const somaPesos = materias.reduce((acc, m) => { const x = valor(m); return acc + (x.ativa ? x.peso : 0); }, 0);
   const fora = ind.materias.filter((m) => !plano.materias?.some((x) => x.materiaId === m.id));
   const origem = (materiaId, campo) => efetiva?.materias.find((x) => x.materiaId === materiaId)?.campos[campo];
@@ -430,7 +432,7 @@ export function TabelaIncidencia({ plano, aoAplicar, ocupado, capacidade, efetiv
                   </td>
                   <td data-rotulo="Meta de até">
                     <span className="minutos">
-                      <input className={`entrada entrada--sm num${minutosOk(x.maxSessao) ? "" : " entrada--erro"}`} type="number" min={MINUTOS_MIN} max={MINUTOS_MAX} step="1"
+                      <input className={`entrada entrada--sm num${duracaoValida(x.maxSessao) ? "" : " entrada--erro"}`} type="number" min={BLOCO_META} max={MINUTOS_MAX} step={BLOCO_META}
                         value={x.maxSessao} aria-label={`Minutos de cada meta de ${nome}`} onChange={(e) => mudar(m, { maxSessao: e.target.value === "" ? "" : Number(e.target.value) })} />
                       <small>min</small>
                     </span>
@@ -457,7 +459,7 @@ export function TabelaIncidencia({ plano, aoAplicar, ocupado, capacidade, efetiv
       </div>
       <div className="barra-incidencia">
         <span className="num">
-          {invalida ? <span className="txt-erro">Duração: minutos de {MINUTOS_MIN} a {MINUTOS_MAX}</span>
+          {invalida ? <span className="txt-erro">{ERRO_DURACAO}</span>
             : doAluno ? <>Horário do aluno: até <b>{fmtMin(capacidade)}</b> por semana, dividido pelo peso</> : null}
         </span>
         {fora.length > 0 && <AdicionarSelect rotulo="Incluir matéria" opcoes={fora} aoEscolher={(id) => aoAplicar([{ tipo: "adicionarMateria", materiaId: id }], `Incluir ${ind.nomeMateria(id)}`)} />}

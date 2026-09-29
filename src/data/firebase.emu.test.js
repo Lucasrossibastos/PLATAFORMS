@@ -156,9 +156,10 @@ describe("Firebase (emuladores): fluxo moderador → aluno", () => {
     // revisão recorrente num tópico já concluído: uma por tópico, vira meta, desativar não apaga
     const ind = await s.ctx.indice();
     const item = itensDoPlano(await repo.obter("planos", ids.ana), ind).find((it) => it.materiaId === "matematica");
-    await s.revisoes.ativar(ids.ana, item.itemId, { intervaloDias: 2, duracaoMin: 20 });
+    await s.revisoes.ativar(ids.ana, item.itemId, { intervaloDias: 2, duracaoMin: 30 });
     const rev = (await repo.listar("metas", [["alunoId", "==", ids.ana]])).filter((m) => m.categoria === "revisao_recorrente");
     expect(rev.length).toBeGreaterThanOrEqual(7);
+    expect(rev.every((m) => m.duracaoPlanejada === 30)).toBe(true);
     await s.revisoes.desativar(ids.ana, item.itemId);
     expect((await repo.obter("revisoesRecorrentes", `${ids.ana}__${item.itemId}`)).ativo).toBe(false);
     await expect(repo.remover("revisoesRecorrentes", `${ids.ana}__${item.itemId}`)).rejects.toMatchObject({ codigo: "permissao" });

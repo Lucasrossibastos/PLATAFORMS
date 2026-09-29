@@ -23,7 +23,8 @@ export const MODOS_ATRASO = {
 };
 
 const DATA = /^\d{4}-\d{2}-\d{2}$/;
-export const LIMITES_REVISAO = { intervaloMin: 1, intervaloMax: 365, duracaoMin: 5, duracaoMax: 180 };
+// duração de 30 em 30 minutos, como toda meta
+export const LIMITES_REVISAO = { intervaloMin: 1, intervaloMax: 365, duracaoMin: 30, duracaoMax: 180, passo: 30 };
 
 export function validarParametros(p) {
   const erros = {};
@@ -31,7 +32,7 @@ export function validarParametros(p) {
   const d = Number(p?.duracaoMin);
   const L = LIMITES_REVISAO;
   if (!Number.isInteger(i) || i < L.intervaloMin || i > L.intervaloMax) erros.intervaloDias = `Intervalo: de ${L.intervaloMin} a ${L.intervaloMax} dias.`;
-  if (!Number.isInteger(d) || d < L.duracaoMin || d > L.duracaoMax) erros.duracaoMin = `Duração: de ${L.duracaoMin} a ${L.duracaoMax} minutos.`;
+  if (!Number.isInteger(d) || d < L.duracaoMin || d > L.duracaoMax || d % L.passo) erros.duracaoMin = `Duração: de ${L.passo} em ${L.passo} minutos, de ${L.duracaoMin} a ${L.duracaoMax}.`;
   if (!DATA.test(p?.dataBase || "")) erros.dataBase = "Escolha a data-base do ciclo.";
   if (p?.modoAtraso && !Object.hasOwn(MODOS_ATRASO, p.modoAtraso)) erros.modoAtraso = "Modo de atraso desconhecido.";
   return { ok: !Object.keys(erros).length, erros };

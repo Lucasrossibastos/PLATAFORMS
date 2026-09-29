@@ -5,8 +5,9 @@
                   topicos: [{ topicoId, cargaMin?, subtopicos: [{ subtopicoId, cargaMin? }] }] }]
    Não há "horas por semana" na jornada: o tempo vem das horas-base de cada
    tópico e se encaixa no horário de cada aluno (plano.disponibilidade).
-   maxSessao é a duração MÁXIMA de cada meta da matéria (minutos, qualquer
-   valor): o motor encurta a meta para fechar tópicos e caber no dia.
+   maxSessao é a duração MÁXIMA de cada meta da matéria, de 30 em 30 minutos:
+   as metas andam em blocos de 30 (nunca menos de 30) e só a que completa o
+   dia sai "quebrada" (ver core/motorMetas.js).
    Planos antigos têm minutosSemanais: só servem para deduzir o peso.
 
    Ajustes do próprio aluno (ou do moderador para aquele aluno), por cima da
@@ -58,7 +59,7 @@ export const MODALIDADES = [
   { id: "revisao", nome: "Revisão final" },
 ];
 
-export const REVISAO_PADRAO = { intervalos: [7, 15, 30], duracaoMin: 20 };
+export const REVISAO_PADRAO = { intervalos: [7, 15, 30], duracaoMin: 30 };
 export const CARGA_PADRAO = 60;
 
 export const STATUS_ITEM = {
@@ -75,6 +76,10 @@ export const duracaoDaMeta = (plano, m) => plano?.duracaoMeta?.[m.materiaId] ?? 
 export const MINUTOS_MIN = 5;
 export const MINUTOS_MAX = 720;
 const minutosValidos = (v) => Number.isInteger(v) && v >= MINUTOS_MIN && v <= MINUTOS_MAX;
+// metas andam de 30 em 30 minutos (nunca menos de 30): a duração máxima também
+export const BLOCO_META = 30;
+export const duracaoValida = (v) => Number.isInteger(v) && v >= BLOCO_META && v <= MINUTOS_MAX && v % BLOCO_META === 0;
+export const ERRO_DURACAO = `Duração da meta: de 30 em 30 minutos, até ${MINUTOS_MAX}.`;
 const arred5 = (n) => Math.ceil(n / 5) * 5;
 
 /* ---------- Leitura ---------- */
@@ -415,7 +420,7 @@ export function alterarPlano(plano, ind, op) {
         const atual = k === "ativa" ? m.ativa !== false : m[k];
         if (!(k in rotulos) || atual === v) return;
         if (k === "peso" && !(Number.isInteger(v) && v >= 1 && v <= 10)) throw new Error("Peso: número inteiro de 1 a 10.");
-        if (k === "maxSessao" && !minutosValidos(v)) throw new Error(`Duração: minutos inteiros de ${MINUTOS_MIN} a ${MINUTOS_MAX}.`);
+        if (k === "maxSessao" && !duracaoValida(v)) throw new Error(ERRO_DURACAO);
         registrar(op.tipo, `Mudou ${rotulos[k]} de ${nomeM}`, fmt(k, atual ?? null), fmt(k, v));
         m[k] = v;
       });
@@ -482,7 +487,7 @@ export function alterarPlano(plano, ind, op) {
     case "definirDuracaoMeta": { // só do aluno: por cima da jornada
       const m = mat(op.materiaId);
       if (!m) break;
-      if (op.minutos != null && !minutosValidos(op.minutos)) throw new Error(`Duração: minutos inteiros de ${MINUTOS_MIN} a ${MINUTOS_MAX}.`);
+      if (op.minutos != null && !duracaoValida(op.minutos)) throw new Error(ERRO_DURACAO);
       const antes = duracaoDaMeta(p, m);
       const mapa = { ...(p.duracaoMeta || {}) };
       if (op.minutos == null || op.minutos === (m.maxSessao ?? 60)) delete mapa[op.materiaId]; // igual à jornada: volta a herdar

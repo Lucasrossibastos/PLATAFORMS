@@ -211,17 +211,17 @@ describe("alterações individuais com histórico", () => {
   });
 });
 
-describe("tempos do aluno: duração das metas e tempo de cada tópico (minutos livres)", () => {
+describe("tempos do aluno: duração das metas (de 30 em 30) e tempo de cada tópico (minutos livres)", () => {
   it("a duração das metas vale por cima da jornada; igual à jornada volta a herdar", () => {
     const plano = novoPlano();
-    const r = alterarPlano(plano, ind, { tipo: "definirDuracaoMeta", materiaId: "biologia", minutos: 37 });
-    expect(r.plano.duracaoMeta).toEqual({ biologia: 37 });
-    expect(duracaoDaMeta(r.plano, r.plano.materias[0])).toBe(37);
-    expect(r.log[0]).toMatchObject({ descricao: expect.stringMatching(/duração das metas de Biologia/), depois: 37 });
+    const r = alterarPlano(plano, ind, { tipo: "definirDuracaoMeta", materiaId: "biologia", minutos: 90 });
+    expect(r.plano.duracaoMeta).toEqual({ biologia: 90 });
+    expect(duracaoDaMeta(r.plano, r.plano.materias[0])).toBe(90);
+    expect(r.log[0]).toMatchObject({ descricao: expect.stringMatching(/duração das metas de Biologia/), depois: 90 });
     expect(r.plano.materias[0].maxSessao).toBe(plano.materias[0].maxSessao); // a cópia da jornada não muda
     const volta = alterarPlano(r.plano, ind, { tipo: "definirDuracaoMeta", materiaId: "biologia", minutos: plano.materias[0].maxSessao });
     expect(volta.plano.duracaoMeta).toEqual({});
-    expect(() => alterarPlano(plano, ind, { tipo: "definirDuracaoMeta", materiaId: "biologia", minutos: 2 })).toThrow(/minutos/);
+    for (const minutos of [2, 20, 37, 45]) expect(() => alterarPlano(plano, ind, { tipo: "definirDuracaoMeta", materiaId: "biologia", minutos })).toThrow(/30 em 30/);
   });
 
   it("o tempo do tópico do aluno muda a duração do item; sem ajuste vale o da jornada ou o da estrutura", () => {
@@ -235,9 +235,9 @@ describe("tempos do aluno: duração das metas e tempo de cada tópico (minutos 
     expect(itensDoPlano(limpo.plano, ind).find((it) => it.topicoId === "bi2").duracao).toBe(antes.duracao);
   });
 
-  it("a duração de cada meta na jornada é livre (qualquer minuto de 5 a 720)", () => {
-    const r = alterarPlano(modeloBio(), ind, { tipo: "definirMateria", materiaId: "biologia", campos: { maxSessao: 52 } });
-    expect(r.plano.materias[0].maxSessao).toBe(52);
-    expect(() => alterarPlano(modeloBio(), ind, { tipo: "definirMateria", materiaId: "biologia", campos: { maxSessao: 1000 } })).toThrow(/minutos/);
+  it("a duração de cada meta na jornada anda de 30 em 30 minutos (30 a 720)", () => {
+    const r = alterarPlano(modeloBio(), ind, { tipo: "definirMateria", materiaId: "biologia", campos: { maxSessao: 120 } });
+    expect(r.plano.materias[0].maxSessao).toBe(120);
+    for (const maxSessao of [52, 15, 1000]) expect(() => alterarPlano(modeloBio(), ind, { tipo: "definirMateria", materiaId: "biologia", campos: { maxSessao } })).toThrow(/30 em 30/);
   });
 });

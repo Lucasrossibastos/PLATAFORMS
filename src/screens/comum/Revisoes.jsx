@@ -7,6 +7,7 @@ import { Repeat, TriangleAlert } from "lucide-react";
 import { fmtMin } from "../../core/nucleo.js";
 import { fmtDataCurta } from "../../core/datas.js";
 import { LIMITES_REVISAO, MODOS_ATRASO, parametrosAtuais, proximaOcorrencia } from "../../core/revisaoRecorrente.js";
+import { emBlocos } from "../../core/motorMetas.js";
 import { useApp } from "../../state/AppContext.jsx";
 import { errosDeCampo, useAcao } from "../../state/hooks.js";
 import { Botao, Campo, Dialogo, MensagemErro, Vazio } from "../../ui/ui.jsx";
@@ -19,7 +20,7 @@ export function DialogoRevisao({ alunoId, alvo, aoFechar }) {
   const rev = alvo?.rev;
   const atual = rev?.ativo ? parametrosAtuais(rev) : null;
   const [f, setF] = useState(() => ({
-    intervaloDias: atual?.intervaloDias ?? 7, duracaoMin: atual?.duracaoMin ?? 20,
+    intervaloDias: atual?.intervaloDias ?? 7, duracaoMin: atual ? emBlocos(atual.duracaoMin) : 30,
     dataBase: atual?.dataBase ?? hoje, modoAtraso: atual?.modoAtraso ?? "fixo",
   }));
   const [motivo, setMotivo] = useState("");
@@ -52,8 +53,8 @@ export function DialogoRevisao({ alunoId, alvo, aoFechar }) {
           </span>
         </Campo>
         <div className="form-linha">
-          <Campo rotulo="Duração (min)" erro={erros.duracaoMin}>
-            <input className="entrada num" type="number" min={LIMITES_REVISAO.duracaoMin} max={LIMITES_REVISAO.duracaoMax} value={f.duracaoMin} onChange={(e) => setF({ ...f, duracaoMin: e.target.value })} />
+          <Campo rotulo="Duração (min, de 30 em 30)" erro={erros.duracaoMin}>
+            <input className="entrada num" type="number" min={LIMITES_REVISAO.duracaoMin} max={LIMITES_REVISAO.duracaoMax} step={LIMITES_REVISAO.passo} value={f.duracaoMin} onChange={(e) => setF({ ...f, duracaoMin: e.target.value })} />
           </Campo>
           <Campo rotulo="Começa em" erro={erros.dataBase}>
             <input className="entrada" type="date" value={f.dataBase} onChange={(e) => setF({ ...f, dataBase: e.target.value })} />
@@ -84,7 +85,7 @@ export function PainelRevisoes({ v }) {
   const inativas = revs.filter((r) => !r.ativo);
   const itemDe = (r) => v.itens.find((it) => it.itemId === r.itemId) || { itemId: r.itemId, topicoId: r.topicoId, materiaId: r.materiaId };
   const ultimaFeita = (r) => v.metas.filter((m) => m.revisaoRecorrenteId === r.id && m.status === "concluida").map((m) => m.concluidaEm).sort().at(-1) || null;
-  const cargaSemanal = ativas.reduce((x, r) => { const p = parametrosAtuais(r); return x + (p.duracaoMin * 7) / p.intervaloDias; }, 0);
+  const cargaSemanal = ativas.reduce((x, r) => { const p = parametrosAtuais(r); return x + (emBlocos(p.duracaoMin) * 7) / p.intervaloDias; }, 0);
   const conflitos = (v.dias || []).filter((d) => d.conflito);
   const antigas = (v.revisoes || []).flatMap((r) => (r.sessoes || []).filter((x) => x.status === "agendada").map((x) => ({ r, dia: x.dia })));
 
@@ -119,7 +120,7 @@ export function PainelRevisoes({ v }) {
                     <tr key={r.id}>
                       <td><span className="celula-conteudo"><i className="ponto-materia" style={{ "--cor": ind.corDaMateria(r.materiaId) }} aria-hidden="true" /><span><small>{ind.nomeMateria(r.materiaId)}</small>{ind.nomeTopico(r.topicoId)}</span></span></td>
                       <td>{p.intervaloDias} dias{p.modoAtraso === "desde_ultima" && <small className="bloco-pequeno">conta da última feita</small>}</td>
-                      <td className="num">{fmtMin(p.duracaoMin)}</td>
+                      <td className="num">{fmtMin(emBlocos(p.duracaoMin))}</td>
                       <td className="num">{fmtDataCurta(proximaOcorrencia(r, v.hoje, { ultimaFeitaEm: ultimaFeita(r) }))}</td>
                       <td><Botao variante="texto" tamanho="sm" icone={Repeat} onClick={() => setAlvo({ it: itemDe(r), rev: r })}>Editar</Botao></td>
                     </tr>

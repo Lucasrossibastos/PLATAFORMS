@@ -10,6 +10,10 @@
      2. metas que o aluno fixou num dia (arrastou) e o que ele já estudou hoje;
      3. o resto vai para a PROGRESSÃO, dividido pelo peso das matérias.
 
+   Tamanho das metas: de 30 em 30 minutos, nunca menos de 30 (revisões
+   também). O teto da matéria vale em blocos de 30. Só uma meta por dia pode
+   sair "quebrada" (ex.: 50 min): a que completa o tempo livre do dia.
+
    Progressão: cada meta é tempo de uma matéria, contínua — ela estuda o
    tópico atual da fila e, se ele acabar, segue no próximo. O conteúdo de
    uma meta pendente é calculado na hora (conteudoPlanejado), então reordenar
@@ -26,11 +30,14 @@ import { diasEntre, inicioDaSemana, somarDias } from "./datas.js";
 import { minutosNoDia } from "./horario.js";
 import { efeitoDosMinutos, estadoDoTopico, filaDaMateria } from "./ciclos.js";
 import { pesosDoPlano } from "./jornada.js";
-import { duracaoDaMeta } from "./plano.js";
+import { BLOCO_META, duracaoDaMeta } from "./plano.js";
 import { ocorrenciasNoHorizonte, parametrosAtuais } from "./revisaoRecorrente.js";
 
 export const HORIZONTE_DIAS = 14;
-export const SESSAO_MIN = 15; // meta mínima (a não ser que a matéria use metas mais curtas)
+// duração em blocos de 30 (a mais próxima, nunca menos de 30): revisões e dados antigos
+export const emBlocos = (min) => Math.max(BLOCO_META, Math.round((Number(min) || 0) / BLOCO_META) * BLOCO_META);
+// teto da matéria em blocos de 30 (um teto de 80 dá metas de até 60)
+export const tetoEmBlocos = (teto) => Math.max(BLOCO_META, Math.floor((Number(teto) || 0) / BLOCO_META) * BLOCO_META);
 export const ESTRATEGIAS_ATRASO = {
   redistribuir: "Levar para os próximos dias",
   manter: "Deixar no dia, como atrasada",
@@ -74,16 +81,10 @@ export function conteudoPlanejado(metas, itens, progresso = {}) {
   return out;
 }
 
-/* Tamanho de cada meta. A duração da matéria (e as horas do dia) é um TETO:
-   a meta pode ser menor, para ficar encaixada no dia e ligada aos tópicos.
-   - o tópico atual cabe numa meta: a meta fecha o tópico;
-   - é maior que a meta: é dividido em partes iguais (nada de rabinho);
-   - sobrou um pedacinho do tópico: a meta segue direto no próximo;
-   - não cabe no que resta do dia com um tamanho razoável: fica para outro
-     dia (o dia pode ficar com folga), a não ser que seja o fim da matéria;
-   - o dia só comporta parte: a parte não deixa um resto pequeno no tópico. */
-export const minimoDaMeta = (teto) => Math.min(teto, Math.max(SESSAO_MIN, Math.ceil(teto / 2)));
-const arred5 = (n) => Math.ceil(n / 5) * 5;
+/* Tamanho de uma meta: blocos de 30 até o teto da matéria, o que cabe no
+   dia e o que ainda falta de conteúdo (o último pedaço da matéria vira um
+   bloco inteiro; o tempo a mais fica no último tópico). A meta segue a fila
+   da matéria: termina um tópico e continua no próximo. 0 = não cabe. */
 function consumirDaFila(lista, minutos) {
   let m = minutos;
   while (m > 0 && lista.length) {
@@ -93,22 +94,40 @@ function consumirDaFila(lista, minutos) {
     if (lista[0] <= 0) lista.shift();
   }
 }
-export function tamanhoDaMeta(lista, { maxSessao: teto, minimo }, cap) {
-  const total = lista.reduce((a, b) => a + b, 0);
-  if (!total) return 0;
-  const r = lista[0];
-  let alvo;
-  if (r >= minimo) {
-    const partes = Math.ceil(r / teto);
-    alvo = partes === 1 ? r : Math.min(teto, arred5(r / partes));
-  } else {
-    alvo = Math.min(teto, total);
+export function tamanhoDaMeta(lista, { maxSessao: teto }, cap) {
+  const falta = lista.reduce((a, b) => a + b, 0);
+  if (!falta) return 0;
+  const dur = Math.min(tetoEmBlocos(teto), Math.ceil(falta / BLOCO_META) * BLOCO_META, Math.floor(cap / BLOCO_META) * BLOCO_META);
+  return dur >= BLOCO_META ? dur : 0;
+}
+
+/* Completa o dia com o que sobrou (menos de 30 min): uma única meta sai
+   "quebrada", no fim do dia. Primeiro tenta esticar uma meta do dia sem
+   passar do teto da matéria dela; se nenhuma pode, tira 30 de uma meta de
+   60 ou mais e faz, com a sobra, uma meta de 30 + sobra (de preferência de
+   outra matéria). Sem jeito de fechar sem passar dos tetos, o dia fica com
+   a folga. */
+function completarDia(doDia, sobra, info, pendente) {
+  if (sobra <= 0 || sobra >= BLOCO_META || !doDia.length) return { extra: [], delta: {} };
+  const esticar = [...doDia].reverse().find((s) => s.minutos + sobra <= info[s.materiaId].teto);
+  if (esticar) {
+    esticar.minutos += sobra;
+    esticar.completa = true;
+    consumirDaFila(pendente[esticar.materiaId], sobra);
+    return { extra: [], delta: { [esticar.materiaId]: sobra } };
   }
-  let dur = Math.min(alvo, cap);
-  // o dia cortou a meta no meio do tópico: não deixar um resto pequeno demais nele
-  if (dur < alvo && r >= minimo && r - dur > 0 && r - dur < minimo) dur = r - minimo;
-  if (dur < 1 || (dur < minimo && dur < total)) return 0;
-  return dur;
+  const cortar = [...doDia].reverse().find((s) => s.minutos >= 2 * BLOCO_META);
+  if (!cortar) return { extra: [], delta: {} };
+  const tam = BLOCO_META + sobra;
+  const usadas = new Set(doDia.map((s) => s.materiaId));
+  const outra = Object.keys(pendente).find((id) => !usadas.has(id) && pendente[id].length && info[id].teto >= tam);
+  const materiaId = outra || cortar.materiaId;
+  cortar.minutos -= BLOCO_META;
+  if (outra) { pendente[cortar.materiaId].unshift(BLOCO_META); consumirDaFila(pendente[outra], tam); } // os 30 voltam para a fila
+  else consumirDaFila(pendente[materiaId], sobra);
+  const delta = { [cortar.materiaId]: -BLOCO_META };
+  delta[materiaId] = (delta[materiaId] || 0) + tam;
+  return { extra: [{ data: cortar.data, materiaId, minutos: tam, completa: true }], delta };
 }
 
 /* Orçamento e plano de sessões de progressão para o horizonte.
@@ -172,7 +191,7 @@ export function planejarHorizonte({ hojeIso, plano, itens, progresso = {}, metas
   });
   const info = Object.fromEntries(materias.map((m) => {
     const teto = duracaoDaMeta(plano, m);
-    return [m.materiaId, { maxSessao: teto, minimo: minimoDaMeta(teto), prioridade: m.prioridade ?? 2, peso: pesos[m.materiaId] || 1 }];
+    return [m.materiaId, { maxSessao: tetoEmBlocos(teto), teto: Math.max(teto, tetoEmBlocos(teto)), prioridade: m.prioridade ?? 2, peso: pesos[m.materiaId] || 1 }];
   }));
 
   const slots = [];
@@ -187,7 +206,8 @@ export function planejarHorizonte({ hojeIso, plano, itens, progresso = {}, metas
     let cap = capacidade[d];
     const usadasHoje = new Set(d === hojeIso ? feitoHoje : []);
     const semEspaco = new Set();
-    while (cap >= 5) {
+    const doDia = [];
+    while (cap >= BLOCO_META) {
       const candidatas = Object.keys(pendente).filter((id) => pendente[id].length && !semEspaco.has(id));
       if (!candidatas.length) break;
       candidatas.sort((a, b) => razao(a) - razao(b) || info[a].prioridade - info[b].prioridade || ordemPlano.get(a) - ordemPlano.get(b));
@@ -196,13 +216,18 @@ export function planejarHorizonte({ hojeIso, plano, itens, progresso = {}, metas
       const nova = candidatas.find((id) => !usadasHoje.has(id));
       const id = usadasHoje.has(melhor) && nova && razao(nova) - razao(melhor) <= info[melhor].maxSessao / info[melhor].peso ? nova : melhor;
       const dur = tamanhoDaMeta(pendente[id], info[id], cap);
-      if (!dur) { semEspaco.add(id); continue; } // não cabe direito hoje: o dia pode ficar com folga
-      slots.push({ data: d, materiaId: id, minutos: dur });
+      if (!dur) { semEspaco.add(id); continue; }
+      doDia.push({ data: d, materiaId: id, minutos: dur });
       alocado[id] = (alocado[id] || 0) + dur;
       consumirDaFila(pendente[id], dur);
       cap -= dur;
       usadasHoje.add(id);
     }
+    const { extra, delta } = completarDia(doDia, cap, info, pendente);
+    Object.entries(delta).forEach(([id, min]) => { alocado[id] = (alocado[id] || 0) + min; });
+    // a meta que completa o dia vai por último
+    const dia = [...doDia, ...extra].sort((a, b) => (a.completa ? 1 : 0) - (b.completa ? 1 : 0));
+    slots.push(...dia.map(({ completa: _c, ...s }) => s));
   });
   return { slots, capacidade, conflitos, datas };
 }
@@ -222,15 +247,16 @@ export function planejarRevisoes({ revisoes = [], metas, hojeIso, dias = HORIZON
     const atrasadas = minhas.filter((m) => m.status === "pendente" && m.dataPlanejada < hojeIso);
     const datas = ocorrenciasNoHorizonte(rev, hojeIso, fim, { ultimaFeitaEm, atrasadaPendente: atrasadas.length > 0 });
     const p = parametrosAtuais(rev);
+    const dur = p ? emBlocos(p.duracaoMin) : null; // de 30 em 30 (revisões antigas de 20 viram 30)
     if (!rev.ativo) atrasadas.forEach((m) => r.dispensar.push(m.id));
     minhas.filter((m) => m.status === "pendente" && m.dataPlanejada >= hojeIso).forEach((m) => {
       if (!datas.includes(m.ocorrenciaEm || m.dataPlanejada)) (m.datasAnteriores?.length ? r.dispensar : r.apagar).push(m.id);
-      else if (p && m.duracaoPlanejada !== p.duracaoMin) r.atualizar.push({ id: m.id, patch: { duracaoPlanejada: p.duracaoMin } });
+      else if (p && m.duracaoPlanejada !== dur) r.atualizar.push({ id: m.id, patch: { duracaoPlanejada: dur } });
     });
     const cobertas = new Set(minhas.map((m) => m.ocorrenciaEm || m.dataPlanejada));
     datas.filter((d) => !cobertas.has(d)).forEach((d) => r.criar.push({
       id: idMetaRevisao(rev.id, d), categoria: "revisao_recorrente", revisaoRecorrenteId: rev.id, ocorrenciaEm: d,
-      materiaId: rev.materiaId, itemId: rev.itemId, topicoId: rev.topicoId, dataPlanejada: d, duracaoPlanejada: p.duracaoMin, ordemNoDia: 10,
+      materiaId: rev.materiaId, itemId: rev.itemId, topicoId: rev.topicoId, dataPlanejada: d, duracaoPlanejada: dur, ordemNoDia: 10,
     }));
   });
   return r;
@@ -248,7 +274,7 @@ export function metasDasRevisoesAntigas({ revisoes = [], metas, hojeIso, dias = 
     if (s.status !== "agendada" || s.dia > fim || existe.has(id)) return;
     criar.push({
       id, categoria: "revisao_automatica", revisaoAntigaId: r.id, revisaoDia: s.dia, materiaId: r.materiaId,
-      itemId: r.itemId || null, topicoId: r.topicoId || null, dataPlanejada: s.dia, duracaoPlanejada: r.duracaoMin || 20, ordemNoDia: 20,
+      itemId: r.itemId || null, topicoId: r.topicoId || null, dataPlanejada: s.dia, duracaoPlanejada: emBlocos(r.duracaoMin || BLOCO_META), ordemNoDia: 20,
     });
   }));
   return criar;

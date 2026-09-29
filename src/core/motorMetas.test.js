@@ -63,53 +63,92 @@ describe("peso define a frequência", () => {
     expect(slots.some((s) => s.materiaId === "filo")).toBe(false);
   });
 
-  it("o que acabou é o que ainda falta: sessões nunca passam do conteúdo da matéria", () => {
+  it("matéria acabando: o último pedaço vira um bloco de 30 (o tempo a mais fica no último tópico)", () => {
     const itens = [...topicos("mat", 1, 70), ...topicos("fis", 20)];
     const { slots } = planejarHorizonte({ hojeIso: HOJE, plano: eng, itens });
-    expect(porMateria(slots).mat).toBe(70);
+    expect(slots.filter((s) => s.materiaId === "mat").map((s) => s.minutos)).toEqual([60, 30]);
   });
 });
 
-describe("duração das metas livre (minutos exatos)", () => {
-  it("a duração definida é teto: nunca é passada; tópico maior que a meta vira partes iguais", () => {
-    const plano = { ...eng, duracaoMeta: { mat: 47 }, materias: eng.materias.map((m) => (m.materiaId === "fis" ? { ...m, maxSessao: 38 } : m)) };
+describe("metas de 30 em 30 minutos", () => {
+  const blocos = (slots) => slots.every((x) => x.minutos >= 30 && x.minutos % 30 === 0);
+  const tres = planoCom([
+    { materiaId: "mat", peso: 10, maxSessao: 60 }, { materiaId: "fis", peso: 5, maxSessao: 60 }, { materiaId: "qui", peso: 5, maxSessao: 60 },
+  ]);
+  const itensTres = [...topicos("mat", 5), ...topicos("fis", 5), ...topicos("qui", 5)];
+
+  it("toda meta é múltiplo de 30 (nunca menos de 30); o teto vale em blocos: 47 → 30, 80 → 60", () => {
+    const plano = { ...eng, duracaoMeta: { mat: 47 }, materias: eng.materias.map((m) => (m.materiaId === "fis" ? { ...m, maxSessao: 80 } : m)) };
     const { slots } = planejarHorizonte({ hojeIso: HOJE, plano, itens: itensEng });
+    expect(blocos(slots)).toBe(true);
     const durs = (id) => slots.filter((x) => x.materiaId === id).map((x) => x.minutos);
-    expect(Math.max(...durs("mat"))).toBeLessThanOrEqual(47);
-    expect(Math.max(...durs("fis"))).toBeLessThanOrEqual(38);
-    expect(durs("mat")).toContain(40); // 120 min em 3 × 40, não 47 + 47 + 26
-    expect(durs("fis")).toContain(30); // 120 min em 4 × 30
+    expect(Math.max(...durs("mat"))).toBe(30);
+    expect(Math.max(...durs("fis"))).toBe(60);
   });
 
-  it("a meta fecha o tópico quando ele cabe; pedacinho que sobrou segue no próximo tópico", () => {
+  it("dia com tempo quebrado: só a última meta completa o dia (170 = 60 + 60 + 50)", () => {
+    const plano = planoCom([{ materiaId: "mat", peso: 5, maxSessao: 60 }], { ...TODO_DIA, seg: 170 });
+    const hoje = planejarHorizonte({ hojeIso: HOJE, plano, itens: topicos("mat", 5) }).slots.filter((x) => x.data === HOJE);
+    expect(hoje.map((x) => x.minutos)).toEqual([60, 60, 50]);
+  });
+
+  it("a sobra que não cabe esticando uma meta: 30 saem de uma e a última vira 30 + sobra (140 = 60 + 30 + 50)", () => {
+    const plano = { ...tres, disponibilidade: { ...TODO_DIA, seg: 140 } };
+    const hoje = planejarHorizonte({ hojeIso: HOJE, plano, itens: itensTres }).slots.filter((x) => x.data === HOJE);
+    expect(hoje.reduce((a, x) => a + x.minutos, 0)).toBe(140);
+    expect(hoje.filter((x) => x.minutos % 30)).toHaveLength(1);
+    expect(hoje.at(-1).minutos).toBe(50);
+    expect(new Set(hoje.map((x) => x.materiaId)).size).toBe(3); // a de 50 vai para outra matéria
+    expect(hoje.every((x) => x.minutos >= 30 && x.minutos <= 60)).toBe(true);
+  });
+
+  it("a meta que completa pode ser a maior do dia quando o teto deixa (teto 90: 150 − 90 = 60, e 20 esticam para 80)", () => {
+    const plano = planoCom([{ materiaId: "mat", peso: 5, maxSessao: 90 }], { ...TODO_DIA, seg: 170 });
+    const hoje = planejarHorizonte({ hojeIso: HOJE, plano, itens: topicos("mat", 5) }).slots.filter((x) => x.data === HOJE);
+    expect(hoje.map((x) => x.minutos)).toEqual([90, 80]);
+  });
+
+  it("nunca menos de 30: dia com 20 livres fica sem meta; teto antigo de 10 vira 30", () => {
+    const plano = planoCom([{ materiaId: "mat", peso: 5, maxSessao: 10 }], { ...TODO_DIA, seg: 20, ter: 30 });
+    const { slots } = planejarHorizonte({ hojeIso: HOJE, plano, itens: topicos("mat", 5) });
+    expect(slots.filter((x) => x.data === HOJE)).toEqual([]);
+    expect(slots.filter((x) => x.data === "2026-09-29").map((x) => x.minutos)).toEqual([30]);
+  });
+
+  it("dia em múltiplo de 30 não tem meta quebrada; teto de 30 sem como completar deixa a folga", () => {
+    const { slots } = planejarHorizonte({ hojeIso: HOJE, plano: eng, itens: itensEng });
+    expect(blocos(slots)).toBe(true);
+    const so30 = planoCom([{ materiaId: "filo", peso: 5, maxSessao: 30 }], { ...TODO_DIA, seg: 50 });
+    expect(planejarHorizonte({ hojeIso: HOJE, plano: so30, itens: topicos("filo", 5) }).slots.filter((x) => x.data === HOJE).map((x) => x.minutos)).toEqual([30]);
+  });
+
+  it("qualquer horário: toda meta ≥ 30, no máximo uma quebrada por dia (a última) e o dia nunca estoura", () => {
+    const horarios = [
+      { seg: 100, ter: 140, qua: 170, qui: 50, sex: 20, sab: 215, dom: 95 },
+      { seg: 45, ter: 75, qua: 130, qui: 185, sex: 250, sab: 35, dom: 65 },
+    ];
+    horarios.forEach((disp) => {
+      const plano = { ...planoCom(eng.materias, disp), materias: [...eng.materias, { materiaId: "qui", peso: 5, maxSessao: 90 }] };
+      const itens = [...itensEng, ...topicos("qui", 20)];
+      const { slots, datas, capacidade } = planejarHorizonte({ hojeIso: HOJE, plano, itens });
+      datas.forEach((d) => {
+        const dia = slots.filter((x) => x.data === d);
+        const quebradas = dia.filter((x) => x.minutos % 30);
+        expect(dia.every((x) => x.minutos >= 30)).toBe(true);
+        expect(quebradas.length).toBeLessThanOrEqual(1);
+        if (quebradas.length) expect(dia.at(-1).minutos % 30).not.toBe(0);
+        expect(soma(dia, (x) => x.minutos)).toBeLessThanOrEqual(capacidade[d]);
+        if (capacidade[d] >= 30) expect(capacidade[d] - soma(dia, (x) => x.minutos)).toBeLessThan(30); // o dia fica completo (ou quase)
+      });
+    });
+  });
+
+  it("a meta não precisa casar com o tópico: segue do fim de um para o começo do próximo", () => {
     const plano = planoCom([{ materiaId: "mat", peso: 5, maxSessao: 60 }], { ...TODO_DIA, seg: 60 });
     const itens = [{ materiaId: "mat", topicoId: "a", itemId: "t:a", duracao: 40 }, ...topicos("mat", 3)];
-    const fecha = planejarHorizonte({ hojeIso: HOJE, plano, itens }).slots.filter((x) => x.data === HOJE);
-    expect(fecha.map((x) => x.minutos)).toEqual([40]); // fecha o tópico de 40 e o dia fica com folga de 20
-    const sobra = planejarHorizonte({ hojeIso: HOJE, plano, itens, progresso: { "t:a": { minutos: 30 } } }).slots.filter((x) => x.data === HOJE);
-    expect(sobra.map((x) => x.minutos)).toEqual([60]); // 10 que faltavam + 50 do próximo
-    const c = conteudoPlanejado([{ id: "m", categoria: "progressao", status: "pendente", materiaId: "mat", dataPlanejada: HOJE, duracaoPlanejada: 60 }], itens, { "t:a": { minutos: 30 } });
-    expect(c.m.partes.map((p) => [p.topicoId, p.minutos])).toEqual([["a", 10], ["mat1", 50]]);
-  });
-
-  it("quando o dia só comporta parte de um tópico, a parte não deixa resto pequeno nele", () => {
-    const plano = planoCom([{ materiaId: "mat", peso: 5, maxSessao: 60 }], { ...TODO_DIA, seg: 50 });
-    const itens = [{ materiaId: "mat", topicoId: "a", itemId: "t:a", duracao: 60 }, ...topicos("mat", 2)];
-    const { slots } = planejarHorizonte({ hojeIso: HOJE, plano, itens });
-    expect(slots.filter((x) => x.data === HOJE).map((x) => x.minutos)).toEqual([30]); // 30 + 30, não 50 + 10
-    expect(slots.find((x) => x.data === "2026-09-29").minutos).toBe(30);
-  });
-
-  it("sobra do dia menor que meia meta não vira meta picada (o dia pode ficar com folga)", () => {
-    const plano = planoCom([{ materiaId: "mat", peso: 5, maxSessao: 60 }], { ...TODO_DIA, seg: 80 });
-    const hoje = planejarHorizonte({ hojeIso: HOJE, plano, itens: topicos("mat", 5) }).slots.filter((x) => x.data === HOJE);
-    expect(hoje.map((x) => x.minutos)).toEqual([60]);
-  });
-
-  it("metas curtas (10 min) não são barradas pelo mínimo padrão", () => {
-    const plano = planoCom([{ materiaId: "mat", peso: 5, maxSessao: 10 }], { ...TODO_DIA, seg: 30 });
-    const { slots } = planejarHorizonte({ hojeIso: HOJE, plano, itens: topicos("mat", 5) });
-    expect(slots.filter((x) => x.data === HOJE).map((x) => x.minutos)).toEqual([10, 10, 10]);
+    expect(planejarHorizonte({ hojeIso: HOJE, plano, itens }).slots.filter((x) => x.data === HOJE).map((x) => x.minutos)).toEqual([60]);
+    const c = conteudoPlanejado([{ id: "m", categoria: "progressao", status: "pendente", materiaId: "mat", dataPlanejada: HOJE, duracaoPlanejada: 60 }], itens);
+    expect(c.m.partes.map((p) => [p.topicoId, p.minutos])).toEqual([["a", 40], ["mat1", 20]]);
   });
 });
 
@@ -273,7 +312,7 @@ describe("dia a dia: o motor refeito todo dia não embaralha as metas", () => {
 });
 
 describe("revisão recorrente", () => {
-  const alvo = { alunoId: "ana", materiaId: "bio", topicoId: "cito", itemId: "t:cito", intervaloDias: 7, duracaoMin: 20, dataBase: "2026-09-21" };
+  const alvo = { alunoId: "ana", materiaId: "bio", topicoId: "cito", itemId: "t:cito", intervaloDias: 7, duracaoMin: 30, dataBase: "2026-09-21" };
   const rev = (extra = {}) => ({ id: "rv1", ...ativarRevisao({ ...alvo, ...extra }, { topicoConcluido: true, hojeIso: "2026-09-21", por: "mod" }).revisao });
   const criadas = (r) => r.criar.map((c) => c.dataPlanejada);
   const comoMetas = (r) => r.criar.map((c) => ({ ...c, status: "pendente", datasAnteriores: [] }));
@@ -281,13 +320,13 @@ describe("revisão recorrente", () => {
   it("gera as ocorrências no intervalo certo, a partir da data-base", () => {
     const r = planejarRevisoes({ revisoes: [rev()], metas: [], hojeIso: HOJE });
     expect(criadas(r)).toEqual(["2026-09-28", "2026-10-05"]);
-    expect(r.criar[0]).toMatchObject({ id: "rr_rv1_2026-09-28", categoria: "revisao_recorrente", itemId: "t:cito", duracaoPlanejada: 20, ocorrenciaEm: "2026-09-28" });
+    expect(r.criar[0]).toMatchObject({ id: "rr_rv1_2026-09-28", categoria: "revisao_recorrente", itemId: "t:cito", duracaoPlanejada: 30, ocorrenciaEm: "2026-09-28" });
     // de novo, com as metas já criadas: nada muda (sem duplicar)
     expect(planejarRevisoes({ revisoes: [rev()], metas: comoMetas(r), hojeIso: HOJE })).toEqual({ criar: [], atualizar: [], apagar: [], dispensar: [] });
   });
 
   it("ciclo fixo: a atrasada fica pendente e a próxima cai na data do ciclo, sem deslocar", () => {
-    const atrasada = { id: "rr_rv1_2026-09-21", categoria: "revisao_recorrente", revisaoRecorrenteId: "rv1", ocorrenciaEm: "2026-09-21", status: "pendente", dataPlanejada: "2026-09-21", duracaoPlanejada: 20, datasAnteriores: [] };
+    const atrasada = { id: "rr_rv1_2026-09-21", categoria: "revisao_recorrente", revisaoRecorrenteId: "rv1", ocorrenciaEm: "2026-09-21", status: "pendente", dataPlanejada: "2026-09-21", duracaoPlanejada: 30, datasAnteriores: [] };
     const r = planejarRevisoes({ revisoes: [rev()], metas: [atrasada], hojeIso: "2026-09-24" });
     expect(criadas(r)).toEqual(["2026-09-28", "2026-10-05"]);
     expect([...r.apagar, ...r.dispensar]).toEqual([]);
@@ -299,39 +338,39 @@ describe("revisão recorrente", () => {
   });
 
   it("editar o intervalo não mexe nas ocorrências já passadas nem nas feitas; só nas futuras", () => {
-    const passada = { id: "rr_rv1_2026-09-21", categoria: "revisao_recorrente", revisaoRecorrenteId: "rv1", ocorrenciaEm: "2026-09-21", status: "concluida", concluidaEm: "2026-09-21", dataPlanejada: "2026-09-21", duracaoPlanejada: 20 };
+    const passada = { id: "rr_rv1_2026-09-21", categoria: "revisao_recorrente", revisaoRecorrenteId: "rv1", ocorrenciaEm: "2026-09-21", status: "concluida", concluidaEm: "2026-09-21", dataPlanejada: "2026-09-21", duracaoPlanejada: 30 };
     const antes = planejarRevisoes({ revisoes: [rev()], metas: [passada], hojeIso: HOJE });
     const metas = [passada, ...comoMetas(antes)];
-    const editada = { id: "rv1", ...editarRevisao(rev(), { intervaloDias: 14, duracaoMin: 30 }, { hojeIso: HOJE, por: "mod" }).revisao };
+    const editada = { id: "rv1", ...editarRevisao(rev(), { intervaloDias: 14, duracaoMin: 60 }, { hojeIso: HOJE, por: "mod" }).revisao };
     const r = planejarRevisoes({ revisoes: [editada], metas, hojeIso: HOJE });
     // 21/09 + 14 = 05/10: a de 28/09 sai, a de 05/10 fica com a duração nova
     expect(r.apagar).toEqual(["rr_rv1_2026-09-28"]);
-    expect(r.atualizar).toEqual([{ id: "rr_rv1_2026-10-05", patch: { duracaoPlanejada: 30 } }]);
+    expect(r.atualizar).toEqual([{ id: "rr_rv1_2026-10-05", patch: { duracaoPlanejada: 60 } }]);
     expect(r.criar).toEqual([]);
     expect([...r.apagar, ...r.dispensar, ...r.atualizar.map((a) => a.id)]).not.toContain(passada.id);
   });
 
   it("desativar: as futuras saem, a atrasada por fazer é dispensada e as feitas ficam", () => {
-    const atrasada = { id: "a", categoria: "revisao_recorrente", revisaoRecorrenteId: "rv1", ocorrenciaEm: "2026-09-21", status: "pendente", dataPlanejada: "2026-09-21", duracaoPlanejada: 20, datasAnteriores: [] };
+    const atrasada = { id: "a", categoria: "revisao_recorrente", revisaoRecorrenteId: "rv1", ocorrenciaEm: "2026-09-21", status: "pendente", dataPlanejada: "2026-09-21", duracaoPlanejada: 30, datasAnteriores: [] };
     const futura = { ...atrasada, id: "f", ocorrenciaEm: "2026-10-05", dataPlanejada: "2026-10-05" };
     const off = { id: "rv1", ...desativarRevisao(rev(), { hojeIso: HOJE, por: "mod" }).revisao };
     expect(planejarRevisoes({ revisoes: [off], metas: [atrasada, futura], hojeIso: HOJE })).toEqual({ criar: [], atualizar: [], apagar: ["f"], dispensar: ["a"] });
   });
 
   it("várias revisões disputando o dia com a progressão: revisões primeiro, progressão com o que sobra, conflito à vista", () => {
-    const revs = ["a", "b", "c"].map((x, i) => ({ id: `rv${x}`, ...ativarRevisao({ ...alvo, itemId: `t:${x}`, topicoId: x, dataBase: HOJE, intervaloDias: 2 + i, duracaoMin: 45 }, { topicoConcluido: true, hojeIso: HOJE, por: "mod" }).revisao }));
+    const revs = ["a", "b", "c"].map((x, i) => ({ id: `rv${x}`, ...ativarRevisao({ ...alvo, itemId: `t:${x}`, topicoId: x, dataBase: HOJE, intervaloDias: 2 + i, duracaoMin: 60 }, { topicoConcluido: true, hojeIso: HOJE, por: "mod" }).revisao }));
     const metas = comoMetas(planejarRevisoes({ revisoes: revs, metas: [], hojeIso: HOJE }));
     const h = planejarHorizonte({ hojeIso: HOJE, plano: eng, itens: itensEng, metas });
-    // hoje: as 3 caem juntas (135 min > 120) → conflito, nada de progressão, nenhuma revisão cortada
+    // hoje: as 3 caem juntas (180 min > 120) → conflito, nada de progressão, nenhuma revisão cortada
     expect(metas.filter((m) => m.dataPlanejada === HOJE)).toHaveLength(3);
-    expect(h.conflitos[0]).toEqual({ data: HOJE, minutosRevisoes: 135, minutosDia: 120 });
+    expect(h.conflitos[0]).toEqual({ data: HOJE, minutosRevisoes: 180, minutosDia: 120 });
     expect(h.slots.filter((s) => s.data === HOJE)).toEqual([]);
     // dia com uma revisão só: a progressão fica com o resto
     h.datas.forEach((d) => {
       const rev = metas.filter((m) => m.dataPlanejada === d).reduce((x, m) => x + m.duracaoPlanejada, 0);
       const prog = h.slots.filter((s) => s.data === d).reduce((x, s) => x + s.minutos, 0);
       if (rev <= 120) expect(prog).toBeLessThanOrEqual(120 - rev);
-      if (rev === 45) expect(prog).toBeGreaterThanOrEqual(60);
+      if (rev === 60) expect(prog).toBe(60);
     });
   });
 });
