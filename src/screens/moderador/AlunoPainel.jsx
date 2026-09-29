@@ -92,8 +92,8 @@ function VisaoGeral({ v }) {
       )}
       <section className="secao" aria-label="Metas de hoje">
         <span className="eyebrow">Metas de hoje · {v.feitasHoje} de {v.totalHoje} feitas</span>
-        {v.atrasadas.map((meta) => <MetaLinha key={meta.id} meta={meta} atrasada somenteLeitura />)}
-        {v.metasHoje.map((meta) => <MetaLinha key={meta.id} meta={meta} somenteLeitura />)}
+        {v.atrasadas.map((meta) => <MetaLinha key={meta.id} meta={meta} atrasada somenteLeitura v={v} />)}
+        {v.metasHoje.map((meta) => <MetaLinha key={meta.id} meta={meta} somenteLeitura v={v} />)}
         {!v.totalHoje && <p className="previa-linha">{v.plano ? "Sem metas hoje." : "Sem edital: aplique uma jornada na aba Edital."}</p>}
       </section>
       {v.plano && (

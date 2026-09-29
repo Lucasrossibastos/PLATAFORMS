@@ -6,7 +6,7 @@ import {
   Atom, BookOpen, Brain, Calculator, Dna, ExternalLink, FileQuestion, FlaskConical, FolderOpen, Globe2, Landmark, Languages, ListChecks, PenLine, Users,
 } from "lucide-react";
 import { useApp } from "../state/AppContext.jsx";
-import { useArquivoUrl } from "../state/hooks.js";
+import { useAreasMateriais, useArquivoUrl } from "../state/hooks.js";
 import { AREA_DA_MATERIA, nomeTipoMaterial } from "../services/materiais.js";
 import { NomeConteudo } from "./Conteudo.jsx";
 
@@ -37,6 +37,18 @@ export function TileArea({ area, detalhe, to, onClick }) {
   if (to) return <Link to={to} className="tile-area" style={estilo}>{conteudo}</Link>;
   if (onClick) return <button type="button" className="tile-area" style={estilo} onClick={onClick}>{conteudo}</button>;
   return <div className="tile-area" style={estilo}>{conteudo}</div>;
+}
+
+/* Cor e ícone de cada matéria, os mesmos de Materiais: a área que o
+   moderador criou para a matéria, senão o padrão da matéria. */
+export function useVisualMateria() {
+  const { ind } = useApp();
+  const areas = useAreasMateriais() || [];
+  return (materiaId) => {
+    const area = areas.find((a) => a.materiaId === materiaId);
+    const padrao = AREA_DA_MATERIA[materiaId];
+    return { cor: area?.cor || padrao?.cor || ind?.corDaMateria(materiaId) || "#64748B", icone: area?.icone || padrao?.icone || "livro" };
+  };
 }
 
 // abre o PDF numa aba nova (o visualizador do navegador tem o "baixar")

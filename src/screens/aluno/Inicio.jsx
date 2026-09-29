@@ -130,7 +130,8 @@ export default function Inicio() {
 
   const concluir = (meta, minutos) => executar(() => s.metas.concluir(eu.id, meta.id, minutos ? { minutos } : {}));
   const desfazer = (meta) => executar(() => s.metas.desfazer(eu.id, meta.id));
-  const linha = (m, atrasada) => <MetaLinha key={m.id} meta={m} atrasada={atrasada} aoConcluir={concluir} aoDesfazer={desfazer} ocupado={ocupado} />;
+  const marcarVisto = v.plano?.permissoesAluno?.concluirItens ? (subId, visto) => executar(() => s.planos.marcarSubtopico(eu.id, subId, visto)) : null;
+  const linha = (m, atrasada) => <MetaLinha key={m.id} meta={m} atrasada={atrasada} v={v} aoConcluir={concluir} aoDesfazer={desfazer} aoMarcarVisto={marcarVisto} ocupado={ocupado} />;
 
   return (
     <>

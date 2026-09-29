@@ -1,82 +1,126 @@
-import { useState } from "react";
-import { ArrowRight, Check, Hand, Pin, RotateCcw, TriangleAlert } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowRight, CalendarDays, Check, Clock4, Hand, Lightbulb, Pin, RotateCcw, TriangleAlert } from "lucide-react";
 import { fmtMin } from "../../core/nucleo.js";
 import { fmtDataCurta, inicioDaSemana, somarDias } from "../../core/datas.js";
 import { ehProgressao, HORIZONTE_DIAS } from "../../core/motorMetas.js";
 import { useApp } from "../../state/AppContext.jsx";
 import { useAcao } from "../../state/hooks.js";
 import { Barra, Botao, MensagemErro } from "../../ui/ui.jsx";
+import { IconeArea, useVisualMateria } from "../../ui/Areas.jsx";
 
 const DIA_CURTO = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const diaDaSemana = (iso) => DIA_CURTO[new Date(`${iso}T12:00:00`).getDay()];
 const pct = (x) => `${Math.round((x || 0) * 100)}%`;
 const ehRevisao = (m) => !ehProgressao(m);
 
-// só a revisão tem etiqueta; estudar de novo um tópico é progressão comum
-function Categoria({ meta }) {
-  return ehRevisao(meta) ? <span className="etiqueta etiqueta--rev">Revisão</span> : null;
-}
-
-/* O que a meta estuda: tópico(s) com a % de agora; concluída, antes → depois. */
-function Conteudo({ meta }) {
+/* Roteiro de um tópico: os subtópicos (orientação dentro dele), que o aluno
+   marca conforme estuda, e a dica que o professor deixou no tópico. */
+function Roteiro({ parte, item, vistos, aoMarcarVisto, somenteLeitura, titulo }) {
   const { ind } = useApp();
-  const partes = meta.partes || [];
-  if (!partes.length) {
-    return <div className="meta-topico">{meta.semConteudo ? "Conteúdo da matéria concluído: revise ou adiante outra" : "—"}</div>;
-  }
-  const feita = meta.status === "concluida";
+  const [marcados, setMarcados] = useState({}); // responde na hora; o gravado confirma
+  useEffect(() => setMarcados({}), [vistos]);
+  const visto = (id) => marcados[id] ?? !!vistos?.[id];
+  const marcar = (id, x) => { setMarcados((m) => ({ ...m, [id]: x })); aoMarcarVisto(id, x); };
+  const subs = (item?.subtopicos || []).filter((id) => ind?.subtopico(id));
+  const dica = ind?.topico(parte.topicoId)?.descricao;
+  if (!subs.length && !dica) return null;
   return (
-    <div className="meta-topico meta-partes">
-      {partes.map((p, i) => (
-        <span key={`${p.itemId}${i}`} className="meta-parte">
-          {i > 0 && <ArrowRight aria-hidden="true" />}
-          <span>{ind?.nomeTopico(p.topicoId)}</span>
-          {feita && p.pctAntes != null && !ehRevisao(meta)
-            ? <span className="meta-pct num">{pct(p.pctAntes)} → <b>{pct(p.pctDepois)}</b>{p.concluiu && <Check aria-label="tópico concluído" />}</span>
-            : p.pct != null && !feita && <span className="meta-pct num">{pct(p.pct)}</span>}
-        </span>
-      ))}
+    <div className="meta-roteiro">
+      {titulo && <strong className="meta-roteiro-titulo">{titulo}</strong>}
+      {subs.length > 0 && (
+        <ul>
+          {subs.map((id) => (
+            <li key={id}>
+              {aoMarcarVisto && !somenteLeitura ? (
+                <label><input type="checkbox" checked={visto(id)} onChange={(e) => marcar(id, e.target.checked)} /><span>{ind.nomeSubtopico(id)}</span></label>
+              ) : <span className={visto(id) ? "meta-sub-visto" : undefined}>{ind.nomeSubtopico(id)}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {dica && <p className="meta-dica"><Lightbulb aria-hidden="true" />{dica}</p>}
     </div>
   );
 }
 
-/* Uma meta: tocar no círculo conclui com o tempo planejado; tocar no tempo
-   deixa informar outro. Concluída: tocar de novo desfaz (24 h). */
-export function MetaLinha({ meta, atrasada, aoConcluir, aoDesfazer, ocupado, somenteLeitura }) {
+/* Uma meta. O tópico é o título (é ele que se estuda); a matéria fica no
+   selo com a cor de Materiais; os subtópicos guiam o estudo. Tocar no
+   círculo conclui com o tempo planejado; tocar no tempo deixa informar
+   outro; tocar de novo desfaz (24 h). v: a visão do aluno (itens, questões,
+   subtópicos vistos). */
+export function MetaLinha({ meta, atrasada, aoConcluir, aoDesfazer, aoMarcarVisto, ocupado, somenteLeitura, v }) {
   const { ind } = useApp();
+  const visual = useVisualMateria();
   const [editando, setEditando] = useState(false);
   const [minutos, setMinutos] = useState(meta.duracaoPlanejada);
   const feita = meta.status === "concluida";
-  const nome = ind?.nomeMateria(meta.materiaId);
+  const { cor, icone } = visual(meta.materiaId);
+  const nomeMateria = ind?.nomeMateria(meta.materiaId);
+  const partes = meta.partes || [];
+  const principal = partes[0] || (meta.topicoId ? { topicoId: meta.topicoId, itemId: meta.itemId } : null);
+  const titulo = principal ? ind?.nomeTopico(principal.topicoId) : nomeMateria;
   const tempo = feita ? meta.duracaoReal || meta.duracaoPlanejada : meta.duracaoPlanejada;
+  const itemDe = (p) => v?.itens?.find((it) => it.itemId === p.itemId);
+  const questoes = principal ? (v?.questoes || []).filter((q) => q.topicoId === principal.topicoId) : [];
+  const totalQ = questoes.reduce((x, q) => x + (q.total || 0), 0);
+  const acertos = totalQ ? (questoes.reduce((x, q) => x + (q.acertos || 0), 0) / totalQ) * 100 : null;
   const alternar = () => (feita ? aoDesfazer?.(meta) : aoConcluir?.(meta));
+  const progresso = principal && !ehRevisao(meta) && (feita
+    ? principal.pctAntes != null && <>{pct(principal.pctAntes)} → <b>{pct(principal.pctDepois)}</b> visto{principal.concluiu ? " · tópico concluído" : ""}</>
+    : principal.pct != null && <>{pct(principal.pct)} visto</>);
+
   return (
-    <div className={`meta${atrasada ? " meta--atrasada" : ""}${feita ? " meta--feita" : ""}`}>
-      <button type="button" className="check" aria-pressed={feita} disabled={ocupado || somenteLeitura} onClick={alternar}
-        aria-label={`${feita ? "Desmarcar" : "Concluir"} ${nome}, ${fmtMin(tempo)}`}>
-        {feita && <Check aria-hidden="true" />}
-      </button>
-      <div style={{ minWidth: 0 }}>
-        <div className="meta-materia">
-          <i style={{ "--cor": ehRevisao(meta) ? "var(--rev)" : ind?.corDaMateria(meta.materiaId) }} aria-hidden="true" />
-          <span>{nome}</span>
-          <Categoria meta={meta} />
-          {atrasada && !feita && <span className="etiqueta etiqueta--perigo">Atrasada · {fmtDataCurta(meta.dataPlanejada)}</span>}
-          {meta.fixada && !feita && <Pin className="meta-fixada" aria-label="Você pôs neste dia" />}
+    <article className={`meta${atrasada ? " meta--atrasada" : ""}${feita ? " meta--feita" : ""}`} style={{ "--cor": cor }}>
+      <div className="meta-corpo">
+        <div className="meta-selos">
+          <span className="selo selo--materia"><IconeArea icone={icone} />{nomeMateria}</span>
+          {atrasada && !feita
+            ? <span className="selo selo--perigo"><CalendarDays aria-hidden="true" />atrasada · {fmtDataCurta(meta.dataPlanejada)}</span>
+            : <span className="selo selo--dia"><CalendarDays aria-hidden="true" />meta do dia <b>{fmtDataCurta(feita ? meta.concluidaEm : meta.dataPlanejada)}</b></span>}
+          {editando && !feita ? (
+            <form className="meta-tempo" onSubmit={(e) => { e.preventDefault(); setEditando(false); aoConcluir?.(meta, Number(minutos)); }}>
+              <input className="entrada num" type="number" min="1" max="720" value={minutos} onChange={(e) => setMinutos(e.target.value)} aria-label="Minutos estudados" autoFocus />
+              <Botao type="submit" tamanho="sm" icone={Check} disabled={ocupado} aria-label="Concluir com este tempo" />
+            </form>
+          ) : (
+            <button type="button" className="selo selo--tempo meta-min" disabled={feita || somenteLeitura} onClick={() => setEditando(true)} title={feita ? undefined : "Estudou outro tempo? Toque para informar"}>
+              <Clock4 aria-hidden="true" />{fmtMin(tempo)} de {ehRevisao(meta) ? "revisão" : "estudo"}
+            </button>
+          )}
+          {acertos != null && <span className="selo"><b>{String(Math.round(acertos * 10) / 10).replace(".", ",")}%</b> de acertos</span>}
+          {meta.fixada && !feita && <span className="selo" title="Você pôs neste dia"><Pin aria-hidden="true" />fixada</span>}
         </div>
-        <Conteudo meta={meta} />
+
+        <h3 className="meta-titulo">{titulo}</h3>
+        <p className="meta-linha">
+          {ehRevisao(meta) ? "Revisão" : nomeMateria}
+          {progresso && <> · <span className="meta-progresso num">{progresso}</span></>}
+          {!principal && meta.semConteudo && " · conteúdo da matéria concluído: revise ou adiante outra"}
+        </p>
+        {partes.length > 1 && (
+          <p className="meta-segue">
+            <ArrowRight aria-hidden="true" />
+            {partes.slice(1).map((p, i) => <span key={`${p.itemId}${i}`}>{i > 0 && ", "}segue em <b>{ind?.nomeTopico(p.topicoId)}</b> ({fmtMin(p.minutos)})</span>)}
+          </p>
+        )}
+        {!feita && principal && (
+          <>
+            <Roteiro parte={principal} item={itemDe(principal)} vistos={v?.subtopicosVistos} aoMarcarVisto={aoMarcarVisto} somenteLeitura={somenteLeitura} />
+            {partes.slice(1).map((p, i) => (
+              <Roteiro key={`${p.itemId}${i}`} parte={p} item={itemDe(p)} vistos={v?.subtopicosVistos} aoMarcarVisto={aoMarcarVisto} somenteLeitura={somenteLeitura} titulo={`Depois: ${ind?.nomeTopico(p.topicoId)}`} />
+            ))}
+          </>
+        )}
       </div>
-      {editando && !feita ? (
-        <form className="meta-tempo" onSubmit={(e) => { e.preventDefault(); setEditando(false); aoConcluir?.(meta, Number(minutos)); }}>
-          <input className="entrada num" type="number" min="1" max="720" value={minutos} onChange={(e) => setMinutos(e.target.value)} aria-label="Minutos estudados" autoFocus />
-          <Botao type="submit" tamanho="sm" icone={Check} disabled={ocupado} aria-label="Concluir com este tempo" />
-        </form>
-      ) : (
-        <button type="button" className="meta-min" disabled={feita || somenteLeitura} onClick={() => setEditando(true)} title={feita ? undefined : "Estudou outro tempo? Toque para informar"}>
-          {fmtMin(tempo)}
+
+      <div className="meta-concluir">
+        <span>{feita ? "Meta concluída" : "Concluir"}</span>
+        <button type="button" className="check check--grande" aria-pressed={feita} disabled={ocupado || somenteLeitura} onClick={alternar}
+          aria-label={`${feita ? "Desmarcar" : "Concluir"} ${titulo}, ${fmtMin(tempo)}`}>
+          {feita && <Check aria-hidden="true" />}
         </button>
-      )}
-    </div>
+      </div>
+    </article>
   );
 }
 
@@ -114,6 +158,7 @@ export function ResumoSemana({ semana, compacto }) {
    se reorganiza em volta dela. */
 export function Agenda({ v, somenteLeitura, texto }) {
   const { s, ind } = useApp();
+  const visual = useVisualMateria();
   const [arrastando, setArrastando] = useState(null);
   const [sobre, setSobre] = useState(null);
   const [selecao, setSelecao] = useState(null); // { id, nome, de }
@@ -179,14 +224,14 @@ export function Agenda({ v, somenteLeitura, texto }) {
                     <p className="dia-conflito"><TriangleAlert aria-hidden="true" />Revisões ({fmtMin(dia.conflito.minutosRevisoes)}) passam do dia</p>
                   )}
                   {metas.map((m) => {
-                    const cor = ehRevisao(m) ? "var(--rev)" : ind?.corDaMateria(m.materiaId);
-                    const nome = ind?.nomeMateria(m.materiaId);
-                    const topico = m.partes?.[0]?.topicoId;
+                    const cor = visual(m.materiaId).cor;
+                    const materia = ind?.nomeMateria(m.materiaId);
+                    const topico = m.partes?.[0]?.topicoId || m.topicoId;
+                    const nome = topico ? ind?.nomeTopico(topico) : materia; // o tópico é o que se estuda
                     const texto = (
                       <>
                         <strong>{nome}{m.fixada && m.status === "pendente" && <Pin aria-label="fixada" />}</strong>
-                        {topico && <span className="chip-topico">{ind?.nomeTopico(topico)}</span>}
-                        {ehRevisao(m) && <small>REVISÃO · </small>}
+                        <span className="chip-materia">{materia}{ehRevisao(m) ? " · revisão" : ""}</span>
                         <span className="num">{fmtMin(m.status === "concluida" ? m.duracaoReal || m.duracaoPlanejada : m.duracaoPlanejada)}</span>
                       </>
                     );

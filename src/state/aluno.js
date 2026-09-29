@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { useApp } from "./AppContext.jsx";
 import {
   useAgenda, useAluno, useGarantirMetas, useHoje, useMetas, usePlano, useProgresso, useQuestoes, useResumosSemana,
-  useRevisoes, useRevisoesRecorrentes, useSessoes, useSimulados,
+  useRevisoes, useRevisoesRecorrentes, useSessoes, useSimulados, useVistos,
 } from "./hooks.js";
 import { calcularAtrasos, calcularProgressoPlano, conteudoDaVez, estadoItem, itensDoPlano, statusItem } from "../core/plano.js";
 import { progressoVisto } from "../core/ciclos.js";
@@ -32,6 +32,7 @@ export function useVisaoAluno(alunoId, { garantir = true } = {}) {
   const questoes = useQuestoes(alunoId);
   const simulados = useSimulados(alunoId);
   const resumosSemana = useResumosSemana(alunoId);
+  const subtopicosVistos = useVistos(alunoId); // subtópicos que o aluno marcou (roteiro das metas)
   const hoje = useHoje();
   const { erro: erroMetas } = useGarantirMetas(garantir ? alunoId : null);
 
@@ -41,9 +42,9 @@ export function useVisaoAluno(alunoId, { garantir = true } = {}) {
     if (carregando || !hoje) return null;
     const prog = progresso || {};
     const itens = plano ? itensDoPlano(plano, ind) : [];
-    const vistos = progressoVisto(itens, prog);
+    const pctVista = progressoVisto(itens, prog);
     const conteudo = conteudoPlanejado(metas, itens, prog);
-    const comPct = (p) => ({ ...p, pct: vistos.topicos[p.itemId]?.pctCiclo ?? null });
+    const comPct = (p) => ({ ...p, pct: pctVista.topicos[p.itemId]?.pctCiclo ?? null });
 
     /* Cada meta com o que ela estuda: a pendente de progressão, o conteúdo
        de agora (segue a fila da matéria); a concluída, o que foi gravado. */
@@ -84,7 +85,7 @@ export function useVisaoAluno(alunoId, { garantir = true } = {}) {
     const todasDoDia = [...atrasadas, ...metasHoje];
     return {
       itens,
-      vistos,
+      pctVista,
       detalhar,
       daVez: (materiaId) => conteudoDaVez(itens, prog, materiaId, ind),
       metasHoje,
@@ -107,6 +108,6 @@ export function useVisaoAluno(alunoId, { garantir = true } = {}) {
 
   return {
     carregando, aluno, plano, progresso: progresso || {}, metas: metas || [], agenda, revisoes, revisoesRecorrentes: revisoesRecorrentes || [],
-    sessoes, questoes, simulados, resumosSemana, hoje, ind, erroMetas, ...(derivado || {}),
+    sessoes, questoes, simulados, resumosSemana, subtopicosVistos: subtopicosVistos || {}, hoje, ind, erroMetas, ...(derivado || {}),
   };
 }

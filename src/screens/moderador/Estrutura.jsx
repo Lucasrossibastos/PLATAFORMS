@@ -20,7 +20,10 @@ function FormItem({ alvo, aoFechar }) {
   const temCor = tipo === "materia" || tipo === "vestibular";
   const temCarga = tipo === "topico" || tipo === "subtopico";
   const salvar = () => executar(async () => {
-    await s.estrutura.salvar(tipo, { ...(item ? { id: item.id } : {}), ...(PAI[tipo] ? { [PAI[tipo]]: item?.[PAI[tipo]] || paiId } : {}), nome: f.nome, ...(temCor ? { cor: f.cor } : {}), ...(temCarga ? { cargaMin: f.cargaMin } : {}) });
+    await s.estrutura.salvar(tipo, {
+      ...(item ? { id: item.id } : {}), ...(PAI[tipo] ? { [PAI[tipo]]: item?.[PAI[tipo]] || paiId } : {}), nome: f.nome,
+      ...(temCor ? { cor: f.cor } : {}), ...(temCarga ? { cargaMin: f.cargaMin } : {}), ...(tipo === "topico" ? { descricao: f.descricao } : {}),
+    });
     aoFechar();
   });
   return (
@@ -31,6 +34,11 @@ function FormItem({ alvo, aoFechar }) {
         {temCarga && (
           <Campo rotulo="Tempo de estudo (min)" ajuda={tipo === "topico" ? "Quanto tempo o tópico leva no ritmo normal; vira as metas." : "Opcional: o subtópico é orientação dentro do tópico."} erro={erros.cargaMin}>
             <input className="entrada num" type="number" min="5" step="5" value={f.cargaMin} placeholder="60" onChange={(e) => setF({ ...f, cargaMin: e.target.value })} />
+          </Campo>
+        )}
+        {tipo === "topico" && (
+          <Campo rotulo="Dica para o aluno (opcional)" ajuda="Aparece em cada meta deste tópico, junto com os subtópicos.">
+            <textarea className="entrada" rows={3} value={f.descricao} placeholder="Ex.: atenção à redução do espaço amostral na probabilidade condicional." onChange={(e) => setF({ ...f, descricao: e.target.value })} />
           </Campo>
         )}
         {!Object.keys(erros).length && <MensagemErro erro={erro} />}
