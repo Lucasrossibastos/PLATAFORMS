@@ -34,7 +34,7 @@ export const TEXTOS = {
   "painel.dashboard.saudacao": { grupo: "painel", tipo: "titulo", rotulo: "Saudação do Dashboard", padrao: "{saudacao}, *{nome}*." },
   "painel.dashboard.vazioTitulo": { grupo: "painel", tipo: "linha", rotulo: "Dia sem metas: título", padrao: "Nenhuma meta para hoje" },
   "painel.dashboard.vazioTexto": { grupo: "painel", tipo: "paragrafo", rotulo: "Dia sem metas: texto", padrao: "Dia livre no seu plano. Use para revisar ou registrar estudo por fora." },
-  "painel.semana.texto": { grupo: "painel", tipo: "paragrafo", rotulo: "Instrução da semana (Dashboard)", padrao: "Arraste uma meta para outro dia, ou toque nela e depois no dia. Só vale para esta semana; as próximas continuam automáticas." },
+  "painel.semana.texto": { grupo: "painel", tipo: "paragrafo", rotulo: "Instrução das 2 semanas (Dashboard)", padrao: "Arraste uma meta para outro dia, ou toque nela e depois no dia: ela fica fixada lá e o resto se ajusta." },
   "painel.boasvindas.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título da página Boas-Vindas", padrao: "Boas-vindas ao *curso*" },
   "painel.plano.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título do Edital", padrao: "Seu *edital*" },
   "painel.questoes.titulo": { grupo: "painel", tipo: "titulo", rotulo: "Título de Questões", padrao: "Suas *questões*" },

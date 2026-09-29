@@ -253,7 +253,7 @@ export function recalcularPlano(plano, ind, progresso, hojeIso) {
 
 export function calcularProgressoPlano(itens, progresso, cronograma, hojeIso) {
   const cont = { nao_iniciado: 0, em_andamento: 0, concluido: 0, atrasado: 0 };
-  let feito = 0, total = 0;
+  let feito = 0, total = 0, vistos = 0;
   const porMateria = {};
   itens.forEach((it) => {
     const st = statusItem(it, progresso, cronograma, hojeIso);
@@ -262,9 +262,10 @@ export function calcularProgressoPlano(itens, progresso, cronograma, hojeIso) {
     total += it.duracao;
     const parte = e.pctVisto * it.duracao; // a % vista (revisto do zero continua contando como visto)
     feito += parte;
-    const pm = (porMateria[it.materiaId] ||= { materiaId: it.materiaId, total: 0, feito: 0, itens: 0, concluidos: 0, atrasados: 0 });
+    const pm = (porMateria[it.materiaId] ||= { materiaId: it.materiaId, total: 0, feito: 0, itens: 0, concluidos: 0, vistos: 0, atrasados: 0 });
     pm.total += it.duracao; pm.feito += parte; pm.itens++;
     if (st === "concluido") pm.concluidos++;
+    if (e.pctVisto >= 1) { pm.vistos++; vistos++; } // já visto uma vez (mesmo revendo do zero)
     if (st === "atrasado") pm.atrasados++;
   });
   const pct = (a, b) => (b ? Math.round((a / b) * 1000) / 10 : 0);
@@ -275,6 +276,7 @@ export function calcularProgressoPlano(itens, progresso, cronograma, hojeIso) {
   return {
     total: itens.length,
     concluidos: cont.concluido,
+    vistos,
     emAndamento: cont.em_andamento,
     atrasados: cont.atrasado,
     naoIniciados: cont.nao_iniciado,
@@ -298,26 +300,6 @@ export function calcularAtrasos(itens, progresso, cronograma, hojeIso) {
     cargaMin: atrasados.reduce((s, it) => s + it.restante, 0),
     materias: [...new Set(atrasados.map((it) => it.materiaId))],
   };
-}
-
-// Revisões a agendar quando um item é concluído.
-export const revisoesDoItem = (dataConclusao, revisao = REVISAO_PADRAO) =>
-  (revisao.intervalos || []).map((dias) => ({ dataPrevista: somarDias(dataConclusao, dias), duracaoMin: revisao.duracaoMin || 20 }));
-
-// Ciclo semanal (formato do motor do núcleo) a partir do plano.
-export function cicloDoPlano(plano, ind) {
-  const alocacoes = (plano?.materias || [])
-    .map((m, i) => ({ m, i }))
-    .filter(({ m }) => ind.materia(m.materiaId) && m.ativa !== false)
-    .sort((a, b) => (a.m.prioridade ?? 2) - (b.m.prioridade ?? 2) || a.i - b.i)
-    .map(({ m }) => ({
-      materiaId: m.materiaId,
-      materiaNome: ind.nomeMateria(m.materiaId),
-      minutosSemanais: plano.alocacaoSemanal?.[m.materiaId] ?? m.minutosSemanais ?? 0,
-      maxSessao: m.maxSessao || 60,
-      ehMateria: true, // o motor não confunde com uma área de mesmo id
-    }));
-  return { alocacoes };
 }
 
 /* ---------- Criação a partir do modelo ---------- */
@@ -480,7 +462,7 @@ export function alterarPlano(plano, ind, op) {
       break;
     }
     case "definirPlano": {
-      const rotulos = { nome: "nome do plano", ritmo: "ritmo", dataAlvo: "data-alvo", disponibilidade: "horas livres por dia", revisao: "revisões", permissoesAluno: "permissões do aluno", vestibularId: "vestibular", cursoId: "curso", modalidade: "modalidade", periodo: "período", versao: "versão", descricao: "descrição" };
+      const rotulos = { nome: "nome do plano", ritmo: "ritmo", dataAlvo: "data-alvo", disponibilidade: "horas livres por dia", revisao: "revisões", permissoesAluno: "permissões do aluno", vestibularId: "vestibular", cursoId: "curso", modalidade: "modalidade", periodo: "período", versao: "versão", descricao: "descrição", atraso: "o que fazer com meta atrasada" };
       Object.entries(op.campos || {}).forEach(([k, v]) => {
         if (!(k in rotulos) || JSON.stringify(p[k]) === JSON.stringify(v)) return;
         const fmt = (x) => (k === "ritmo" ? nomeRitmo(x) : x);

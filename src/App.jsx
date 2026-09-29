@@ -76,7 +76,7 @@ export default function App() {
               <Route path="/aluno" element={<Protegida papel="aluno"><Shell menu={MENU_ALUNO} /></Protegida>}>
                 <Route index element={<Navigate to="inicio" replace />} />
                 <Route path="inicio" element={<Inicio />} />
-                <Route path="semana" element={<Navigate to="/aluno/inicio?ver=semana" replace />} />
+                <Route path="semana" element={<Navigate to="/aluno/inicio?ver=agenda" replace />} />
                 <Route path="edital" element={<EditalAluno />} />
                 <Route path="plano" element={<Navigate to="/aluno/edital" replace />} />
                 <Route path="questoes" element={<QuestoesAluno />} />

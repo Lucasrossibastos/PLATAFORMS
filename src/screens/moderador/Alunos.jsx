@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { KeyRound, Plus, Users } from "lucide-react";
 import { useApp } from "../../state/AppContext.jsx";
 import {
-  errosDeCampo, useAcao, useAlunos, useHoje, useModelos, useQuestoesDesde, useSessoesDesde, useTodoProgresso, useTodosPlanos, useTodosSimulados,
+  errosDeCampo, useAcao, useAgendas, useAlunos, useHoje, useModelos, useQuestoesDesde, useSessoesDesde, useTodoProgresso, useTodosPlanos, useTodosSimulados,
 } from "../../state/hooks.js";
 import { metricasAluno, SITUACOES } from "../../services/desempenho.js";
 import { fmtDataCurta, fmtDataLonga, somarDias } from "../../core/datas.js";
@@ -119,6 +119,7 @@ export default function Alunos() {
   const questoes = useQuestoesDesde(inicio);
   const sessoes = useSessoesDesde(inicio);
   const simulados = useTodosSimulados();
+  const agendas = useAgendas();
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState({ vestibularId: "", situacao: "", turma: "", ativos: "ativos" });
   const [novo, setNovo] = useState(false);
@@ -208,7 +209,12 @@ export default function Alunos() {
                     {m.diasEstudados30}/30 dias{m.questoes30 ? ` · ${m.questoes30} questões (${fmtPct(m.pct30)})` : ""}
                     <small className="bloco-pequeno">{m.ultimoEstudo ? `último estudo ${m.diasSemEstudar === 0 ? "hoje" : fmtDataLonga(m.ultimoEstudo)}` : "sem estudo no período"}</small>
                   </td>
-                  <td>{a.ativo === false ? <span className="etiqueta">Bloqueado</span> : <EtiquetaSituacao situacao={m.situacao} />}</td>
+                  <td>
+                    {a.ativo === false ? <span className="etiqueta">Bloqueado</span> : <EtiquetaSituacao situacao={m.situacao} />}
+                    {(agendas || []).find((g) => g.id === a.id)?.conflitos?.some((c) => c.data >= hoje) && (
+                      <Link to={`${a.id}?aba=revisoes`} className="etiqueta etiqueta--perigo" title="As revisões passam do horário do aluno em algum dia">Conflito de revisões</Link>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

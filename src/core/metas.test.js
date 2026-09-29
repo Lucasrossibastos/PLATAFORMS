@@ -62,4 +62,14 @@ describe("resumo da semana e tempo por categoria (dos registros)", () => {
     expect(r.porCategoria.revisao_recorrente).toEqual({ metas: 1, cumpridas: 1, minutosPlanejados: 15, minutosFeitos: 15 });
     expect(tempoPorCategoria([feita, revisao, outraSemana])).toMatchObject({ progressao: 45, revisao_recorrente: 15, rever_do_zero: 0 });
   });
+
+  it("no meio da semana, a meta de hoje ou à frente está a fazer, não é 'não cumprida'", () => {
+    const seg = "2026-09-28";
+    const dom = "2026-10-04";
+    const perdida = { ...criar({ dataPlanejada: "2026-09-29" }), datasAnteriores: ["2026-09-28"] }; // ficou de segunda e foi para terça
+    const futura = criar({ dataPlanejada: "2026-10-02" });
+    const r = resumoDaSemana([perdida, futura], seg, dom, "2026-09-29");
+    expect(r).toMatchObject({ metas: 2, cumpridas: 0, naoCumpridas: 1, aFazer: 1 });
+    expect(resumoDaSemana([futura], seg, dom, "2026-09-29").naoCumpridas).toBe(0);
+  });
 });

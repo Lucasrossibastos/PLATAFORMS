@@ -100,11 +100,15 @@ export function concluirMeta(m, { hojeIso, duracaoReal, sessaoId = null, partes 
 
 /* Resumo de uma semana (segunda a domingo) a partir dos registros: conta a
    meta que esteve planejada na semana (no dia atual dela ou num dia que
-   passou sem ser feita) e a que foi concluída na semana. */
-export function resumoDaSemana(metas, inicio, fim) {
+   passou sem ser feita) e a que foi concluída na semana. Não cumprida é só a
+   que teve um dia da semana passado sem ser feita (ou foi dispensada); a de
+   hoje ou de um dia à frente ainda está "a fazer". hojeIso: sem ele, a semana
+   já acabou. */
+export function resumoDaSemana(metas, inicio, fim, hojeIso = null) {
   const naSemana = (d) => d >= inicio && d <= fim;
+  const passou = (d) => naSemana(d) && (!hojeIso || d < hojeIso);
   const vazio = () => ({ metas: 0, cumpridas: 0, minutosPlanejados: 0, minutosFeitos: 0 });
-  const r = { ...vazio(), naoCumpridas: 0, porCategoria: {} };
+  const r = { ...vazio(), naoCumpridas: 0, aFazer: 0, porCategoria: {} };
   metas.forEach((m) => {
     const planejada = naSemana(m.dataPlanejada) || (m.datasAnteriores || []).some(naSemana);
     const feita = m.status === "concluida" && naSemana(m.concluidaEm);
@@ -114,7 +118,10 @@ export function resumoDaSemana(metas, inicio, fim) {
       if (planejada) { alvo.metas += 1; alvo.minutosPlanejados += m.duracaoPlanejada; }
       if (feita) { alvo.cumpridas += 1; alvo.minutosFeitos += m.duracaoReal || 0; }
     });
-    if (planejada && !feita) r.naoCumpridas += 1;
+    if (!planejada || feita) return;
+    const perdeu = (m.datasAnteriores || []).some(passou) || (m.status !== "concluida" && passou(m.dataPlanejada)) || (m.status === "dispensada" && naSemana(m.dataPlanejada));
+    if (perdeu) r.naoCumpridas += 1;
+    else r.aFazer += 1;
   });
   return r;
 }

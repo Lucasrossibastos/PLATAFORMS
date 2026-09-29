@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
-  ArrowLeft, BookOpen, ClipboardList, History, LayoutDashboard, ListChecks, PenLine, Replace, TrendingUp, Trash2, UserCog,
+  ArrowLeft, BookOpen, ClipboardList, History, LayoutDashboard, ListChecks, PenLine, Repeat, Replace, TrendingUp, Trash2, TriangleAlert, UserCog,
 } from "lucide-react";
 import { useApp } from "../../state/AppContext.jsx";
 import { errosDeCampo, useAcao, useModelos, usePlanosAnteriores } from "../../state/hooks.js";
@@ -13,7 +13,9 @@ import { fmtPct } from "../../core/desempenho.js";
 import { CalendarioDias } from "../../ui/Graficos.jsx";
 import { NomeConteudo, PontoMateria } from "../../ui/Conteudo.jsx";
 import { Abas, Botao, Campo, Carregando, Confirmar, MensagemErro, Tile, Vazio } from "../../ui/ui.jsx";
-import { EditalDoAluno, Historico, ListaRevisoes } from "../comum/Edital.jsx";
+import { EditalDoAluno, Historico } from "../comum/Edital.jsx";
+import { PainelRevisoes } from "../comum/Revisoes.jsx";
+import { Agenda } from "../aluno/Metas.jsx";
 import { PainelDesempenho } from "../comum/Desempenho.jsx";
 import { QuestoesDoAluno } from "../aluno/Questoes.jsx";
 import { SimuladosDoAluno } from "../aluno/Simulados.jsx";
@@ -82,12 +84,24 @@ function VisaoGeral({ v }) {
         <Tile valor={m.questoes30} rotulo="questões em 30 dias" detalhe={m.questoes30 ? `${fmtPct(m.pct30)} de acerto` : null} />
         <Tile valor={m.simulados} rotulo="simulados" detalhe={m.simulados ? `média ${fmtPct(m.mediaSimulados)}` : null} />
       </div>
+      {v.dias?.some((d) => d.conflito) && (
+        <div className="aviso aviso--erro" role="note">
+          <TriangleAlert aria-hidden="true" />
+          <span>As revisões passam do horário deste aluno em {v.dias.filter((d) => d.conflito).map((d) => fmtDataCurta(d.data)).join(", ")}. Veja a aba Revisões.</span>
+        </div>
+      )}
       <section className="secao" aria-label="Metas de hoje">
         <span className="eyebrow">Metas de hoje · {v.feitasHoje} de {v.totalHoje} feitas</span>
         {v.atrasadas.map((meta) => <MetaLinha key={meta.id} meta={meta} atrasada somenteLeitura />)}
         {v.metasHoje.map((meta) => <MetaLinha key={meta.id} meta={meta} somenteLeitura />)}
         {!v.totalHoje && <p className="previa-linha">{v.plano ? "Sem metas hoje." : "Sem edital: aplique uma jornada na aba Edital."}</p>}
       </section>
+      {v.plano && (
+        <details className="recolhivel">
+          <summary>Metas das próximas duas semanas <small>como o aluno vê (só leitura)</small></summary>
+          <Agenda v={v} somenteLeitura />
+        </details>
+      )}
       <p><EtiquetaSituacao situacao={m.situacao} /></p>
     </>
   );
@@ -99,6 +113,7 @@ function Estudo({ v }) {
   const [motivo, setMotivo] = useState("");
   const { executar, ocupado, erro } = useAcao();
   const origem = { meta: "Meta", extra: "Tempo extra", revisao: "Revisão", fora: "Por fora" };
+  const categoria = { rever_do_zero: "Rever do zero", revisao_recorrente: "Revisão recorrente", revisao_automatica: "Revisão (antiga)" };
   if (!v.sessoes.length) return <div className="cartao"><Vazio icone={BookOpen} titulo="Nenhuma sessão de estudo registrada" /></div>;
   return (
     <>
@@ -111,7 +126,7 @@ function Estudo({ v }) {
                 <td className="num">{fmtDataLonga(x.data)}</td>
                 <td><span className="celula-conteudo"><PontoMateria materiaId={x.materiaId} /><span><NomeConteudo materiaId={x.materiaId} topicoId={x.topicoId} subtopicoId={x.subtopicoId} /></span></span></td>
                 <td className="num">{fmtMin(x.minutos)}</td>
-                <td>{origem[x.origem] || x.origem}{x.partes?.some((p) => p.concluiu) && <small className="bloco-pequeno">concluiu conteúdo</small>}</td>
+                <td>{categoria[x.categoria] || origem[x.origem] || x.origem}{x.partes?.some((p) => p.concluiu) && <small className="bloco-pequeno">concluiu conteúdo</small>}</td>
                 <td><button type="button" className="icone-btn" aria-label="Apagar sessão" onClick={() => setApagar(x)}><Trash2 /></button></td>
               </tr>
             ))}
@@ -128,7 +143,7 @@ function Estudo({ v }) {
   );
 }
 
-const REGISTROS = [["questoes", "Questões"], ["simulados", "Simulados"], ["estudo", "Estudo"], ["revisoes", "Revisões"]];
+const REGISTROS = [["questoes", "Questões"], ["simulados", "Simulados"], ["estudo", "Estudo"]];
 
 function Registros({ v }) {
   const [tipo, setTipo] = useState("questoes");
@@ -144,7 +159,6 @@ function Registros({ v }) {
       {tipo === "questoes" && <QuestoesDoAluno alunoId={v.aluno.id} registros={v.questoes} moderador />}
       {tipo === "simulados" && <SimuladosDoAluno alunoId={v.aluno.id} registros={v.simulados} moderador cursoPadrao={v.aluno.cursoId} />}
       {tipo === "estudo" && <Estudo v={v} />}
-      {tipo === "revisoes" && <ListaRevisoes v={v} podeIgnorar />}
     </>
   );
 }
@@ -205,6 +219,7 @@ function Perfil({ v }) {
 const ABAS = [
   { k: "geral", label: "Visão geral", icone: LayoutDashboard },
   { k: "edital", label: "Edital", icone: ListChecks },
+  { k: "revisoes", label: "Revisões", icone: Repeat },
   { k: "redacao", label: "Redação", icone: PenLine },
   { k: "desempenho", label: "Desempenho", icone: TrendingUp },
   { k: "registros", label: "Registros", icone: ClipboardList },
@@ -217,7 +232,7 @@ const ABAS = [
    A aba fica no endereço (?aba=), para voltar direto a ela. */
 export default function AlunoPainel() {
   const { id } = useParams();
-  const v = useVisaoAluno(id);
+  const v = useVisaoAluno(id, { garantir: false });
   const [params, setParams] = useSearchParams();
   const aba = ABAS.some((a) => a.k === params.get("aba")) ? params.get("aba") : "geral";
   const mudarAba = (k) => setParams(k === "geral" ? {} : { aba: k }, { replace: true });
@@ -243,6 +258,7 @@ export default function AlunoPainel() {
         <div className="cartao"><Vazio icone={ListChecks} titulo="Este aluno ainda não tem edital" texto="Aplique a jornada do vestibular dele; depois ela vira uma cópia individual, que você ajusta aqui." />
           <Botao variante="solido" onClick={() => setTrocar(true)}>Aplicar jornada</Botao></div>
       ))}
+      {aba === "revisoes" && (v.plano ? <PainelRevisoes v={v} /> : <div className="cartao"><Vazio icone={Repeat} titulo="Sem edital" texto="Aplique uma jornada primeiro." /></div>)}
       {aba === "redacao" && <RedacoesDoAluno aluno={v.aluno} />}
       {aba === "desempenho" && <PainelDesempenho v={v} />}
       {aba === "registros" && <Registros v={v} />}

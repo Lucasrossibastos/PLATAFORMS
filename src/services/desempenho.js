@@ -1,5 +1,5 @@
 /* performanceService: junta os cálculos do núcleo num painel. Nada é
-   guardado; tudo sai dos registros (questões, simulados, sessões, semanas). */
+   guardado; tudo sai dos registros (questões, simulados, sessões, metas). */
 
 import {
   consistencia, desempenhoPorMateria, desempenhoQuestoes, desempenhoSimulados, diasComAtividade,
@@ -7,8 +7,6 @@ import {
 } from "../core/desempenho.js";
 import { calcularAtrasos, calcularProgressoPlano, itensDoPlano } from "../core/plano.js";
 import { diasEntre, inicioDaSemana, somarDias } from "../core/datas.js";
-import { DIAS } from "../core/nucleo.js";
-import { listasDoDia } from "../core/semana.js";
 
 const noPeriodo = (d, inicio, fim) => (!inicio || d >= inicio) && (!fim || d <= fim);
 
@@ -18,27 +16,27 @@ export function agrupamentoPara(inicio, fim) {
   return dias <= 31 ? "dia" : dias <= 200 ? "semana" : "mes";
 }
 
-/* Metas da semana: cumpridas e não cumpridas (semanas fechadas + a atual até
-   hoje) e as atrasadas agora. */
-export function resumoMetas({ resumosSemana = [], semana, revisoes = [], hojeIso, inicio, fim }) {
-  const fechadas = resumosSemana.filter((r) => noPeriodo(r.semana, inicio ? inicioDaSemana(inicio) : null, fim));
-  let cumpridas = fechadas.reduce((s, r) => s + (r.cumpridas || 0), 0);
-  let naoCumpridas = fechadas.reduce((s, r) => s + (r.naoCumpridas || 0), 0);
-  let atrasadasAgora = 0;
-  if (semana?.metas) {
-    const ate = DIAS.findIndex((_, i) => somarDias(semana.chave, i) === hojeIso);
-    DIAS.forEach((d, i) => (semana.metas[d.k] || []).forEach((m) => {
-      if (m.done && noPeriodo(m.feitoEm, inicio, fim)) cumpridas++;
-      else if (!m.done && ate >= 0 && i < ate) naoCumpridas++;
-    }));
-    atrasadasAgora = listasDoDia(semana, hojeIso, revisoes).atrasadas.filter((m) => !m.done).length;
-  }
+/* Metas no período: cumpridas e não cumpridas, dos registros de cada meta
+   (metas/) e, antes delas, das semanas fechadas do sistema antigo
+   (resumosSemana com fonte "semanas" ou sem fonte). Atrasadas: agora. */
+export function resumoMetas({ metas = [], resumosSemana = [], hojeIso, inicio, fim }) {
+  const antigas = resumosSemana.filter((r) => r.fonte !== "metas" && noPeriodo(r.semana, inicio ? inicioDaSemana(inicio) : null, fim));
+  let cumpridas = antigas.reduce((s, r) => s + (r.cumpridas || 0), 0);
+  let naoCumpridas = antigas.reduce((s, r) => s + (r.naoCumpridas || 0), 0);
+  const ate = !fim || fim >= hojeIso ? somarDias(hojeIso, -1) : fim; // hoje ainda não acabou
+  metas.forEach((m) => {
+    if (m.status === "concluida") { if (noPeriodo(m.concluidaEm, inicio, fim)) cumpridas++; return; }
+    // não cumprida: cada dia em que estava planejada e passou (ou sobrou e foi dispensada)
+    const perdidos = [...(m.datasAnteriores || []), ...(m.status === "dispensada" ? [m.dataPlanejada] : [])];
+    if (perdidos.some((d) => noPeriodo(d, inicio, ate))) naoCumpridas++;
+  });
+  const atrasadasAgora = metas.filter((m) => m.status === "pendente" && m.dataPlanejada < hojeIso).length;
   return { cumpridas, naoCumpridas, atrasadasAgora };
 }
 
 /* Painel de desempenho de um aluno (a mesma função serve ao aluno e ao moderador). */
 export function painelDoAluno({
-  questoes = [], simulados = [], sessoes = [], resumosSemana = [], semana = null, revisoes = [],
+  questoes = [], simulados = [], sessoes = [], resumosSemana = [], metas = [],
   plano = null, progresso = {}, ind, hojeIso, filtros = {},
 }) {
   const { inicio = null, fim = null } = filtros;
@@ -67,7 +65,7 @@ export function painelDoAluno({
     ultimos30: { diasEstudados: ult30.diasEstudados, totalDias: 30, dias: ult30.dias, sequenciaAtual: ult30.sequenciaAtual },
     minutosEstudados: sessoesPeriodo.reduce((s, x) => s + (x.minutos || 0), 0),
     sessoes: sessoesPeriodo.length,
-    metas: resumoMetas({ resumosSemana, semana, revisoes, hojeIso, inicio, fim }),
+    metas: resumoMetas({ metas, resumosSemana, hojeIso, inicio, fim }),
     plano: plano ? calcularProgressoPlano(itens, progresso, plano.cronograma, hojeIso) : null,
     atrasos: plano ? calcularAtrasos(itens, progresso, plano.cronograma, hojeIso) : null,
   };

@@ -46,8 +46,8 @@ export function PainelDesempenho({ v }) {
   const filtros = useFiltros({ periodo: "30d" });
   const efetivo = useMemo(() => filtroEfetivo(filtros.f, v.hoje), [filtros.f, v.hoje]);
   const p = useMemo(() => (v.carregando ? null : painelDoAluno({
-    questoes: v.questoes, simulados: v.simulados, sessoes: v.sessoes, resumosSemana: v.resumosSemana || [], semana: v.semana,
-    revisoes: v.revisoes, plano: v.plano, progresso: v.progresso, ind, hojeIso: v.hoje, filtros: efetivo,
+    questoes: v.questoes, simulados: v.simulados, sessoes: v.sessoes, resumosSemana: v.resumosSemana || [], metas: v.metas,
+    plano: v.plano, progresso: v.progresso, ind, hojeIso: v.hoje, filtros: efetivo,
   })), [v, ind, efetivo]);
 
   if (!p) return <Carregando />;

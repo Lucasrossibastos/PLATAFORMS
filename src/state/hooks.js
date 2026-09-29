@@ -30,7 +30,9 @@ const usar = (fabrica, deps) => {
 export const useAluno = (id) => usar(id && ((s, cb) => s.alunos.observar(id, cb)), [id]);
 export const usePlano = (id) => usar(id && ((s, cb) => s.planos.observarPlano(id, cb)), [id]);
 export const useProgresso = (id) => usar(id && ((s, cb) => s.planos.observarProgresso(id, cb)), [id]);
-export const useSemanaDoc = (id) => usar(id && ((s, cb) => s.estudo.observarSemana(id, cb)), [id]);
+export const useMetas = (id) => usar(id && ((s, cb) => s.metas.observar(id, cb)), [id]);
+export const useAgenda = (id) => usar(id && ((s, cb) => s.metas.observarAgenda(id, cb)), [id]);
+export const useRevisoesRecorrentes = (id) => usar(id && ((s, cb) => s.revisoes.observar(id, cb)), [id]);
 export const useSessoes = (id) => usar(id && ((s, cb) => s.estudo.observarSessoes(id, cb)), [id]);
 export const useRevisoes = (id) => usar(id && ((s, cb) => s.estudo.observarRevisoes(id, cb)), [id]);
 export const useResumosSemana = (id) => usar(id && ((s, cb) => s.estudo.observarResumosSemana(id, cb)), [id]);
@@ -55,11 +57,12 @@ export const useConfigRedacao = () => usar((s, cb) => s.redacao.observarConfig(c
 
 // só moderador
 export const useAlunos = () => usar((s, cb) => s.alunos.observarTodos(cb), []);
-export const useModelos = () => usar((s, cb) => s.planos.observarModelos(cb), []);
+export const useModelos = (ativo = true) => usar(ativo ? (s, cb) => s.planos.observarModelos(cb) : null, [ativo]);
 export const useTodosPlanos = () => usar((s, cb) => s.planos.observarTodosPlanos(cb), []);
 export const useTodoProgresso = () => usar((s, cb) => s.planos.observarTodoProgresso(cb), []);
 export const useQuestoesDesde = (inicio) => usar((s, cb) => s.questoes.observarDesde(inicio, cb), [inicio]);
 export const useSessoesDesde = (inicio) => usar((s, cb) => s.estudo.observarSessoesDesde(inicio, cb), [inicio]);
+export const useAgendas = () => usar((s, cb) => s.metas.observarAgendas(cb), []);
 export const useTodosSimulados = () => usar((s, cb) => s.simulados.observarTodos(cb), []);
 export const useEnviosAvisos = () => usar((s, cb) => s.notificacoes.observarEnvios(cb), []);
 export const useTextosDeTodos = () => usar((s, cb) => s.textos.observarTodosDosAlunos(cb), []);
@@ -79,17 +82,16 @@ export function useHoje() {
   return hoje;
 }
 
-/* Semana de metas válida hoje: garante a virada (grava) e acompanha o doc. */
-export function useSemana(alunoId) {
+/* Metas em dia: na virada do dia o motor refaz as duas semanas (grava). */
+export function useGarantirMetas(alunoId) {
   const { s } = useApp();
   const hoje = useHoje();
-  const doc = useSemanaDoc(alunoId);
   const [erro, setErro] = useState(null);
   useEffect(() => {
     if (!s || !alunoId || !hoje) return;
-    s.estudo.garantirSemana(alunoId).catch(setErro);
+    s.metas.garantir(alunoId).catch(setErro);
   }, [s, alunoId, hoje]);
-  return { semana: doc, erro, hoje };
+  return { erro, hoje };
 }
 
 /* Frases do painel já resolvidas para o aluno, com as variáveis preenchidas. */

@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { estruturaInicial, indiceEstrutura } from "./estrutura.js";
 import {
-  alterarPlano, calcularAlocacao, calcularAtrasos, calcularProgressoPlano, cicloDoPlano, conteudoDaVez,
+  alterarPlano, calcularAlocacao, calcularAtrasos, calcularProgressoPlano, conteudoDaVez,
   distribuirMinutos, estadoItem, impactoAlteracao, itensDoPlano, planoDoModelo, recalcularPlano,
-  revisoesDoItem, statusItem, sugerirModelo,
+  statusItem, sugerirModelo,
 } from "./plano.js";
-import { gerarSemana, DIAS } from "./nucleo.js";
 
 // estrutura base + um segundo tópico de Biologia para os testes de sequência
 const base = estruturaInicial();
@@ -54,7 +53,6 @@ describe("plano individual a partir do plano geral", () => {
     const { plano: oculto } = alterarPlano(novoPlano(), ind, { tipo: "definirMateria", materiaId: "historia", campos: { ativa: false } });
     expect(oculto.materias.map((m) => m.materiaId)).toEqual(["biologia", "historia"]);
     expect(itensDoPlano(oculto, ind).some((i) => i.materiaId === "historia")).toBe(false);
-    expect(cicloDoPlano(oculto, ind).alocacoes.map((a) => a.materiaId)).toEqual(["biologia"]);
   });
 
   it("o ritmo muda a duração efetiva dos conteúdos", () => {
@@ -175,12 +173,6 @@ describe("atrasos e progresso do plano", () => {
     expect(inicios).toEqual([...inicios].sort());
   });
 
-  it("revisões agendadas a partir da conclusão", () => {
-    expect(revisoesDoItem("2026-09-30", plano.revisao)).toEqual([
-      { dataPrevista: "2026-10-07", duracaoMin: 20 },
-      { dataPrevista: "2026-10-30", duracaoMin: 20 },
-    ]);
-  });
 });
 
 describe("alterações individuais com histórico", () => {
@@ -216,27 +208,5 @@ describe("alterações individuais com histórico", () => {
     const daMateria = itens.filter((it) => it.materiaId === materia);
     expect(imp2.conteudosRetirados).toBe(daMateria.filter((it) => !prog[it.itemId]).length);
     expect(imp2.conteudosIncluidos).toBe(0);
-  });
-});
-
-describe("integração com o motor da semana do núcleo", () => {
-  it("as metas da semana saem com tópico e subtópico do plano individual", () => {
-    const plano = recalcularPlano(novoPlano(), ind, {}, HOJE).plano;
-    const itens = itensDoPlano(plano, ind);
-    const semana = gerarSemana(cicloDoPlano(plano, ind), plano.disponibilidade, [], {
-      conteudoDaVez: (m) => conteudoDaVez(itens, {}, m, ind), semana: HOJE,
-    });
-    const metas = DIAS.flatMap((d) => semana[d.k]);
-    const bio = metas.find((m) => m.materiaId === "biologia");
-    expect(bio).toMatchObject({ topicoId: "bi1", subtopicoId: itens[0].subtopicoId, itemId: itens[0].itemId });
-    expect(metas.find((m) => m.materiaId === "historia")).toMatchObject({ topicoId: "h2", itemId: "t:h2" });
-  });
-
-  it("revisões entram pela data dentro da semana informada", () => {
-    const revisoes = [{ id: "r1", materiaId: "biologia", materia: "Biologia", topicoId: "bi1", topico: "Citologia", duracaoMin: 20,
-      sessoes: [{ dia: "2026-10-01", status: "agendada" }, { dia: "2026-10-06", status: "agendada" }] }];
-    const s = gerarSemana({ alocacoes: [] }, DISP, revisoes, { semana: HOJE });
-    expect(s.qui.map((m) => m.tipo)).toEqual(["revisao"]); // 01/10 é quinta
-    expect(s.ter).toEqual([]); // 06/10 é da semana seguinte
   });
 });
