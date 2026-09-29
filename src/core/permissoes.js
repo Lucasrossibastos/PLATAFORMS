@@ -4,7 +4,7 @@
 
 export const PAPEIS = { ALUNO: "aluno", MODERADOR: "moderador" };
 export const JANELA_CORRECAO_H = 24; // o aluno corrige/apaga os próprios registros por 24 h
-const LIBERADAS_SE_AUSENTES = ["tempos"];
+export const LIBERADAS_SE_AUSENTES = ["tempos", "metaQuestoes"]; // permissões criadas depois dos planos: valem como liberadas até o moderador mudar
 
 export class ErroPermissao extends Error {
   constructor(mensagem = "Você não tem permissão para fazer isso.") {

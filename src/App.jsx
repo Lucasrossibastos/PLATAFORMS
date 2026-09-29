@@ -12,7 +12,6 @@ import Inicio from "./screens/aluno/Inicio.jsx";
 import EditalAluno from "./screens/aluno/Edital.jsx";
 import QuestoesAluno from "./screens/aluno/Questoes.jsx";
 import SimuladosAluno from "./screens/aluno/Simulados.jsx";
-import DesempenhoAluno from "./screens/aluno/Desempenho.jsx";
 import MateriaisAluno, { AreaMateriaisAluno } from "./screens/aluno/Materiais.jsx";
 import AvisosAluno from "./screens/aluno/Avisos.jsx";
 import { CursosAluno, PlaylistAluno } from "./screens/aluno/Cursos.jsx";
@@ -32,6 +31,8 @@ const Textos = sob(() => import("./screens/moderador/Textos.jsx"));
 const CursosModerador = sob(() => import("./screens/moderador/Cursos.jsx"), "CursosModerador");
 const PlaylistModerador = sob(() => import("./screens/moderador/Cursos.jsx"), "PlaylistModerador");
 const RedacaoModerador = sob(() => import("./screens/moderador/Redacao.jsx"), "RedacaoModerador");
+// Desempenho (gráficos com Recharts): baixado só quando a tela abre
+const DesempenhoAluno = lazy(() => import("./screens/aluno/Desempenho.jsx"));
 // módulo isolado de flashcards (src/modules/flashcards): baixado só quando o aluno abre
 const Flashcards = lazy(() => import("./modules/flashcards/index.jsx"));
 

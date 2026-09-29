@@ -109,6 +109,14 @@ describe("questões: histórico protegido", () => {
     await assertFails(setDoc(doc(db("ana"), "questoes/q5"), questao("ana", { data: "2099-01-01" })));
   });
 
+  it("tempo gasto opcional: vazio ou minutos inteiros de 1 a 600", async () => {
+    await assertSucceeds(setDoc(doc(db("ana"), "questoes/t1"), questao("ana", { minutos: 25 })));
+    await assertSucceeds(setDoc(doc(db("ana"), "questoes/t2"), questao("ana", { minutos: null })));
+    await assertFails(setDoc(doc(db("ana"), "questoes/t3"), questao("ana", { minutos: 0 })));
+    await assertFails(setDoc(doc(db("ana"), "questoes/t4"), questao("ana", { minutos: 601 })));
+    await assertFails(setDoc(doc(db("ana"), "questoes/t5"), questao("ana", { minutos: "25" })));
+  });
+
   it("correção do aluno só em 24 h e sempre com log no mesmo lote", async () => {
     const a = db("ana");
     await assertSucceeds(setDoc(doc(a, "questoes/q1"), questao("ana")));
@@ -318,6 +326,23 @@ describe("metas: horário versionado, registro de metas e revisões recorrentes"
     nao.set(doc(a, "logs/t2"), log("ana", "ana"));
     nao.update(doc(a, "planos/ana"), { duracaoMeta: { biologia: 50 }, ultimoLogId: "t2" });
     await assertFails(nao.commit());
+  });
+
+  it("meta semanal de questões: o aluno define (com log, liberada se ausente); valor inválido ou sem a permissão, não", async () => {
+    const a = db("ana");
+    const grava = (id, valor) => {
+      const b = writeBatch(a);
+      b.set(doc(a, `logs/${id}`), log("ana", "ana"));
+      b.update(doc(a, "planos/ana"), { metaQuestoesSemana: valor, ultimoLogId: id });
+      return b.commit();
+    };
+    await assertSucceeds(grava("mq1", 120));
+    await assertSucceeds(grava("mq2", null));
+    await assertFails(grava("mq3", 3));
+    await assertFails(grava("mq4", 12.5));
+    await assertFails(updateDoc(doc(a, "planos/ana"), { metaQuestoesSemana: 90 })); // sem log
+    await env.withSecurityRulesDisabled((ctx) => updateDoc(doc(ctx.firestore(), "planos/ana"), { "permissoesAluno.metaQuestoes": false }));
+    await assertFails(grava("mq5", 90));
   });
 
   it("meta: o aluno cria a própria, pendente e válida", async () => {

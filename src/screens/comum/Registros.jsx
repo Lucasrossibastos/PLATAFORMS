@@ -24,16 +24,17 @@ export function podeCorrigir(usuario, registro) {
 export function FormQuestoes({ alunoId, registro, inicial = {}, aoConcluir, aoCancelar, pedirMotivo }) {
   const { s, hoje } = useApp();
   const [f, setF] = useState(() => registro
-    ? { ...registro, subtopicoId: registro.subtopicoId || "", vestibularId: registro.vestibularId || "" }
-    : { data: hoje, materiaId: "", topicoId: "", subtopicoId: "", vestibularId: "", total: "", acertos: "", erros: "", obs: "", ...inicial });
+    ? { ...registro, subtopicoId: registro.subtopicoId || "", vestibularId: registro.vestibularId || "", minutos: registro.minutos ?? "" }
+    : { data: hoje, materiaId: "", topicoId: "", subtopicoId: "", vestibularId: "", total: "", acertos: "", erros: "", minutos: "", obs: "", ...inicial });
   const [motivo, setMotivo] = useState("");
   const { executar, ocupado, erro } = useAcao();
   const erros = errosDeCampo(erro);
   const total = Number(f.total) || 0, a = Number(f.acertos) || 0, e = Number(f.erros) || 0;
   const passou = f.total !== "" && a + e > total;
+  const ritmo = total && Number(f.minutos) > 0 ? Math.round((Number(f.minutos) / total) * 10) / 10 : null;
 
   const salvar = () => executar(async () => {
-    const dados = { ...f, total: num(f.total), acertos: num(f.acertos), erros: num(f.erros) };
+    const dados = { ...f, total: num(f.total), acertos: num(f.acertos), erros: num(f.erros), minutos: f.minutos === "" ? null : f.minutos };
     if (registro) await s.questoes.corrigir(registro.id, dados, { motivo });
     else await s.questoes.registrar(alunoId, dados);
     aoConcluir?.(`${total} ${total === 1 ? "questão registrada" : "questões registradas"}: ${fmtPct(pct(a, total))} de acerto.`);
@@ -53,10 +54,13 @@ export function FormQuestoes({ alunoId, registro, inicial = {}, aoConcluir, aoCa
       </div>
       {f.total !== "" && !passou && (
         <p className="previa-linha num">
-          {fmtPct(pct(a, total))} de acerto{total - a - e > 0 ? ` · ${total - a - e} em branco` : ""}
+          {fmtPct(pct(a, total))} de acerto{total - a - e > 0 ? ` · ${total - a - e} em branco` : ""}{ritmo ? ` · ${String(ritmo).replace(".", ",")} min por questão` : ""}
         </p>
       )}
       {passou && <p className="campo-erro" role="alert">Acertos + erros ({a + e}) passa do total ({total}).</p>}
+      <Campo rotulo="Tempo gasto (min, opcional)" erro={erros.minutos} ajuda="Só o tempo resolvendo estas questões. Mostra o seu ritmo no Desempenho.">
+        <input className="entrada num" style={{ maxWidth: 180 }} type="number" inputMode="numeric" min="1" max="600" value={f.minutos} onChange={(ev) => setF({ ...f, minutos: ev.target.value })} />
+      </Campo>
       <Campo rotulo="Observações (opcional)"><textarea className="entrada" rows={2} value={f.obs} placeholder="Ex.: errei por confundir MRU com MRUV" onChange={(ev) => setF({ ...f, obs: ev.target.value })} /></Campo>
       {registro && pedirMotivo && (
         <Campo rotulo="Motivo da correção" ajuda="Fica no histórico de alterações."><input className="entrada" value={motivo} onChange={(ev) => setMotivo(ev.target.value)} /></Campo>
@@ -98,6 +102,7 @@ export function DetalheQuestoes({ registro, foco, aoFechar, aoEditar, aoApagar }
           <div className={foco === "erros" ? "ativo" : ""}><b className="num txt-erro">{registro.erros}</b><span>erros</span></div>
           {emBranco > 0 && <div><b className="num">{emBranco}</b><span>em branco</span></div>}
           <div><b className="num">{registro.total}</b><span>total · {fmtPct(pct(registro.acertos, registro.total))}</span></div>
+          {registro.minutos > 0 && <div><b className="num">{registro.minutos}</b><span>min · {String(Math.round((registro.minutos / registro.total) * 10) / 10).replace(".", ",")} por questão</span></div>}
         </div>
         {registro.obs && <><span className="eyebrow">Observações</span><p className="texto-dialogo">{registro.obs}</p></>}
         <p className="previa-linha">

@@ -49,6 +49,10 @@ service cloud.firestore {
     function contagensValidas(d) {
       return inteiroMin(d.total, 1) && inteiroMin(d.acertos, 0) && inteiroMin(d.erros, 0) && d.acertos + d.erros <= d.total;
     }
+    // tempo gasto nas questões (opcional): minutos inteiros de 1 a 600
+    function tempoValido(d) {
+      return d.get('minutos', null) == null || (inteiroMin(d.minutos, 1) && d.minutos <= 600);
+    }
     // "YYYY-MM-DD" de um instante em UTC (as datas do app são locais; a folga
     // de 14 h cobre qualquer fuso, então só barra data de fato no futuro)
     function dois(n) { return n < 10 ? '0' + string(n) : string(n); }
@@ -115,18 +119,23 @@ service cloud.firestore {
         && novos.hasAll(velhos);
     }
 
+    // meta semanal de questões: vazia (volta à sugerida) ou inteiro de 5 a 2000
+    function metaQuestoesValida(n) { return n == null || (n is int && n >= 5 && n <= 2000); }
+
     // O aluno só muda o que o moderador liberou em permissoesAluno, e sempre
     // com log no mesmo lote. `materias` (peso, matérias visíveis, tópicos) é
     // só do moderador: a ordem que o aluno escolhe fica em ordemTopicos, e os
     // tempos que ele ajusta em duracaoMeta e tempoTopico ("tempos" vale como
     // liberada nos planos criados antes dela). Os campos do recálculo acompanham as mudanças liberadas;
-    // sozinhos, exigem a permissão "recalcular".
+    // sozinhos, exigem a permissão "recalcular". A meta semanal de questões
+    // ("metaQuestoes", liberada nos planos antigos) não mexe no cronograma.
     function planoDoAlunoOk(alunoId) {
       let perm = antigo().get('permissoesAluno', {});
       let m = mudou();
-      return m.hasOnly(['ordemTopicos', 'disponibilidade', 'horarios', 'ritmo', 'duracaoMeta', 'tempoTopico', 'alocacaoSemanal', 'cronograma', 'fimPrevisto', 'recalculadoEm', 'atualizadoEm', 'ultimoLogId'])
+      return m.hasOnly(['ordemTopicos', 'disponibilidade', 'horarios', 'ritmo', 'duracaoMeta', 'tempoTopico', 'metaQuestoesSemana', 'alocacaoSemanal', 'cronograma', 'fimPrevisto', 'recalculadoEm', 'atualizadoEm', 'ultimoLogId'])
         && (!m.hasAny(['ordemTopicos']) || (perm.get('reordenar', false) == true && novo().ordemTopicos is map))
         && (!m.hasAny(['duracaoMeta', 'tempoTopico']) || (perm.get('tempos', true) == true && novo().get('duracaoMeta', {}) is map && novo().get('tempoTopico', {}) is map))
+        && (!m.hasAny(['metaQuestoesSemana']) || (perm.get('metaQuestoes', true) == true && metaQuestoesValida(novo().get('metaQuestoesSemana', null))))
         && (!m.hasAny(['disponibilidade']) || perm.get('disponibilidade', false) == true)
         && (!m.hasAny(['horarios']) || (perm.get('disponibilidade', false) == true && horariosSoAcrescentam()))
         && (!m.hasAny(['ritmo']) || perm.get('ritmo', false) == true)
@@ -278,9 +287,9 @@ service cloud.firestore {
 
     match /questoes/{id} {
       allow read: if podeLerRegistro();
-      allow create: if (moderador() || proprio(novo().alunoId)) && autoria(novo()) && contagensValidas(novo()) && naoFutura(novo().data);
+      allow create: if (moderador() || proprio(novo().alunoId)) && autoria(novo()) && contagensValidas(novo()) && tempoValido(novo()) && naoFutura(novo().data);
       allow update: if (moderador() || (proprio(antigo().alunoId) && recente()))
-        && imutaveis(['alunoId', 'criadoEm', 'criadoPor']) && contagensValidas(novo()) && alteracaoRegistrada(antigo().alunoId);
+        && imutaveis(['alunoId', 'criadoEm', 'criadoPor']) && contagensValidas(novo()) && tempoValido(novo()) && alteracaoRegistrada(antigo().alunoId);
       allow delete: if (moderador() || (proprio(antigo().alunoId) && recente())) && exclusaoRegistrada(id, antigo().alunoId);
     }
 

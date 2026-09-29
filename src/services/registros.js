@@ -22,13 +22,14 @@ function diferencas(antes, depois, campos) {
 
 export function servicoQuestoes(ctx) {
   const { repo } = ctx;
-  const CAMPOS = ["data", "materiaId", "topicoId", "subtopicoId", "vestibularId", "total", "acertos", "erros", "obs"];
+  const CAMPOS = ["data", "materiaId", "topicoId", "subtopicoId", "vestibularId", "total", "acertos", "erros", "minutos", "obs"];
 
   async function normalizar(d) {
     const ind = await ctx.indice();
     const r = {
       data: d.data, materiaId: d.materiaId || "", topicoId: d.topicoId || "", subtopicoId: d.subtopicoId || null,
       vestibularId: d.vestibularId || null, total: numero(d.total), acertos: numero(d.acertos), erros: numero(d.erros),
+      minutos: d.minutos === "" || d.minutos == null ? null : Number(d.minutos), // tempo gasto (opcional)
       obs: String(d.obs || "").trim().slice(0, 1000),
     };
     const v = validarQuestoes(r, ctx.hoje());

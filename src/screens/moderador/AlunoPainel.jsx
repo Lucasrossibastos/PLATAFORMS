@@ -16,7 +16,7 @@ import { Abas, Botao, Campo, Carregando, Confirmar, MensagemErro, Tile, Vazio } 
 import { EditalDoAluno, Historico } from "../comum/Edital.jsx";
 import { PainelRevisoes } from "../comum/Revisoes.jsx";
 import { Agenda } from "../aluno/Metas.jsx";
-import { PainelDesempenho } from "../comum/Desempenho.jsx";
+import { PainelDesempenho } from "../desempenho/PainelDesempenho.jsx";
 import { QuestoesDoAluno } from "../aluno/Questoes.jsx";
 import { SimuladosDoAluno } from "../aluno/Simulados.jsx";
 import { MetaLinha } from "../aluno/Inicio.jsx";

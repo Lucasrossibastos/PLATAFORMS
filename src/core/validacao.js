@@ -20,6 +20,8 @@ export function validarQuestoes(r, hojeIso) {
   if (!r.materiaId) erros.materiaId = "Escolha a matéria.";
   if (!r.topicoId) erros.topicoId = "Escolha o tópico.";
   contagens(r, erros);
+  // tempo gasto (opcional): minutos inteiros
+  if (r.minutos != null && (!Number.isInteger(r.minutos) || r.minutos < 1 || r.minutos > 600)) erros.minutos = "Tempo: minutos inteiros de 1 a 600.";
   return { ok: !Object.keys(erros).length, erros };
 }
 

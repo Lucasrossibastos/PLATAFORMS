@@ -44,9 +44,7 @@ button.stat-cartao:hover:not(:disabled) { border-color: var(--border-strong); ba
 button.stat-cartao:disabled { cursor: default; }
 .stat-cartao--ok strong { color: var(--ok); }
 .stat-cartao--perigo strong { color: var(--danger); }
-.grade-graficos { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 12px; margin-bottom: 12px; }
-.grade-graficos .cartao { min-width: 0; }
-.grade-graficos .subtitulo, .consistencia .subtitulo { margin-bottom: 12px; }
+.consistencia .subtitulo { margin-bottom: 12px; }
 
 /* filtros */
 .barra-filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; margin-bottom: 18px; }
@@ -278,15 +276,7 @@ button.carga:hover { color: var(--text); border-color: var(--border-strong); }
 
 /* gráficos */
 .grafico-vazio { padding: 32px 12px; text-align: center; color: var(--muted); font-size: 13.5px; }
-.rosca { display: grid; grid-template-columns: 160px minmax(0, 1fr); align-items: center; gap: 18px; }
-.rosca svg { width: 160px; height: 160px; }
-.rosca path { transition: opacity 0.2s ease; }
-.rosca-valor { font-size: 24px; font-weight: 600; letter-spacing: -0.03em; fill: var(--text); font-variant-numeric: tabular-nums; }
-.rosca-rotulo { font-size: 11px; fill: var(--muted); }
 .legenda { display: grid; gap: 6px; list-style: none; font-size: 13.5px; }
-.legenda li, .legenda-botao { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto auto; align-items: center; gap: 10px; color: var(--text-soft); }
-.legenda-botao { width: 100%; padding: 4px 6px; margin: -4px -6px; border-radius: 6px; text-align: left; }
-.legenda-botao:hover { background: var(--surface-2); }
 .legenda i { width: 10px; height: 10px; border-radius: 3px; }
 .legenda b { color: var(--text); font-weight: 600; }
 .legenda small { color: var(--muted); font-size: 12px; min-width: 48px; text-align: right; }
@@ -302,20 +292,6 @@ button.carga:hover { color: var(--text); border-color: var(--border-strong); }
 .dica { position: absolute; transform: translate(-50%, calc(-100% - 12px)); display: grid; gap: 2px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface-solid); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25); font-size: 12px; white-space: nowrap; pointer-events: none; z-index: 2; }
 .dica strong { font-weight: 600; }
 .dica span { color: var(--muted); }
-.barras-acertos { display: grid; gap: 4px; list-style: none; }
-.barras-linha { display: grid; grid-template-columns: minmax(110px, 200px) minmax(0, 1fr) auto; align-items: center; gap: 14px; width: 100%; padding: 8px 6px; border-radius: 8px; text-align: left; font-size: 13.5px; }
-button.barras-linha:hover { background: var(--surface-2); }
-.barras-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
-.barras-trilho { display: flex; gap: 2px; height: 12px; }
-.barras-trilho i { display: block; height: 100%; min-width: 3px; }
-.barras-trilho i:first-child { border-radius: 4px 0 0 4px; }
-.barras-trilho i:last-child { border-radius: 0 4px 4px 0; }
-.barras-trilho i:only-child { border-radius: 4px; }
-.barras-valor { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
-.barras-valor b { color: var(--text); font-weight: 600; }
-.migalhas { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; font-size: 13px; color: var(--muted); }
-.migalhas svg { width: 14px; height: 14px; }
-.migalhas button { color: var(--text-soft); text-decoration: underline; text-underline-offset: 3px; }
 .consistencia { margin-bottom: 12px; }
 .calendario-dias ol { display: grid; grid-template-columns: repeat(15, minmax(0, 1fr)); gap: 5px; max-width: 560px; list-style: none; }
 .calendario-dias ol li { aspect-ratio: 1; border-radius: 5px; border: 1px solid var(--border-strong); }
@@ -371,7 +347,7 @@ button.barras-linha:hover { background: var(--surface-2); }
 
 @media (max-width: 900px) {
   .stats-grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .grade-graficos, .grade-organizacao, .grade-perfil { grid-template-columns: 1fr; }
+  .grade-organizacao, .grade-perfil { grid-template-columns: 1fr; }
 }
 @media (max-width: 560px) {
   .blocos-materias { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -383,9 +359,6 @@ button.barras-linha:hover { background: var(--surface-2); }
   .form-linha--3 { grid-template-columns: 1fr; }
   .stats-grid, .stats-grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stat-cartao { padding: 16px; }
-  .rosca { grid-template-columns: 1fr; justify-items: center; }
-  .barras-linha { grid-template-columns: minmax(0, 1fr) auto; }
-  .barras-trilho { grid-column: 1 / -1; grid-row: 2; }
   .grade-dias { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .calendario-dias ol { grid-template-columns: repeat(10, minmax(0, 1fr)); }
   .linha-revisao { grid-template-columns: 50px minmax(0, 1fr); }

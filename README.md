@@ -115,7 +115,8 @@ src/core/       regras puras (sem React, sem banco): plano, ciclos, motor de met
 src/data/       repositório: contrato.js, local.js (demo), firebase.js, semente.js
 src/services/   serviços de domínio: única porta da interface para os dados
 src/state/      provedor React e hooks de leitura em tempo real
-src/screens/    telas (aluno/, moderador/, comum/ para o que os dois usam)
+src/screens/    telas (aluno/, moderador/, comum/ para o que os dois usam;
+                desempenho/ é a tela de diagnóstico, em Tailwind + Recharts)
 src/ui/         componentes: filtros, gráficos SVG, seletor de conteúdo, diálogos
 firestore.rules, storage.rules   controle de acesso real
 ```
@@ -126,6 +127,13 @@ firestore.rules, storage.rules   controle de acesso real
 - **Uma fonte de verdade**: desempenho, consistência e atrasos são sempre
   calculados dos registros (questões, simulados, sessões de estudo); nada
   disso é guardado pronto.
+- **Desempenho = diagnóstico e ação** (`core/diagnostico.js`): o pulso (acerto
+  com a variação da semana, meta semanal de questões, tempo focado), o
+  equilíbrio por grande área contra o peso do plano, o mapa tempo × acerto
+  (usa o tempo gasto, opcional, de cada registro de questões) e os focos de
+  atenção com "Revisar", que põe o tópico no topo da fila da matéria.
+  Tailwind vale só em `screens/desempenho/` (sem o reset global), e a tela é
+  baixada sob demanda.
 - **Edital**: a unidade de estudo (a que vira meta) é o tópico; os
   subtópicos são orientação dentro dele. Matéria oculta para um aluno fica no
   edital dele, com o histórico, mas não gera metas.

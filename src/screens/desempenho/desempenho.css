@@ -1,0 +1,34 @@
+/* Tailwind só nesta tela: sem o reset global (preflight) e lendo apenas os
+   arquivos desta pasta, para não mexer no resto do app. As utilidades ficam
+   fora de camada (layer) para valerem sobre os estilos base do app. O modo
+   escuro segue o data-theme do app. */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" source(none);
+@source "./";
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+/* Cores dos gráficos (SVG do Recharts lê as variáveis). O escuro tem os
+   próprios tons, escolhidos para o fundo escuro, não uma inversão. */
+.dg {
+  --dg-azul: #2563eb;        /* blue-600: a série do aluno */
+  --dg-azul-forte: #1d4ed8;  /* blue-700 */
+  --dg-plano: #94a3b8;       /* slate-400: o que o plano pede (tracejado) */
+  --dg-grade: #e2e8f0;       /* slate-200 */
+  --dg-eixo: #64748b;        /* slate-500 */
+  --dg-texto: #0f172a;       /* slate-900 */
+  --dg-superficie: #ffffff;
+}
+[data-theme="dark"] .dg {
+  --dg-azul: #3b82f6;        /* blue-500 */
+  --dg-azul-forte: #60a5fa;  /* blue-400 */
+  --dg-plano: #64748b;
+  --dg-grade: rgba(255, 255, 255, 0.09);
+  --dg-eixo: #94a3b8;
+  --dg-texto: #f8fafc;
+  --dg-superficie: #0e0e0f;
+}
+
+/* Recharts desenha um contorno de foco no SVG ao clicar; o foco visível fica
+   com os elementos de teclado da página. */
+.dg .recharts-surface:focus,
+.dg .recharts-wrapper:focus { outline: none; }

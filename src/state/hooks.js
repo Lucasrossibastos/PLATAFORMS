@@ -143,7 +143,8 @@ export function useAcao() {
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState(null);
   const vivo = useRef(true);
-  useEffect(() => () => { vivo.current = false; }, []);
+  // (liga de novo na montagem: o StrictMode desmonta e remonta em desenvolvimento)
+  useEffect(() => { vivo.current = true; return () => { vivo.current = false; }; }, []);
   const executar = useCallback(async (fn) => {
     setOcupado(true);
     setErro(null);

@@ -20,6 +20,7 @@ import {
 import { DISP_PADRAO } from "../core/nucleo.js";
 import { estadoDoTopico, marcarTopicoVisto, reabrirTopico, tirarDoFimDaFila } from "../core/ciclos.js";
 import { novaVersaoHorario } from "../core/horario.js";
+import { LIMITES_META_QUESTOES } from "../core/diagnostico.js";
 import { limparSobrescrito, registrarSobrescritos, sobrescritosDoPlano } from "../core/jornada.js";
 import { ErroValidacao, opsDeLog, porNome } from "./base.js";
 
@@ -362,6 +363,28 @@ export function servicoPlanos(ctx, servicos) {
         descricao: `Horário da semana a partir de ${(desde || hoje).split("-").reverse().join("/")}: ${Math.round(total(dias) / 6) / 10} h`,
         antes: plano.disponibilidade || null, depois: dias,
       }], { motivo });
+    },
+
+    /* Meta semanal de questões do aluno (vazia volta à sugerida pelo ritmo
+       das últimas semanas). Só esse campo, com registro: não mexe no
+       cronograma nem nas metas. */
+    async definirMetaQuestoes(alunoId, valor, { motivo = "" } = {}) {
+      const plano = await repo.obter("planos", alunoId);
+      if (!plano) throw new ErroDados("Este aluno ainda não tem plano.", "sem-plano");
+      ctx.exigir("alterar:plano", { alunoId, plano, permissao: "metaQuestoes" });
+      const n = valor === "" || valor == null ? null : Number(valor);
+      const { min, max } = LIMITES_META_QUESTOES;
+      if (n !== null && (!Number.isInteger(n) || n < min || n > max)) throw new ErroValidacao({ metaQuestoes: `Meta: um número inteiro de ${min} a ${max}.` });
+      const antes = plano.metaQuestoesSemana ?? null;
+      if (antes === n) return false;
+      const logId = novoId();
+      await repo.lote([
+        ...opsDeLog(ctx, { alunoId, entidade: "plano", entidadeId: alunoId, motivo, logId }, [{
+          tipo: "metaQuestoes", descricao: n ? `Meta semanal de questões: ${n}` : "Meta semanal de questões voltou à sugerida", antes, depois: n,
+        }]),
+        { tipo: "atualizar", colecao: "planos", id: alunoId, dados: { metaQuestoesSemana: n, ultimoLogId: logId, atualizadoEm: carimbo() } },
+      ]);
+      return true;
     },
 
     /* "Voltar ao padrão da jornada" num campo sobrescrito de uma matéria. */

@@ -16,6 +16,7 @@ import {
 import { PESO_MAX, PESO_MIN, jornadaEfetiva, pesosDoPlano } from "../../core/jornada.js";
 import { horariosDoPlano } from "../../core/horario.js";
 import { ESTRATEGIAS_ATRASO } from "../../core/motorMetas.js";
+import { LIBERADAS_SE_AUSENTES } from "../../core/permissoes.js";
 import { useApp } from "../../state/AppContext.jsx";
 import { useAcao, useLogs, useModelos, useVistos } from "../../state/hooks.js";
 import { Barra, Botao, Campo, Carregando, Confirmar, Dialogo, MensagemErro, Vazio } from "../../ui/ui.jsx";
@@ -557,7 +558,7 @@ export function Organizacao({ plano, pode = {}, aoOperar, aoSalvarHorario, ocupa
           <h3 id="t-perm" className="subtitulo subtitulo--sm"><Settings2 aria-hidden="true" /> O que o aluno pode mudar</h3>
           {PERMISSOES_ALUNO.map((p) => (
             <label key={p.id} className="checagem">
-              <input type="checkbox" checked={!!perm[p.id]} onChange={(e) => setPerm({ ...perm, [p.id]: e.target.checked })} />
+              <input type="checkbox" checked={!!(perm[p.id] ?? LIBERADAS_SE_AUSENTES.includes(p.id))} onChange={(e) => setPerm({ ...perm, [p.id]: e.target.checked })} />
               {p.nome}
             </label>
           ))}

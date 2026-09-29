@@ -113,6 +113,20 @@ describe("questões", () => {
     expect(r).toMatchObject({ alunoId: ana, total: 10, acertos: 6, erros: 3, subtopicoId: null });
   });
 
+  it("tempo gasto é opcional: minutos inteiros de 1 a 600; corrigir o tempo vai para o histórico", async () => {
+    const ana = await t.uidDe("aluno@curso.com");
+    await t.entrar("aluno@curso.com");
+    const base = { data: "2026-09-28", materiaId: "biologia", topicoId: "bi1", total: 10, acertos: 6, erros: 3 };
+    for (const minutos of [0, 601, 2.5, "abc"]) await expect(t.s.questoes.registrar(ana, { ...base, minutos })).rejects.toThrow(ErroValidacao);
+    const sem = await t.s.questoes.registrar(ana, { ...base, minutos: "" });
+    expect((await t.repo.obter("questoes", sem)).minutos).toBeNull();
+    const id = await t.s.questoes.registrar(ana, { ...base, minutos: "25" });
+    expect((await t.repo.obter("questoes", id)).minutos).toBe(25);
+    await t.s.questoes.corrigir(id, { minutos: 30 });
+    const logs = await t.repo.listar("logs", [["entidadeId", "==", id]]);
+    expect(logs[0]).toMatchObject({ antes: { minutos: 25 }, depois: { minutos: 30 } });
+  });
+
   it("aluno corrige só nas primeiras 24 h; toda correção vai para o histórico", async () => {
     const ana = await t.uidDe("aluno@curso.com");
     await t.entrar("aluno@curso.com");
@@ -581,6 +595,31 @@ describe("jornadas práticas e edital por aluno", () => {
     await t.s.planos.alterar(ana, { tipo: "definirPlano", campos: { permissoesAluno: { ...plano.permissoesAluno, tempos: false } } });
     await t.entrar("aluno@curso.com");
     await expect(t.s.planos.alterar(ana, { tipo: "definirDuracaoMeta", materiaId: "matematica", minutos: 40 })).rejects.toThrow(ErroPermissao);
+  });
+
+  it("meta semanal de questões: o aluno define (liberada por padrão), com registro e sem refazer o plano", async () => {
+    const ana = await t.uidDe("aluno@curso.com");
+    await t.entrar("aluno@curso.com");
+    const antes = await t.repo.obter("planos", ana);
+    await expect(t.s.planos.definirMetaQuestoes(ana, 3)).rejects.toThrow(ErroValidacao);
+    await expect(t.s.planos.definirMetaQuestoes(ana, 12.5)).rejects.toThrow(ErroValidacao);
+    expect(await t.s.planos.definirMetaQuestoes(ana, "120")).toBe(true);
+    expect(await t.s.planos.definirMetaQuestoes(ana, 120)).toBe(false); // igual: nada a gravar
+    const plano = await t.repo.obter("planos", ana);
+    expect(plano.metaQuestoesSemana).toBe(120);
+    expect(plano.cronograma).toEqual(antes.cronograma);
+    const log = await t.repo.obter("logs", plano.ultimoLogId);
+    expect(log).toMatchObject({ papel: "aluno", antes: null, depois: 120 });
+    await t.s.planos.definirMetaQuestoes(ana, "");
+    expect((await t.repo.obter("planos", ana)).metaQuestoesSemana).toBeNull();
+    // outro aluno não; o moderador pode tirar a liberdade
+    const carlos = await t.uidDe("carlos@curso.com");
+    await expect(t.s.planos.definirMetaQuestoes(carlos, 50)).rejects.toThrow(ErroPermissao);
+    await t.entrar("moderador@curso.com");
+    await t.s.planos.definirMetaQuestoes(ana, 80);
+    await t.s.planos.alterar(ana, { tipo: "definirPlano", campos: { permissoesAluno: { ...plano.permissoesAluno, metaQuestoes: false } } });
+    await t.entrar("aluno@curso.com");
+    await expect(t.s.planos.definirMetaQuestoes(ana, 90)).rejects.toThrow(ErroPermissao);
   });
 
   it("aluno marca subtópico como visto (se pode concluir conteúdos)", async () => {

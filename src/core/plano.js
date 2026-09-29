@@ -46,6 +46,7 @@ export const PERMISSOES_ALUNO = [
   { id: "ritmo", nome: "Mudar o ritmo do plano" },
   { id: "recalcular", nome: "Recalcular o plano" },
   { id: "tempos", nome: "Ajustar a duração das metas e o tempo de cada tópico" },
+  { id: "metaQuestoes", nome: "Definir a própria meta semanal de questões" },
 ];
 // autonomia por padrão; o moderador restringe o que quiser
 export const PERMISSOES_PADRAO = Object.fromEntries(PERMISSOES_ALUNO.map((p) => [p.id, true]));

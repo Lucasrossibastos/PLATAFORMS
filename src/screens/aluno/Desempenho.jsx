@@ -1,7 +1,7 @@
 import { useEu, useFrases } from "../../state/hooks.js";
 import { useVisaoAluno } from "../../state/aluno.js";
 import { Carregando, TituloPagina } from "../../ui/ui.jsx";
-import { PainelDesempenho } from "../comum/Desempenho.jsx";
+import { PainelDesempenho } from "../desempenho/PainelDesempenho.jsx";
 
 export default function DesempenhoAluno() {
   const eu = useEu();
@@ -11,7 +11,7 @@ export default function DesempenhoAluno() {
   return (
     <>
       <TituloPagina eyebrow="Seus números" frase={t("painel.desempenho.titulo")}
-        texto="Tudo aqui é calculado dos seus registros de questões, simulados e estudo. Sem ranking: a comparação é com você mesmo." />
+        texto="O que está indo bem, onde está o gargalo e o que revisar agora. Tudo calculado dos seus registros; a comparação é só com você mesmo." />
       <PainelDesempenho v={v} />
     </>
   );
