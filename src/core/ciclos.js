@@ -122,6 +122,17 @@ export function tirarDoFimDaFila(item, p = {}) {
   return e.ciclos.map((c, i) => (i === e.ciclos.length - 1 ? { ...c, naFila: false } : c));
 }
 
+/* Desfazer um estudo que tinha fechado o ciclo `n` pelo tempo: o ciclo volta
+   a ficar aberto. Se o tópico já foi revisto do zero depois (há ciclo mais
+   novo) ou foi marcado à mão, nada muda: é histórico. */
+export function desfazerConclusao(item, p = {}, n) {
+  const ciclos = ciclosDoItem(item, p);
+  const ult = ciclos[ciclos.length - 1];
+  if (ult.n !== n || !ult.concluido || ult.concluidoPor !== "tempo") return null;
+  const { concluido: _c, concluidoEm: _e, concluidoPor: _p, ...aberto } = ult;
+  return [...ciclos.slice(0, -1), aberto];
+}
+
 /* Efeito de minutos estudados num tópico: a porcentagem antes e depois (é o
    que a meta registra ao ser concluída) e se o ciclo terminou agora. */
 export function efeitoDosMinutos(item, p = {}, minutos, { hojeIso } = {}) {

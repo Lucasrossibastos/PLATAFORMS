@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ciclosDoItem, efeitoDosMinutos, estadoDoTopico, filaDaMateria, marcarTopicoVisto, progressoVisto, reabrirTopico, tirarDoFimDaFila } from "./ciclos.js";
+import { ciclosDoItem, desfazerConclusao, efeitoDosMinutos, estadoDoTopico, filaDaMateria, marcarTopicoVisto, progressoVisto, reabrirTopico, tirarDoFimDaFila } from "./ciclos.js";
 
 const it60 = (id, extra = {}) => ({ materiaId: "bio", topicoId: id, itemId: `t:${id}`, duracao: 60, ...extra });
 const cito = it60("cito");
@@ -110,5 +110,16 @@ describe("porcentagem vista", () => {
     expect(r.ciclos[0]).toMatchObject({ concluido: true, concluidoEm: "2026-09-28", concluidoPor: "marcado", marcadoPor: "ana" });
     expect(estadoDoTopico(gene, { minutos: 10, ciclos: r.ciclos }).pctVisto).toBe(1);
     expect(marcarTopicoVisto(gene, { minutos: 60 }, { hojeIso: "2026-09-28", por: "ana" }).ok).toBe(false);
+  });
+
+  it("desfazer um estudo que fechou o ciclo reabre só esse ciclo; rever do zero depois ou 'marcado' ficam", () => {
+    const ef = efeitoDosMinutos(gene, { minutos: 40 }, 20, { hojeIso: "2026-09-28" });
+    const depois = { minutos: 60, ciclos: ef.ciclos };
+    const volta = desfazerConclusao(gene, depois, 1);
+    expect(volta).toEqual([{ n: 1, base: 0, origem: "progressao" }]);
+    expect(estadoDoTopico(gene, { minutos: 40, ciclos: volta })).toMatchObject({ concluido: false, restante: 20 });
+    const revisto = { ...depois, ciclos: reabrirTopico(gene, depois, { hojeIso: "2026-09-29", por: "ana" }).ciclos };
+    expect(desfazerConclusao(gene, revisto, 1)).toBeNull();
+    expect(desfazerConclusao(gene, { minutos: 10, ciclos: marcarTopicoVisto(gene, { minutos: 10 }, { hojeIso: "2026-09-28", por: "ana" }).ciclos }, 1)).toBeNull();
   });
 });

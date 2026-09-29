@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { reabrirTopico, tirarDoFimDaFila } from "./ciclos.js";
-import { conteudoPlanejado, partesDaConclusao, planejarHorizonte, reconciliar } from "./motorMetas.js";
+import { somarDias } from "./datas.js";
+import {
+  conteudoPlanejado, metasDasRevisoesAntigas, partesDaConclusao, planejarHorizonte, planejarRevisoes, reconciliar,
+} from "./motorMetas.js";
+import { ativarRevisao, desativarRevisao, editarRevisao } from "./revisaoRecorrente.js";
 
 const HOJE = "2026-09-28"; // segunda
 const TODO_DIA = { seg: 120, ter: 120, qua: 120, qui: 120, sex: 120, sab: 120, dom: 120 };
@@ -185,5 +189,118 @@ describe("concluir uma meta", () => {
     const r = partesDaConclusao({ meta, itens, progresso: { "t:mat1": { minutos: 60 } }, minutos: 25, hojeIso: HOJE });
     expect(r.partes).toEqual([{ itemId: "t:mat1", topicoId: "mat1", minutos: 25, ciclo: 1, pctAntes: 1, pctDepois: 1, concluiu: false }]);
     expect(r.progresso).toEqual({});
+  });
+});
+
+describe("dia a dia: o motor refeito todo dia não embaralha as metas", () => {
+  // conclui as metas de um dia (como o serviço faz) e devolve metas e progresso novos
+  function fazerDia(metas, progresso, dia) {
+    const prog = structuredClone(progresso);
+    const feitas = metas.map((m) => {
+      if (m.status !== "pendente" || m.dataPlanejada !== dia || !m.categoria.startsWith("prog")) return m;
+      const r = partesDaConclusao({ meta: m, itens: itensEng, progresso: prog, minutos: m.duracaoPlanejada, hojeIso: dia });
+      Object.entries(r.progresso).forEach(([id, x]) => {
+        prog[id] = { ...(prog[id] || {}), minutos: (prog[id]?.minutos || 0) + x.minutos, ...(x.ciclos ? { ciclos: x.ciclos } : {}) };
+      });
+      return { ...m, status: "concluida", concluidaEm: dia, duracaoReal: m.duracaoPlanejada, partes: r.partes };
+    });
+    return { metas: feitas, progresso: prog };
+  }
+
+  it("quem fez o dia não vê as metas dos próximos dias mudarem; filosofia não é empurrada para sempre", () => {
+    let { metas } = gerar();
+    let progresso = {};
+    for (let i = 0; i < 20; i++) {
+      const dia = somarDias(HOJE, i);
+      const amanha = somarDias(dia, 1);
+      ({ metas, progresso } = fazerDia(metas, progresso, dia));
+      const g = gerar({ metas, progresso, hojeIso: amanha });
+      expect(g.r.atualizar).toEqual([]);
+      expect(g.r.apagar).toEqual([]);
+      expect(g.r.criar.every((c) => c.dataPlanejada === somarDias(amanha, 13))).toBe(true);
+      metas = g.metas;
+    }
+    const feitas = metas.filter((m) => m.status === "concluida");
+    const min = feitas.reduce((r, m) => ({ ...r, [m.materiaId]: (r[m.materiaId] || 0) + m.duracaoReal }), {});
+    expect(min.filo).toBeGreaterThan(60);
+    expect(min.mat).toBeGreaterThan(min.fis);
+    expect(min.fis).toBeGreaterThan(min.filo);
+  });
+});
+
+describe("revisão recorrente", () => {
+  const alvo = { alunoId: "ana", materiaId: "bio", topicoId: "cito", itemId: "t:cito", intervaloDias: 7, duracaoMin: 20, dataBase: "2026-09-21" };
+  const rev = (extra = {}) => ({ id: "rv1", ...ativarRevisao({ ...alvo, ...extra }, { topicoConcluido: true, hojeIso: "2026-09-21", por: "mod" }).revisao });
+  const criadas = (r) => r.criar.map((c) => c.dataPlanejada);
+  const comoMetas = (r) => r.criar.map((c) => ({ ...c, status: "pendente", datasAnteriores: [] }));
+
+  it("gera as ocorrências no intervalo certo, a partir da data-base", () => {
+    const r = planejarRevisoes({ revisoes: [rev()], metas: [], hojeIso: HOJE });
+    expect(criadas(r)).toEqual(["2026-09-28", "2026-10-05"]);
+    expect(r.criar[0]).toMatchObject({ id: "rr_rv1_2026-09-28", categoria: "revisao_recorrente", itemId: "t:cito", duracaoPlanejada: 20, ocorrenciaEm: "2026-09-28" });
+    // de novo, com as metas já criadas: nada muda (sem duplicar)
+    expect(planejarRevisoes({ revisoes: [rev()], metas: comoMetas(r), hojeIso: HOJE })).toEqual({ criar: [], atualizar: [], apagar: [], dispensar: [] });
+  });
+
+  it("ciclo fixo: a atrasada fica pendente e a próxima cai na data do ciclo, sem deslocar", () => {
+    const atrasada = { id: "rr_rv1_2026-09-21", categoria: "revisao_recorrente", revisaoRecorrenteId: "rv1", ocorrenciaEm: "2026-09-21", status: "pendente", dataPlanejada: "2026-09-21", duracaoPlanejada: 20, datasAnteriores: [] };
+    const r = planejarRevisoes({ revisoes: [rev()], metas: [atrasada], hojeIso: "2026-09-24" });
+    expect(criadas(r)).toEqual(["2026-09-28", "2026-10-05"]);
+    expect([...r.apagar, ...r.dispensar]).toEqual([]);
+    // "desde a última": enquanto a atrasada não for feita, a próxima espera
+    const desde = planejarRevisoes({ revisoes: [rev({ modoAtraso: "desde_ultima" })], metas: [atrasada], hojeIso: "2026-09-24" });
+    expect(desde.criar).toEqual([]);
+    const feita = { ...atrasada, status: "concluida", concluidaEm: "2026-09-24" };
+    expect(criadas(planejarRevisoes({ revisoes: [rev({ modoAtraso: "desde_ultima" })], metas: [feita], hojeIso: "2026-09-24" }))).toEqual(["2026-10-01"]);
+  });
+
+  it("editar o intervalo não mexe nas ocorrências já passadas nem nas feitas; só nas futuras", () => {
+    const passada = { id: "rr_rv1_2026-09-21", categoria: "revisao_recorrente", revisaoRecorrenteId: "rv1", ocorrenciaEm: "2026-09-21", status: "concluida", concluidaEm: "2026-09-21", dataPlanejada: "2026-09-21", duracaoPlanejada: 20 };
+    const antes = planejarRevisoes({ revisoes: [rev()], metas: [passada], hojeIso: HOJE });
+    const metas = [passada, ...comoMetas(antes)];
+    const editada = { id: "rv1", ...editarRevisao(rev(), { intervaloDias: 14, duracaoMin: 30 }, { hojeIso: HOJE, por: "mod" }).revisao };
+    const r = planejarRevisoes({ revisoes: [editada], metas, hojeIso: HOJE });
+    // 21/09 + 14 = 05/10: a de 28/09 sai, a de 05/10 fica com a duração nova
+    expect(r.apagar).toEqual(["rr_rv1_2026-09-28"]);
+    expect(r.atualizar).toEqual([{ id: "rr_rv1_2026-10-05", patch: { duracaoPlanejada: 30 } }]);
+    expect(r.criar).toEqual([]);
+    expect([...r.apagar, ...r.dispensar, ...r.atualizar.map((a) => a.id)]).not.toContain(passada.id);
+  });
+
+  it("desativar: as futuras saem, a atrasada por fazer é dispensada e as feitas ficam", () => {
+    const atrasada = { id: "a", categoria: "revisao_recorrente", revisaoRecorrenteId: "rv1", ocorrenciaEm: "2026-09-21", status: "pendente", dataPlanejada: "2026-09-21", duracaoPlanejada: 20, datasAnteriores: [] };
+    const futura = { ...atrasada, id: "f", ocorrenciaEm: "2026-10-05", dataPlanejada: "2026-10-05" };
+    const off = { id: "rv1", ...desativarRevisao(rev(), { hojeIso: HOJE, por: "mod" }).revisao };
+    expect(planejarRevisoes({ revisoes: [off], metas: [atrasada, futura], hojeIso: HOJE })).toEqual({ criar: [], atualizar: [], apagar: ["f"], dispensar: ["a"] });
+  });
+
+  it("várias revisões disputando o dia com a progressão: revisões primeiro, progressão com o que sobra, conflito à vista", () => {
+    const revs = ["a", "b", "c"].map((x, i) => ({ id: `rv${x}`, ...ativarRevisao({ ...alvo, itemId: `t:${x}`, topicoId: x, dataBase: HOJE, intervaloDias: 2 + i, duracaoMin: 45 }, { topicoConcluido: true, hojeIso: HOJE, por: "mod" }).revisao }));
+    const metas = comoMetas(planejarRevisoes({ revisoes: revs, metas: [], hojeIso: HOJE }));
+    const h = planejarHorizonte({ hojeIso: HOJE, plano: eng, itens: itensEng, metas });
+    // hoje: as 3 caem juntas (135 min > 120) → conflito, nada de progressão, nenhuma revisão cortada
+    expect(metas.filter((m) => m.dataPlanejada === HOJE)).toHaveLength(3);
+    expect(h.conflitos[0]).toEqual({ data: HOJE, minutosRevisoes: 135, minutosDia: 120 });
+    expect(h.slots.filter((s) => s.data === HOJE)).toEqual([]);
+    // dia com uma revisão só: a progressão fica com o resto
+    h.datas.forEach((d) => {
+      const rev = metas.filter((m) => m.dataPlanejada === d).reduce((x, m) => x + m.duracaoPlanejada, 0);
+      const prog = h.slots.filter((s) => s.data === d).reduce((x, s) => x + s.minutos, 0);
+      if (rev <= 120) expect(prog).toBeLessThanOrEqual(120 - rev);
+      if (rev === 45) expect(prog).toBeGreaterThanOrEqual(60);
+    });
+  });
+});
+
+describe("revisões automáticas antigas", () => {
+  it("as já agendadas viram metas (uma vez só); feitas e ignoradas ficam como estão", () => {
+    const antigas = [{ id: "x", materiaId: "bio", itemId: "t:cito", topicoId: "cito", duracaoMin: 20, sessoes: [
+      { dia: "2026-09-20", status: "realizada" }, { dia: "2026-09-27", status: "agendada" }, { dia: "2026-10-05", status: "agendada" }, { dia: "2026-11-20", status: "agendada" },
+    ] }];
+    const criar = metasDasRevisoesAntigas({ revisoes: antigas, metas: [], hojeIso: HOJE });
+    expect(criar.map((c) => [c.id, c.dataPlanejada, c.categoria])).toEqual([
+      ["ra_x_2026-09-27", "2026-09-27", "revisao_automatica"], ["ra_x_2026-10-05", "2026-10-05", "revisao_automatica"],
+    ]);
+    expect(metasDasRevisoesAntigas({ revisoes: antigas, metas: criar, hojeIso: HOJE })).toEqual([]);
   });
 });

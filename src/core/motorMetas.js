@@ -22,10 +22,11 @@
      "manter" — fica no dia, como atrasada, até o aluno mover ou fazer.
    Revisões atrasadas nunca andam: acumulam como pendência. */
 
-import { diasEntre, somarDias } from "./datas.js";
+import { diasEntre, inicioDaSemana, somarDias } from "./datas.js";
 import { minutosNoDia } from "./horario.js";
 import { efeitoDosMinutos, estadoDoTopico, filaDaMateria } from "./ciclos.js";
 import { pesosDoPlano } from "./jornada.js";
+import { ocorrenciasNoHorizonte, parametrosAtuais } from "./revisaoRecorrente.js";
 
 export const HORIZONTE_DIAS = 14;
 export const SESSAO_MIN = 15;
@@ -73,14 +74,23 @@ export function conteudoPlanejado(metas, itens, progresso = {}) {
   return out;
 }
 
-/* Orçamento e plano de sessões de progressão para o horizonte. */
+/* Orçamento e plano de sessões de progressão para o horizonte.
+
+   Divisão justa pelo peso, semana a semana (segunda a domingo): a próxima
+   sessão vai para a matéria com menos minutos na semana por ponto de peso.
+   A conta da semana inclui o que já foi feito nela, então refazer o plano
+   num dia em que o aluno cumpriu tudo dá o mesmo plano de antes (nada se
+   embaralha), e toda matéria visível aparece ao menos uma vez por semana. */
 export function planejarHorizonte({ hojeIso, plano, itens, progresso = {}, metas = [], dias = HORIZONTE_DIAS, estrategia = "redistribuir" }) {
   const datas = diasDoHorizonte(hojeIso, dias);
   const dentro = new Set(datas);
+  const semanaDeHoje = inicioDaSemana(hojeIso);
   const reservado = Object.fromEntries(datas.map((d) => [d, { revisoes: 0, fixadas: 0, feitas: 0 }]));
-  // conteúdo já prometido a metas que o motor não mexe (não é planejado de novo)
-  const prometido = {};
-  const prometer = (m, min) => { prometido[m.materiaId] = (prometido[m.materiaId] || 0) + min; };
+  // minutos de cada matéria já contados em cada semana (feitos ou presos em metas que o motor não mexe)
+  const naSemana = {};
+  const contar = (semana, materiaId, min) => { const s = (naSemana[semana] ||= {}); s[materiaId] = (s[materiaId] || 0) + min; };
+  const prometido = {}; // conteúdo que já tem meta (não é planejado de novo)
+  const feitoHoje = new Set();
   metas.forEach((m) => {
     if (m.status === "dispensada") return;
     if (!ehProgressao(m)) {
@@ -88,20 +98,17 @@ export function planejarHorizonte({ hojeIso, plano, itens, progresso = {}, metas
       return;
     }
     if (m.status === "concluida") {
-      if (m.concluidaEm === hojeIso) reservado[hojeIso].feitas += m.duracaoReal || m.duracaoPlanejada;
+      const min = m.duracaoReal || m.duracaoPlanejada;
+      if (m.concluidaEm === hojeIso) { reservado[hojeIso].feitas += min; feitoHoje.add(m.materiaId); }
+      if (m.concluidaEm >= semanaDeHoje && m.concluidaEm <= hojeIso) contar(semanaDeHoje, m.materiaId, min);
       return;
     }
-    if (m.fixada && m.dataPlanejada >= hojeIso) {
-      if (dentro.has(m.dataPlanejada)) reservado[m.dataPlanejada].fixadas += m.duracaoPlanejada;
-      prometer(m, m.duracaoPlanejada);
-    } else if (estrategia === "manter" && m.dataPlanejada < hojeIso) {
-      prometer(m, m.duracaoPlanejada); // atrasada que fica no dia dela
-    }
-  });
-  // o que já foi estudado hoje conta para o equilíbrio entre as matérias
-  const feitoHoje = {};
-  metas.forEach((m) => {
-    if (m.status === "concluida" && m.concluidaEm === hojeIso && ehProgressao(m)) feitoHoje[m.materiaId] = (feitoHoje[m.materiaId] || 0) + (m.duracaoReal || m.duracaoPlanejada);
+    const fixa = m.fixada && m.dataPlanejada >= hojeIso;
+    const mantida = estrategia === "manter" && m.dataPlanejada < hojeIso; // atrasada que fica no dia dela
+    if (!fixa && !mantida) return;
+    if (fixa && dentro.has(m.dataPlanejada)) reservado[m.dataPlanejada].fixadas += m.duracaoPlanejada;
+    prometido[m.materiaId] = (prometido[m.materiaId] || 0) + m.duracaoPlanejada;
+    contar(fixa ? inicioDaSemana(m.dataPlanejada) : semanaDeHoje, m.materiaId, m.duracaoPlanejada);
   });
 
   const conflitos = [];
@@ -113,7 +120,7 @@ export function planejarHorizonte({ hojeIso, plano, itens, progresso = {}, metas
     capacidade[d] = Math.max(0, dia - r.revisoes - r.fixadas - r.feitas);
   });
 
-  // o que cada matéria ainda tem para estudar (o que já está preso em metas fixadas sai daqui)
+  // o que cada matéria visível ainda tem para estudar
   const pesos = pesosDoPlano(plano);
   const materias = (plano?.materias || []).filter((m) => m.ativa !== false);
   const ordemPlano = new Map(materias.map((m, i) => [m.materiaId, i]));
@@ -125,22 +132,23 @@ export function planejarHorizonte({ hojeIso, plano, itens, progresso = {}, metas
   });
   const info = Object.fromEntries(materias.map((m) => [m.materiaId, { maxSessao: m.maxSessao || 60, prioridade: m.prioridade ?? 2, peso: pesos[m.materiaId] || 1 }]));
 
-  /* Divisão justa pelo peso: a próxima sessão vai para a matéria com menos
-     minutos por ponto de peso. Para não repetir matéria no mesmo dia, uma
-     que ainda não apareceu hoje passa na frente se estiver a menos de uma
-     sessão de distância da primeira. */
-  const alocado = { ...prometido };
-  Object.entries(feitoHoje).forEach(([id, min]) => { alocado[id] = (alocado[id] || 0) + min; });
-  const razao = (id) => (alocado[id] || 0) / info[id].peso;
   const slots = [];
+  let semana = null;
+  let alocado = {};
+  const razao = (id) => (alocado[id] || 0) / info[id].peso;
   datas.forEach((d) => {
+    if (inicioDaSemana(d) !== semana) {
+      semana = inicioDaSemana(d);
+      alocado = { ...(naSemana[semana] || {}) };
+    }
     let cap = capacidade[d];
-    const usadasHoje = new Set(d === hojeIso ? Object.keys(feitoHoje) : []);
+    const usadasHoje = new Set(d === hojeIso ? feitoHoje : []);
     const semEspaco = new Set();
     while (cap >= SESSAO_MIN) {
       const candidatas = Object.keys(livre).filter((id) => livre[id] >= 5 && !semEspaco.has(id));
       if (!candidatas.length) break;
       candidatas.sort((a, b) => razao(a) - razao(b) || info[a].prioridade - info[b].prioridade || ordemPlano.get(a) - ordemPlano.get(b));
+      // não repetir matéria no dia: a que ainda não apareceu passa na frente se estiver a menos de uma sessão da primeira
       const melhor = candidatas[0];
       const nova = candidatas.find((id) => !usadasHoje.has(id));
       const id = usadasHoje.has(melhor) && nova && razao(nova) - razao(melhor) <= info[melhor].maxSessao / info[melhor].peso ? nova : melhor;
@@ -155,6 +163,53 @@ export function planejarHorizonte({ hojeIso, plano, itens, progresso = {}, metas
     }
   });
   return { slots, capacidade, conflitos, datas };
+}
+
+/* Metas das revisões recorrentes no horizonte (entram antes da progressão).
+   Concluídas e atrasadas nunca mudam. Das futuras pendentes: a que ainda cai
+   numa data do ciclo fica (com a duração da versão atual); a que não cai
+   mais sai. Revisão desativada: as futuras saem e as atrasadas por fazer são
+   dispensadas (ficam no histórico como não cumpridas). */
+export const idMetaRevisao = (revisaoId, data) => `rr_${revisaoId}_${data}`;
+export function planejarRevisoes({ revisoes = [], metas, hojeIso, dias = HORIZONTE_DIAS }) {
+  const fim = somarDias(hojeIso, dias - 1);
+  const r = { criar: [], atualizar: [], apagar: [], dispensar: [] };
+  revisoes.forEach((rev) => {
+    const minhas = metas.filter((m) => m.categoria === "revisao_recorrente" && m.revisaoRecorrenteId === rev.id);
+    const ultimaFeitaEm = minhas.filter((m) => m.status === "concluida").map((m) => m.concluidaEm).sort().at(-1) || null;
+    const atrasadas = minhas.filter((m) => m.status === "pendente" && m.dataPlanejada < hojeIso);
+    const datas = ocorrenciasNoHorizonte(rev, hojeIso, fim, { ultimaFeitaEm, atrasadaPendente: atrasadas.length > 0 });
+    const p = parametrosAtuais(rev);
+    if (!rev.ativo) atrasadas.forEach((m) => r.dispensar.push(m.id));
+    minhas.filter((m) => m.status === "pendente" && m.dataPlanejada >= hojeIso).forEach((m) => {
+      if (!datas.includes(m.ocorrenciaEm || m.dataPlanejada)) (m.datasAnteriores?.length ? r.dispensar : r.apagar).push(m.id);
+      else if (p && m.duracaoPlanejada !== p.duracaoMin) r.atualizar.push({ id: m.id, patch: { duracaoPlanejada: p.duracaoMin } });
+    });
+    const cobertas = new Set(minhas.map((m) => m.ocorrenciaEm || m.dataPlanejada));
+    datas.filter((d) => !cobertas.has(d)).forEach((d) => r.criar.push({
+      id: idMetaRevisao(rev.id, d), categoria: "revisao_recorrente", revisaoRecorrenteId: rev.id, ocorrenciaEm: d,
+      materiaId: rev.materiaId, itemId: rev.itemId, topicoId: rev.topicoId, dataPlanejada: d, duracaoPlanejada: p.duracaoMin, ordemNoDia: 10,
+    }));
+  });
+  return r;
+}
+
+/* Revisões automáticas antigas (7/15/30 dias, coleção revisoes): não nascem
+   mais, mas as já agendadas terminam o ciclo como metas. */
+export const idMetaRevisaoAntiga = (revisaoId, dia) => `ra_${revisaoId}_${dia}`;
+export function metasDasRevisoesAntigas({ revisoes = [], metas, hojeIso, dias = HORIZONTE_DIAS }) {
+  const fim = somarDias(hojeIso, dias - 1);
+  const existe = new Set(metas.map((m) => m.id));
+  const criar = [];
+  revisoes.forEach((r) => (r.sessoes || []).forEach((s) => {
+    const id = idMetaRevisaoAntiga(r.id, s.dia);
+    if (s.status !== "agendada" || s.dia > fim || existe.has(id)) return;
+    criar.push({
+      id, categoria: "revisao_automatica", revisaoAntigaId: r.id, revisaoDia: s.dia, materiaId: r.materiaId,
+      itemId: r.itemId || null, topicoId: r.topicoId || null, dataPlanejada: s.dia, duracaoPlanejada: r.duracaoMin || 20, ordemNoDia: 20,
+    });
+  }));
+  return criar;
 }
 
 /* Encaixa o plano de sessões nas metas que já existem, mexendo o mínimo:

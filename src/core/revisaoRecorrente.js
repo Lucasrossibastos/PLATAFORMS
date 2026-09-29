@@ -92,3 +92,18 @@ export function proximaOcorrencia(rev, hojeIso, { ultimaFeitaEm = null } = {}) {
   const n = Math.ceil(diasEntre(p.dataBase, hojeIso) / p.intervaloDias);
   return somarDias(p.dataBase, n * p.intervaloDias);
 }
+
+/* Ocorrências de hoje até `fimIso` com os parâmetros atuais. As que já
+   passaram (feitas ou atrasadas) são metas gravadas e nunca são refeitas;
+   editar muda só daqui para a frente. No modo "desde a última", enquanto
+   houver uma atrasada por fazer, a próxima espera por ela. */
+export function ocorrenciasNoHorizonte(rev, hojeIso, fimIso, { ultimaFeitaEm = null, atrasadaPendente = false } = {}) {
+  if (!rev?.ativo) return [];
+  const p = parametrosAtuais(rev);
+  if (!p) return [];
+  const modo = p.modoAtraso || "fixo";
+  if (modo === "desde_ultima" && atrasadaPendente) return [];
+  const out = [];
+  for (let d = proximaOcorrencia(rev, hojeIso, { ultimaFeitaEm }); d && d <= fimIso; d = somarDias(d, p.intervaloDias)) out.push(d);
+  return out;
+}
