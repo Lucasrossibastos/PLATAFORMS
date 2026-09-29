@@ -17,6 +17,8 @@
 
 import { DIAS, DISP_PADRAO, dataParaDiaSemana } from "./nucleo.js";
 import { diasEntre, somarDias } from "./datas.js";
+import { estadoDoTopico, filaDaMateria } from "./ciclos.js";
+import { pesosDoPlano } from "./jornada.js";
 
 export const RITMOS = [
   { id: "lenta", nome: "Lenta", multiplicador: 0.8 },
@@ -94,13 +96,18 @@ export function itensDoPlano(plano, ind) {
   return itens;
 }
 
-// progresso: { [itemId]: { minutos, concluido: true | false | undefined, concluidoEm } }
-// concluido undefined = automático (tempo cumprido); false = reaberto; true = marcado
+/* Estado de um item no ciclo de estudo atual (ver core/ciclos.js): um tópico
+   revisto do zero volta a ter o tempo inteiro; `pctVisto` é o que entra no
+   progresso (já concluído uma vez conta como visto). */
 export function estadoItem(item, progresso = {}) {
   const p = progresso[item.itemId] || {};
-  const minutos = p.minutos || 0;
-  const concluido = p.concluido === true || (p.concluido !== false && minutos >= item.duracao);
-  return { minutos, concluido, restante: concluido ? 0 : Math.max(0, item.duracao - minutos), concluidoEm: concluido ? p.concluidoEm || null : null };
+  const e = estadoDoTopico(item, p);
+  const atual = e.ciclos[e.ciclos.length - 1];
+  return {
+    minutos: e.minutosCiclo, concluido: e.concluido, restante: e.restante,
+    concluidoEm: e.concluido ? atual.concluidoEm ?? p.concluidoEm ?? null : null,
+    pctVisto: e.pctVisto, ciclo: e.ciclo,
+  };
 }
 
 export function statusItem(item, progresso, cronograma, hojeIso) {
@@ -111,9 +118,9 @@ export function statusItem(item, progresso, cronograma, hojeIso) {
   return e.minutos > 0 ? "em_andamento" : "nao_iniciado";
 }
 
-// Próximo conteúdo de uma matéria (para as metas da semana).
+// Tópico atual de uma matéria: o primeiro da fila (ver filaDaMateria).
 export function conteudoDaVez(itens, progresso, materiaId, ind) {
-  const it = itens.find((x) => x.materiaId === materiaId && !estadoItem(x, progresso).concluido);
+  const it = filaDaMateria(itens.filter((x) => x.materiaId === materiaId), progresso).atual;
   if (!it) return null;
   return {
     itemId: it.itemId, topicoId: it.topicoId, topico: ind.nomeTopico(it.topicoId),
@@ -121,11 +128,11 @@ export function conteudoDaVez(itens, progresso, materiaId, ind) {
   };
 }
 
-// Distribui os minutos de uma sessão pelos itens pendentes da matéria, em ordem.
+// Distribui os minutos de uma sessão pela fila da matéria (o atual e os seguintes).
 export function distribuirMinutos(itens, progresso, materiaId, minutos) {
   const partes = [];
   let resta = minutos;
-  const pendentes = itens.filter((x) => x.materiaId === materiaId && !estadoItem(x, progresso).concluido);
+  const pendentes = filaDaMateria(itens.filter((x) => x.materiaId === materiaId), progresso).fila;
   for (const it of pendentes) {
     if (resta <= 0) break;
     const usa = Math.min(resta, estadoItem(it, progresso).restante || resta);
@@ -140,30 +147,26 @@ export const capacidadeSemanal = (disp) => DIAS.reduce((s, d) => s + (Number(dis
 
 /* ---------- Alocação semanal e cronograma ---------- */
 
-/* Minutos por semana de cada matéria. Com data-alvo, cada matéria recebe ao
-   menos o necessário para terminar a tempo; se não couber na disponibilidade,
-   a prioridade decide: as de prioridade alta são atendidas primeiro. */
+/* Minutos por semana de cada matéria: as horas livres divididas pelo peso
+   (peso ÷ soma dos pesos das matérias que ainda têm o que estudar). É a
+   mesma regra do motor das metas. Com data-alvo, informa o que falta por
+   semana para terminar a tempo e as matérias em risco. */
 export function calcularAlocacao(plano, itens, progresso, hojeIso) {
   const capacidade = capacidadeSemanal(plano.disponibilidade);
   const restante = {};
   itens.forEach((it) => { restante[it.materiaId] = (restante[it.materiaId] || 0) + estadoItem(it, progresso).restante; });
   const semanasRestantes = plano.dataAlvo ? Math.max(1, diasEntre(hojeIso, plano.dataAlvo) / 7) : null;
+  const pesos = pesosDoPlano(plano);
 
   const pedidos = (plano.materias || []).filter((m) => m.ativa !== false).map((m, i) => {
     const falta = restante[m.materiaId] || 0;
     const necessario = semanasRestantes && falta ? arred5(falta / semanasRestantes) : 0;
-    return { m, i, falta, necessario, quer: falta > 0 ? Math.max(m.minutosSemanais || 0, necessario) : 0 };
+    return { m, i, falta, necessario };
   });
-
-  const alocacao = {};
-  let livre = capacidade;
-  [1, 2, 3].forEach((prio) => {
-    const grupo = pedidos.filter((p) => (p.m.prioridade ?? 2) === prio);
-    const soma = grupo.reduce((s, p) => s + p.quer, 0);
-    const escala = soma > livre ? livre / soma : 1;
-    grupo.forEach((p) => { alocacao[p.m.materiaId] = Math.floor((p.quer * escala) / 5) * 5; });
-    livre -= grupo.reduce((s, p) => s + alocacao[p.m.materiaId], 0);
-  });
+  const somaPesos = pedidos.filter((p) => p.falta > 0).reduce((s, p) => s + pesos[p.m.materiaId], 0);
+  const alocacao = Object.fromEntries(pedidos.map((p) => [
+    p.m.materiaId, p.falta > 0 && somaPesos ? Math.floor((capacidade * pesos[p.m.materiaId]) / somaPesos / 5) * 5 : 0,
+  ]));
 
   const necessarioTotal = pedidos.reduce((s, p) => s + p.necessario, 0);
   return {
@@ -257,7 +260,7 @@ export function calcularProgressoPlano(itens, progresso, cronograma, hojeIso) {
     const e = estadoItem(it, progresso);
     cont[st]++;
     total += it.duracao;
-    const parte = e.concluido ? it.duracao : Math.min(e.minutos, it.duracao);
+    const parte = e.pctVisto * it.duracao; // a % vista (revisto do zero continua contando como visto)
     feito += parte;
     const pm = (porMateria[it.materiaId] ||= { materiaId: it.materiaId, total: 0, feito: 0, itens: 0, concluidos: 0, atrasados: 0 });
     pm.total += it.duracao; pm.feito += parte; pm.itens++;

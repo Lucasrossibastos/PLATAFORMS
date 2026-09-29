@@ -1,0 +1,189 @@
+import { describe, expect, it } from "vitest";
+import { reabrirTopico, tirarDoFimDaFila } from "./ciclos.js";
+import { conteudoPlanejado, partesDaConclusao, planejarHorizonte, reconciliar } from "./motorMetas.js";
+
+const HOJE = "2026-09-28"; // segunda
+const TODO_DIA = { seg: 120, ter: 120, qua: 120, qui: 120, sex: 120, sab: 120, dom: 120 };
+const topicos = (materiaId, n, duracao = 120) => Array.from({ length: n }, (_, i) => ({
+  materiaId, topicoId: `${materiaId}${i + 1}`, itemId: `t:${materiaId}${i + 1}`, duracao,
+}));
+const planoCom = (materias, disponibilidade = TODO_DIA) => ({ inicio: "2026-08-03", disponibilidade, materias });
+const eng = planoCom([
+  { materiaId: "mat", peso: 10, maxSessao: 60, prioridade: 1 },
+  { materiaId: "fis", peso: 5, maxSessao: 60, prioridade: 1 },
+  { materiaId: "filo", peso: 1, maxSessao: 30, prioridade: 3 },
+]);
+const itensEng = [...topicos("mat", 20), ...topicos("fis", 20), ...topicos("filo", 20)];
+const soma = (lista, f) => lista.reduce((s, x) => s + f(x), 0);
+const porMateria = (slots) => slots.reduce((r, s) => ({ ...r, [s.materiaId]: (r[s.materiaId] || 0) + s.minutos }), {});
+
+// aplica o resultado da reconciliação (como o serviço faz) para rodar de novo
+let seq = 0;
+function aplicar(metas, r, hojeIso = HOJE) {
+  const fora = new Set([...r.apagar, ...r.dispensar]);
+  const mudou = new Map(r.atualizar.map((a) => [a.id, a.patch]));
+  return [
+    ...metas.filter((m) => !fora.has(m.id)).map((m) => (mudou.has(m.id) ? { ...m, ...mudou.get(m.id) } : m)),
+    ...metas.filter((m) => r.dispensar.includes(m.id)).map((m) => ({ ...m, status: "dispensada" })),
+    ...r.criar.map((c) => ({ id: `n${++seq}`, categoria: "progressao", status: "pendente", datasAnteriores: [], geradaEm: hojeIso, ...c })),
+  ];
+}
+function gerar({ plano = eng, itens = itensEng, progresso = {}, metas = [], hojeIso = HOJE, estrategia } = {}) {
+  const h = planejarHorizonte({ hojeIso, plano, itens, progresso, metas, estrategia });
+  const r = reconciliar({ metas, slots: h.slots, hojeIso, estrategia });
+  return { h, r, metas: aplicar(metas, r, hojeIso) };
+}
+
+describe("peso define a frequência", () => {
+  it("engenharia: matemática (peso 10) aparece muito mais que filosofia (peso 1)", () => {
+    const h = planejarHorizonte({ hojeIso: HOJE, plano: eng, itens: itensEng });
+    const min = porMateria(h.slots);
+    const total = 14 * 120;
+    expect(soma(h.slots, (s) => s.minutos)).toBe(total);
+    expect(min.mat / total).toBeCloseTo(10 / 16, 1);
+    expect(min.fis / total).toBeCloseTo(5 / 16, 1);
+    expect(min.filo).toBeGreaterThan(0);
+    expect(min.filo).toBeLessThanOrEqual(150);
+    // matemática aparece em quase todos os dias; nenhum dia passa do horário
+    const dias = new Set(h.slots.filter((s) => s.materiaId === "mat").map((s) => s.data));
+    expect(dias.size).toBeGreaterThanOrEqual(12);
+    h.datas.forEach((d) => expect(soma(h.slots.filter((s) => s.data === d), (s) => s.minutos)).toBeLessThanOrEqual(120));
+  });
+
+  it("dia sem horário não recebe meta; matéria sem conteúdo pendente também não", () => {
+    const plano = planoCom(eng.materias, { ...TODO_DIA, dom: 0 });
+    const itens = [...topicos("mat", 20), ...topicos("fis", 20)];
+    const { slots } = planejarHorizonte({ hojeIso: HOJE, plano, itens });
+    expect(slots.some((s) => s.data === "2026-10-04")).toBe(false);
+    expect(slots.some((s) => s.materiaId === "filo")).toBe(false);
+  });
+
+  it("o que acabou é o que ainda falta: sessões nunca passam do conteúdo da matéria", () => {
+    const itens = [...topicos("mat", 1, 70), ...topicos("fis", 20)];
+    const { slots } = planejarHorizonte({ hojeIso: HOJE, plano: eng, itens });
+    expect(porMateria(slots).mat).toBe(70);
+  });
+});
+
+describe("orçamento do dia", () => {
+  it("revisões entram primeiro; quando só elas passam do dia, o dia fica em conflito e nada é cortado", () => {
+    const rev = (id, data, dur) => ({ id, categoria: "revisao_recorrente", status: "pendente", dataPlanejada: data, duracaoPlanejada: dur, materiaId: "bio", itemId: "t:b", revisaoRecorrenteId: id });
+    const metas = [rev("r1", HOJE, 50), rev("r2", HOJE, 50), rev("r3", HOJE, 50), rev("r4", "2026-09-29", 20), rev("r5", "2026-09-29", 25)];
+    const { h, r } = gerar({ metas });
+    expect(h.conflitos).toEqual([{ data: HOJE, minutosRevisoes: 150, minutosDia: 120 }]);
+    expect(h.capacidade[HOJE]).toBe(0);
+    expect(h.slots.some((s) => s.data === HOJE)).toBe(false);
+    // o dia seguinte divide o que sobra das revisões com a progressão
+    expect(h.capacidade["2026-09-29"]).toBe(75);
+    expect(soma(h.slots.filter((s) => s.data === "2026-09-29"), (s) => s.minutos)).toBeLessThanOrEqual(75);
+    expect(soma(h.slots.filter((s) => s.data === "2026-09-29"), (s) => s.minutos)).toBeGreaterThanOrEqual(60);
+    // as revisões não são tocadas pela reconciliação
+    const tocadas = [...r.apagar, ...r.dispensar, ...r.atualizar.map((a) => a.id)];
+    expect(tocadas.some((id) => id.startsWith("r"))).toBe(false);
+  });
+
+  it("meta fixada pelo aluno ocupa o dia dela e o conteúdo dela não é planejado de novo", () => {
+    const itens = [...topicos("mat", 1, 90), ...topicos("fis", 20)];
+    const fixa = { id: "f1", categoria: "progressao", status: "pendente", materiaId: "mat", dataPlanejada: "2026-09-30", duracaoPlanejada: 60, fixada: true };
+    const { h, r } = gerar({ itens, metas: [fixa] });
+    expect(h.capacidade["2026-09-30"]).toBe(60);
+    expect(porMateria(h.slots).mat).toBe(30);
+    expect([...r.apagar, ...r.atualizar.map((a) => a.id)]).not.toContain("f1");
+  });
+
+  it("o estudado hoje desconta do dia e entra no equilíbrio das matérias", () => {
+    const feita = { id: "c1", categoria: "progressao", status: "concluida", materiaId: "mat", dataPlanejada: HOJE, concluidaEm: HOJE, duracaoPlanejada: 60, duracaoReal: 90 };
+    const { h } = gerar({ metas: [feita] });
+    expect(h.capacidade[HOJE]).toBe(30);
+    expect(h.slots.filter((s) => s.data === HOJE).map((s) => s.materiaId)).toEqual(["fis"]);
+  });
+});
+
+describe("reconciliação mexe o mínimo", () => {
+  it("rodar de novo sem mudança nenhuma não altera nada", () => {
+    const primeira = gerar();
+    expect(primeira.r.criar.length).toBeGreaterThan(20);
+    const segunda = gerar({ metas: primeira.metas });
+    expect(segunda.r).toEqual({ criar: [], atualizar: [], apagar: [], dispensar: [] });
+  });
+
+  it("meta que passou do dia vai para o próximo dia da matéria e guarda o dia perdido", () => {
+    const perdida = { id: "p1", categoria: "progressao", status: "pendente", materiaId: "mat", dataPlanejada: "2026-09-26", duracaoPlanejada: 60, datasAnteriores: [] };
+    const { r } = gerar({ metas: [perdida] });
+    const mudanca = r.atualizar.find((a) => a.id === "p1");
+    expect(mudanca.patch).toMatchObject({ dataPlanejada: HOJE, datasAnteriores: ["2026-09-26"] });
+  });
+
+  it("estratégia 'manter': a atrasada fica no dia dela e o conteúdo dela continua reservado", () => {
+    const itens = [...topicos("mat", 1, 90), ...topicos("fis", 20)];
+    const perdida = { id: "p1", categoria: "progressao", status: "pendente", materiaId: "mat", dataPlanejada: "2026-09-26", duracaoPlanejada: 60, datasAnteriores: [] };
+    const { h, r } = gerar({ itens, metas: [perdida], estrategia: "manter" });
+    expect([...r.apagar, ...r.dispensar, ...r.atualizar.map((a) => a.id)]).not.toContain("p1");
+    expect(porMateria(h.slots).mat).toBe(30);
+  });
+
+  it("sobrou meta: futura sem histórico é apagada; a que tem dia perdido é dispensada, nunca apagada", () => {
+    const itens = topicos("fis", 20); // matemática não tem mais conteúdo
+    const futura = { id: "a1", categoria: "progressao", status: "pendente", materiaId: "mat", dataPlanejada: "2026-10-01", duracaoPlanejada: 60, datasAnteriores: [] };
+    const perdida = { id: "a2", categoria: "progressao", status: "pendente", materiaId: "mat", dataPlanejada: "2026-09-25", duracaoPlanejada: 60, datasAnteriores: [] };
+    const { r } = gerar({ itens, metas: [futura, perdida] });
+    expect(r.apagar).toEqual(["a1"]);
+    expect(r.dispensar).toEqual(["a2"]);
+  });
+});
+
+describe("conteúdo das metas (contínuo, pela fila)", () => {
+  const itens = topicos("mat", 3, 60);
+  const meta = (id, data) => ({ id, categoria: "progressao", status: "pendente", materiaId: "mat", dataPlanejada: data, duracaoPlanejada: 50 });
+
+  it("a meta segue do fim de um tópico para o começo do próximo", () => {
+    const c = conteudoPlanejado([meta("b", "2026-09-29"), meta("a", HOJE)], itens, { "t:mat1": { minutos: 40 } });
+    expect(c.a.partes).toEqual([
+      { itemId: "t:mat1", topicoId: "mat1", minutos: 20, ciclo: 1 },
+      { itemId: "t:mat2", topicoId: "mat2", minutos: 30, ciclo: 1 },
+    ]);
+    expect(c.b.partes.map((p) => [p.topicoId, p.minutos])).toEqual([["mat2", 30], ["mat3", 20]]);
+    expect(c.a.categoria).toBe("progressao");
+  });
+
+  it("revisto do zero espera no fim da fila; puxado para a frente, a meta vira 'rever do zero' com o tempo inteiro", () => {
+    const concluido = { minutos: 60, concluido: true, concluidoEm: "2026-09-10" };
+    const reaberto = { ...concluido, ciclos: reabrirTopico(itens[0], concluido, { hojeIso: HOJE, por: "ana" }).ciclos };
+    let c = conteudoPlanejado([meta("a", HOJE)], itens, { "t:mat1": reaberto });
+    expect(c.a.partes[0]).toMatchObject({ topicoId: "mat2", ciclo: 1 });
+    const naFrente = { ...reaberto, ciclos: tirarDoFimDaFila(itens[0], reaberto) };
+    c = conteudoPlanejado([meta("a", HOJE)], itens, { "t:mat1": naFrente });
+    expect(c.a).toMatchObject({ categoria: "rever_do_zero", partes: [{ topicoId: "mat1", minutos: 50, ciclo: 2 }] });
+  });
+});
+
+describe("concluir uma meta", () => {
+  const itens = topicos("mat", 3, 60);
+
+  it("registra a porcentagem vista de cada tópico e fecha o ciclo que terminou", () => {
+    const meta = { id: "a", categoria: "progressao", status: "pendente", materiaId: "mat", duracaoPlanejada: 50 };
+    const r = partesDaConclusao({ meta, itens, progresso: { "t:mat1": { minutos: 40 } }, minutos: 50, hojeIso: HOJE });
+    expect(r.partes).toEqual([
+      { itemId: "t:mat1", topicoId: "mat1", minutos: 20, ciclo: 1, pctAntes: 0.667, pctDepois: 1, concluiu: true },
+      { itemId: "t:mat2", topicoId: "mat2", minutos: 30, ciclo: 1, pctAntes: 0, pctDepois: 0.5, concluiu: false },
+    ]);
+    expect(r.concluidos).toEqual(["t:mat1"]);
+    expect(r.progresso["t:mat1"]).toMatchObject({ minutos: 20, ciclos: [{ n: 1, concluido: true, concluidoEm: HOJE, concluidoPor: "tempo" }] });
+    expect(r.progresso["t:mat2"].minutos).toBe(30);
+  });
+
+  it("acabou o conteúdo da matéria: o tempo a mais fica no último tópico estudado", () => {
+    const meta = { id: "a", categoria: "progressao", status: "pendente", materiaId: "mat", duracaoPlanejada: 50 };
+    const progresso = { "t:mat1": { minutos: 60 }, "t:mat2": { minutos: 60 }, "t:mat3": { minutos: 50 } };
+    const r = partesDaConclusao({ meta, itens, progresso, minutos: 30, hojeIso: HOJE });
+    expect(r.partes).toHaveLength(1);
+    expect(r.partes[0]).toMatchObject({ topicoId: "mat3", minutos: 30, concluiu: true });
+  });
+
+  it("revisão registra o tópico sem mexer na porcentagem vista", () => {
+    const meta = { id: "r", categoria: "revisao_recorrente", status: "pendente", materiaId: "mat", itemId: "t:mat1", topicoId: "mat1", duracaoPlanejada: 20 };
+    const r = partesDaConclusao({ meta, itens, progresso: { "t:mat1": { minutos: 60 } }, minutos: 25, hojeIso: HOJE });
+    expect(r.partes).toEqual([{ itemId: "t:mat1", topicoId: "mat1", minutos: 25, ciclo: 1, pctAntes: 1, pctDepois: 1, concluiu: false }]);
+    expect(r.progresso).toEqual({});
+  });
+});

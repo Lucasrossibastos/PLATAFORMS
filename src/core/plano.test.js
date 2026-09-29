@@ -102,33 +102,32 @@ describe("progresso e status dos itens", () => {
 });
 
 describe("alocação, cronograma e recálculo", () => {
-  it("sem data-alvo usa os minutos por semana do plano", () => {
+  it("as horas livres são divididas pelo peso (sem peso: deduzido dos minutos por semana)", () => {
+    const plano = novoPlano(); // biologia 300 min/sem → peso 10; história 120 → peso 4
+    const itens = itensDoPlano(plano, ind);
+    const cap = 600; // DISP: 120 × 5 dias
+    const r = calcularAlocacao(plano, itens, {}, HOJE);
+    expect(r.capacidade).toBe(cap);
+    expect(r.alocacao).toEqual({ biologia: Math.floor((cap * 10) / 14 / 5) * 5, historia: Math.floor((cap * 4) / 14 / 5) * 5 });
+    plano.materias[1].peso = 10;
+    expect(calcularAlocacao(plano, itens, {}, HOJE).alocacao).toEqual({ biologia: 300, historia: 300 });
+  });
+
+  it("matéria sem nada a estudar não ocupa espaço; oculta também não", () => {
     const plano = novoPlano();
     const itens = itensDoPlano(plano, ind);
-    expect(calcularAlocacao(plano, itens, {}, HOJE).alocacao).toEqual({ biologia: 300, historia: 120 });
+    const tudoFeito = Object.fromEntries(itens.filter((i) => i.materiaId === "historia").map((i) => [i.itemId, { minutos: i.duracao }]));
+    expect(calcularAlocacao(plano, itens, tudoFeito, HOJE).alocacao).toEqual({ biologia: 600, historia: 0 });
+    plano.materias[0].ativa = false;
+    expect(calcularAlocacao(plano, itensDoPlano(plano, ind), {}, HOJE).alocacao).toEqual({ historia: 600 });
   });
 
-  it("com data-alvo, cada matéria recebe o maior entre o configurado e o necessário", () => {
-    const base = novoPlano();
-    base.materias[0].minutosSemanais = 60; // pouco para terminar em 1 semana
-    const plano = { ...base, dataAlvo: "2026-10-05" }; // 1 semana
-    const itens = itensDoPlano(plano, ind);
-    const restanteBio = itens.filter((i) => i.materiaId === "biologia").reduce((s, i) => s + i.duracao, 0);
-    const r = calcularAlocacao(plano, itens, {}, HOJE);
-    expect(r.alocacao.biologia).toBe(Math.ceil(restanteBio / 5) * 5); // necessário > 60
-    expect(r.alocacao.historia).toBe(240); // Era Vargas tem 240 min: 240 em 1 semana > 120 configurados
-    const folgado = calcularAlocacao({ ...plano, dataAlvo: "2026-12-07" }, itens, {}, HOJE); // 10 semanas
-    expect(folgado.alocacao.historia).toBe(120); // configurado > necessário (24/sem)
-  });
-
-  it("sem espaço para tudo, a prioridade alta é atendida primeiro e a falta é informada", () => {
+  it("com data-alvo informa o que falta por semana e as matérias em risco", () => {
     const plano = { ...novoPlano(), dataAlvo: "2026-10-05", disponibilidade: { ...DISP, qua: 0, qui: 0, sex: 0 } }; // 240 min/sem
     const itens = itensDoPlano(plano, ind);
     const r = calcularAlocacao(plano, itens, {}, HOJE);
-    expect(r.alocacao.biologia).toBe(240); // prioridade 1 leva o que cabe
-    expect(r.alocacao.historia).toBe(0);
     expect(r.faltaSemanal).toBeGreaterThan(0);
-    expect(r.emRisco).toContain("historia");
+    expect(r.emRisco).toEqual(expect.arrayContaining(["biologia", "historia"]));
   });
 
   it("projeta datas dentro dos dias disponíveis e recalcula sem apagar concluídos", () => {
