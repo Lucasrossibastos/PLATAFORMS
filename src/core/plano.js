@@ -5,7 +5,8 @@
                   topicos: [{ topicoId, cargaMin?, subtopicos: [{ subtopicoId, cargaMin? }] }] }]
    Não há "horas por semana" na jornada: o tempo vem das horas-base de cada
    tópico e se encaixa no horário de cada aluno (plano.disponibilidade).
-   maxSessao é a duração de cada meta da matéria (minutos, qualquer valor).
+   maxSessao é a duração MÁXIMA de cada meta da matéria (minutos, qualquer
+   valor): o motor encurta a meta para fechar tópicos e caber no dia.
    Planos antigos têm minutosSemanais: só servem para deduzir o peso.
 
    Ajustes do próprio aluno (ou do moderador para aquele aluno), por cima da

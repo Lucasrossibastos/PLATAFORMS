@@ -42,12 +42,13 @@ describe("peso define a frequência", () => {
   it("engenharia: matemática (peso 10) aparece muito mais que filosofia (peso 1)", () => {
     const h = planejarHorizonte({ hojeIso: HOJE, plano: eng, itens: itensEng });
     const min = porMateria(h.slots);
-    const total = 14 * 120;
-    expect(soma(h.slots, (s) => s.minutos)).toBe(total);
-    expect(min.mat / total).toBeCloseTo(10 / 16, 1);
-    expect(min.fis / total).toBeCloseTo(5 / 16, 1);
+    const total = soma(h.slots, (s) => s.minutos);
+    expect(total).toBeLessThanOrEqual(14 * 120); // o horário é teto
+    expect(total).toBeGreaterThanOrEqual(14 * 120 * 0.9);
+    expect(min.mat / total).toBeGreaterThan(0.55);
+    expect(min.mat).toBeGreaterThan(min.fis * 1.4);
+    expect(min.fis).toBeGreaterThan(min.filo * 3);
     expect(min.filo).toBeGreaterThan(0);
-    expect(min.filo).toBeLessThanOrEqual(150);
     // matemática aparece em quase todos os dias; nenhum dia passa do horário
     const dias = new Set(h.slots.filter((s) => s.materiaId === "mat").map((s) => s.data));
     expect(dias.size).toBeGreaterThanOrEqual(12);
@@ -70,13 +71,39 @@ describe("peso define a frequência", () => {
 });
 
 describe("duração das metas livre (minutos exatos)", () => {
-  it("usa a duração que o aluno ou o moderador definiu, sem arredondar", () => {
+  it("a duração definida é teto: nunca é passada; tópico maior que a meta vira partes iguais", () => {
     const plano = { ...eng, duracaoMeta: { mat: 47 }, materias: eng.materias.map((m) => (m.materiaId === "fis" ? { ...m, maxSessao: 38 } : m)) };
     const { slots } = planejarHorizonte({ hojeIso: HOJE, plano, itens: itensEng });
-    const durs = (id) => new Set(slots.filter((x) => x.materiaId === id).map((x) => x.minutos));
-    expect([...durs("mat")].every((d) => d <= 47)).toBe(true);
-    expect(durs("mat").has(47)).toBe(true);
-    expect(durs("fis").has(38)).toBe(true);
+    const durs = (id) => slots.filter((x) => x.materiaId === id).map((x) => x.minutos);
+    expect(Math.max(...durs("mat"))).toBeLessThanOrEqual(47);
+    expect(Math.max(...durs("fis"))).toBeLessThanOrEqual(38);
+    expect(durs("mat")).toContain(40); // 120 min em 3 × 40, não 47 + 47 + 26
+    expect(durs("fis")).toContain(30); // 120 min em 4 × 30
+  });
+
+  it("a meta fecha o tópico quando ele cabe; pedacinho que sobrou segue no próximo tópico", () => {
+    const plano = planoCom([{ materiaId: "mat", peso: 5, maxSessao: 60 }], { ...TODO_DIA, seg: 60 });
+    const itens = [{ materiaId: "mat", topicoId: "a", itemId: "t:a", duracao: 40 }, ...topicos("mat", 3)];
+    const fecha = planejarHorizonte({ hojeIso: HOJE, plano, itens }).slots.filter((x) => x.data === HOJE);
+    expect(fecha.map((x) => x.minutos)).toEqual([40]); // fecha o tópico de 40 e o dia fica com folga de 20
+    const sobra = planejarHorizonte({ hojeIso: HOJE, plano, itens, progresso: { "t:a": { minutos: 30 } } }).slots.filter((x) => x.data === HOJE);
+    expect(sobra.map((x) => x.minutos)).toEqual([60]); // 10 que faltavam + 50 do próximo
+    const c = conteudoPlanejado([{ id: "m", categoria: "progressao", status: "pendente", materiaId: "mat", dataPlanejada: HOJE, duracaoPlanejada: 60 }], itens, { "t:a": { minutos: 30 } });
+    expect(c.m.partes.map((p) => [p.topicoId, p.minutos])).toEqual([["a", 10], ["mat1", 50]]);
+  });
+
+  it("quando o dia só comporta parte de um tópico, a parte não deixa resto pequeno nele", () => {
+    const plano = planoCom([{ materiaId: "mat", peso: 5, maxSessao: 60 }], { ...TODO_DIA, seg: 50 });
+    const itens = [{ materiaId: "mat", topicoId: "a", itemId: "t:a", duracao: 60 }, ...topicos("mat", 2)];
+    const { slots } = planejarHorizonte({ hojeIso: HOJE, plano, itens });
+    expect(slots.filter((x) => x.data === HOJE).map((x) => x.minutos)).toEqual([30]); // 30 + 30, não 50 + 10
+    expect(slots.find((x) => x.data === "2026-09-29").minutos).toBe(30);
+  });
+
+  it("sobra do dia menor que meia meta não vira meta picada (o dia pode ficar com folga)", () => {
+    const plano = planoCom([{ materiaId: "mat", peso: 5, maxSessao: 60 }], { ...TODO_DIA, seg: 80 });
+    const hoje = planejarHorizonte({ hojeIso: HOJE, plano, itens: topicos("mat", 5) }).slots.filter((x) => x.data === HOJE);
+    expect(hoje.map((x) => x.minutos)).toEqual([60]);
   });
 
   it("metas curtas (10 min) não são barradas pelo mínimo padrão", () => {

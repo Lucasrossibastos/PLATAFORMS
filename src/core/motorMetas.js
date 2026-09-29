@@ -30,7 +30,7 @@ import { duracaoDaMeta } from "./plano.js";
 import { ocorrenciasNoHorizonte, parametrosAtuais } from "./revisaoRecorrente.js";
 
 export const HORIZONTE_DIAS = 14;
-export const SESSAO_MIN = 15; // sobra menor que isso não vira meta (a não ser que a matéria use metas mais curtas)
+export const SESSAO_MIN = 15; // meta mínima (a não ser que a matéria use metas mais curtas)
 export const ESTRATEGIAS_ATRASO = {
   redistribuir: "Levar para os próximos dias",
   manter: "Deixar no dia, como atrasada",
@@ -72,6 +72,43 @@ export function conteudoPlanejado(metas, itens, progresso = {}) {
     out[m.id] = { partes, sobra: resta, categoria: partes[0]?.ciclo > 1 ? "rever_do_zero" : "progressao" };
   });
   return out;
+}
+
+/* Tamanho de cada meta. A duração da matéria (e as horas do dia) é um TETO:
+   a meta pode ser menor, para ficar encaixada no dia e ligada aos tópicos.
+   - o tópico atual cabe numa meta: a meta fecha o tópico;
+   - é maior que a meta: é dividido em partes iguais (nada de rabinho);
+   - sobrou um pedacinho do tópico: a meta segue direto no próximo;
+   - não cabe no que resta do dia com um tamanho razoável: fica para outro
+     dia (o dia pode ficar com folga), a não ser que seja o fim da matéria;
+   - o dia só comporta parte: a parte não deixa um resto pequeno no tópico. */
+export const minimoDaMeta = (teto) => Math.min(teto, Math.max(SESSAO_MIN, Math.ceil(teto / 2)));
+const arred5 = (n) => Math.ceil(n / 5) * 5;
+function consumirDaFila(lista, minutos) {
+  let m = minutos;
+  while (m > 0 && lista.length) {
+    const usa = Math.min(m, lista[0]);
+    lista[0] -= usa;
+    m -= usa;
+    if (lista[0] <= 0) lista.shift();
+  }
+}
+export function tamanhoDaMeta(lista, { maxSessao: teto, minimo }, cap) {
+  const total = lista.reduce((a, b) => a + b, 0);
+  if (!total) return 0;
+  const r = lista[0];
+  let alvo;
+  if (r >= minimo) {
+    const partes = Math.ceil(r / teto);
+    alvo = partes === 1 ? r : Math.min(teto, arred5(r / partes));
+  } else {
+    alvo = Math.min(teto, total);
+  }
+  let dur = Math.min(alvo, cap);
+  // o dia cortou a meta no meio do tópico: não deixar um resto pequeno demais nele
+  if (dur < alvo && r >= minimo && r - dur > 0 && r - dur < minimo) dur = r - minimo;
+  if (dur < 1 || (dur < minimo && dur < total)) return 0;
+  return dur;
 }
 
 /* Orçamento e plano de sessões de progressão para o horizonte.
@@ -124,16 +161,18 @@ export function planejarHorizonte({ hojeIso, plano, itens, progresso = {}, metas
   const pesos = pesosDoPlano(plano);
   const materias = (plano?.materias || []).filter((m) => m.ativa !== false);
   const ordemPlano = new Map(materias.map((m, i) => [m.materiaId, i]));
-  const livre = {};
+  /* O que falta de cada tópico, na ordem da fila de cada matéria (o que já
+     está preso em metas que o motor não mexe sai do começo da fila). */
+  const pendente = {};
   filasDoPlano(itens, progresso).forEach(({ fila, estados }, materiaId) => {
     if (!ordemPlano.has(materiaId)) return;
-    const resto = fila.reduce((s, it) => s + estados.get(it.itemId).restante, 0);
-    livre[materiaId] = Math.max(0, resto - (prometido[materiaId] || 0));
+    const lista = fila.map((it) => estados.get(it.itemId).restante).filter((x) => x > 0);
+    consumirDaFila(lista, prometido[materiaId] || 0);
+    pendente[materiaId] = lista;
   });
-  // duração de cada meta: a que o moderador ou o aluno definiu, em minutos exatos
   const info = Object.fromEntries(materias.map((m) => {
-    const duracao = duracaoDaMeta(plano, m);
-    return [m.materiaId, { maxSessao: duracao, minimo: Math.min(SESSAO_MIN, duracao), prioridade: m.prioridade ?? 2, peso: pesos[m.materiaId] || 1 }];
+    const teto = duracaoDaMeta(plano, m);
+    return [m.materiaId, { maxSessao: teto, minimo: minimoDaMeta(teto), prioridade: m.prioridade ?? 2, peso: pesos[m.materiaId] || 1 }];
   }));
 
   const slots = [];
@@ -149,19 +188,18 @@ export function planejarHorizonte({ hojeIso, plano, itens, progresso = {}, metas
     const usadasHoje = new Set(d === hojeIso ? feitoHoje : []);
     const semEspaco = new Set();
     while (cap >= 5) {
-      const candidatas = Object.keys(livre).filter((id) => livre[id] >= 1 && !semEspaco.has(id));
+      const candidatas = Object.keys(pendente).filter((id) => pendente[id].length && !semEspaco.has(id));
       if (!candidatas.length) break;
       candidatas.sort((a, b) => razao(a) - razao(b) || info[a].prioridade - info[b].prioridade || ordemPlano.get(a) - ordemPlano.get(b));
       // não repetir matéria no dia: a que ainda não apareceu passa na frente se estiver a menos de uma sessão da primeira
       const melhor = candidatas[0];
       const nova = candidatas.find((id) => !usadasHoje.has(id));
       const id = usadasHoje.has(melhor) && nova && razao(nova) - razao(melhor) <= info[melhor].maxSessao / info[melhor].peso ? nova : melhor;
-      const dur = Math.min(info[id].maxSessao, cap, livre[id]);
-      // a sobra do dia só vira meta se for do tamanho mínimo da matéria (ou se for o fim do conteúdo dela)
-      if (dur < 5 || (dur < info[id].minimo && dur < livre[id])) { semEspaco.add(id); continue; }
+      const dur = tamanhoDaMeta(pendente[id], info[id], cap);
+      if (!dur) { semEspaco.add(id); continue; } // não cabe direito hoje: o dia pode ficar com folga
       slots.push({ data: d, materiaId: id, minutos: dur });
       alocado[id] = (alocado[id] || 0) + dur;
-      livre[id] -= dur;
+      consumirDaFila(pendente[id], dur);
       cap -= dur;
       usadasHoje.add(id);
     }

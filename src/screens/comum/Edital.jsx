@@ -295,9 +295,9 @@ export function TopicosDaMateria({
           </p>
           {comoFila && (
             <p className="previa-linha duracao-meta">
-              Cada meta:{" "}
+              Metas de até{" "}
               {pode.tempos ? (
-                <CargaEditor valor={plano.duracaoMeta?.[materiaId] ?? null} padrao={m.maxSessao ?? 60} rotulo={`Minutos de cada meta de ${nomeM}`} titulo="Mudar a duração das metas desta matéria"
+                <CargaEditor valor={plano.duracaoMeta?.[materiaId] ?? null} padrao={m.maxSessao ?? 60} rotulo={`Minutos de cada meta de ${nomeM}`} titulo="Mudar a duração máxima das metas desta matéria"
                   aoSalvar={(c) => op({ tipo: "definirDuracaoMeta", materiaId, minutos: c }, "Mudar a duração das metas")} />
               ) : <b className="num">{fmtMin(duracaoDaMeta(plano, m))}</b>}
             </p>
@@ -399,12 +399,12 @@ export function TabelaIncidencia({ plano, aoAplicar, ocupado, capacidade, efetiv
         <h2 id="t-incidencia" className="subtitulo">Peso de cada matéria nas metas</h2>
         <p className="previa-linha">
           Quanto maior o peso, mais a matéria aparece nas metas (engenharia: Matemática 10, Filosofia 2); a prioridade só desempata.
-          Cada meta dura o que você definir, em minutos. {doAluno ? "O horário do aluno é dividido pelos pesos." : "O tempo se encaixa no horário de cada aluno."}
+          Cada meta dura até o tempo que você definir, em minutos: o planejamento encurta quando precisa, para fechar tópicos e caber no dia sem sobras picadas. {doAluno ? "O horário do aluno é o limite de cada dia, dividido pelos pesos." : "O limite de cada dia é o horário de cada aluno."}
         </p>
       </div>
       <div className="tabela-rolagem">
         <table className="tabela tabela-incidencia tabela--cartoes">
-          <thead><tr><th>Matéria</th><th>Aparece</th><th>Peso</th><th>Cada meta</th><th className="num">Fatia</th><th>Prioridade</th><th>Velocidade</th></tr></thead>
+          <thead><tr><th>Matéria</th><th>Aparece</th><th>Peso</th><th>Meta de até</th><th className="num">Fatia</th><th>Prioridade</th><th>Velocidade</th></tr></thead>
           <tbody>
             {materias.map((m) => {
               const x = valor(m);
@@ -427,7 +427,7 @@ export function TabelaIncidencia({ plano, aoAplicar, ocupado, capacidade, efetiv
                     </span>
                     {marca(m, "peso")}
                   </td>
-                  <td data-rotulo="Cada meta">
+                  <td data-rotulo="Meta de até">
                     <span className="minutos">
                       <input className={`entrada entrada--sm num${minutosOk(x.maxSessao) ? "" : " entrada--erro"}`} type="number" min={MINUTOS_MIN} max={MINUTOS_MAX} step="1"
                         value={x.maxSessao} aria-label={`Minutos de cada meta de ${nome}`} onChange={(e) => mudar(m, { maxSessao: e.target.value === "" ? "" : Number(e.target.value) })} />
@@ -457,7 +457,7 @@ export function TabelaIncidencia({ plano, aoAplicar, ocupado, capacidade, efetiv
       <div className="barra-incidencia">
         <span className="num">
           {invalida ? <span className="txt-erro">Duração: minutos de {MINUTOS_MIN} a {MINUTOS_MAX}</span>
-            : doAluno ? <>Horário do aluno: <b>{fmtMin(capacidade)}</b> por semana, dividido pelo peso</> : null}
+            : doAluno ? <>Horário do aluno: até <b>{fmtMin(capacidade)}</b> por semana, dividido pelo peso</> : null}
         </span>
         {fora.length > 0 && <AdicionarSelect rotulo="Incluir matéria" opcoes={fora} aoEscolher={(id) => aoAplicar([{ tipo: "adicionarMateria", materiaId: id }], `Incluir ${ind.nomeMateria(id)}`)} />}
         {ops.length > 0 && <>
@@ -483,7 +483,7 @@ function HorasLivres({ plano, podeEditar, aoSalvar, ocupado }) {
   return (
     <section className="form" aria-labelledby="t-horas">
       <h3 id="t-horas" className="subtitulo subtitulo--sm"><Clock4 aria-hidden="true" /> Horas livres por dia</h3>
-      <p className="previa-linha">É o limite diário que as metas respeitam. Revisões entram primeiro; se passarem do dia, aparece um aviso (nada é cortado).</p>
+      <p className="previa-linha">É o limite de cada dia: as metas vão até ele, podendo ficar abaixo para não criar sobras picadas. Revisões entram primeiro; se passarem do dia, aparece um aviso (nada é cortado).</p>
       <div className="grade-dias">
         {DIAS.map((d) => (
           <label key={d.k} className="campo campo--dia">
