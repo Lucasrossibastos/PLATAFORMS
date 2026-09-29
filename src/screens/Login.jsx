@@ -34,7 +34,7 @@ function Informacao({ qual, conteudo }) {
   return <p className="texto-dialogo">O acesso é criado pelo seu professor. Entre com o e-mail cadastrado e a senha que você recebeu. Se esqueceu a senha, fale com a coordenação.</p>;
 }
 
-function FotoProfessor({ hero }) {
+export function FotoProfessor({ hero }) {
   const { url } = useArquivoUrl(hero.foto);
   return (
     <div className="login-foto" aria-hidden={!url}>
@@ -79,7 +79,7 @@ export default function Login() {
       <main className="login-cartao">
         <section className="login-acesso" aria-labelledby="login-titulo">
           <Marca className="login-logo" />
-          <h1 id="login-titulo" className="login-titulo">Entrar na plataforma</h1>
+          <h1 id="login-titulo" className="login-titulo">{t("inicial.entrar")}</h1>
           <p className="login-sub">{t("inicial.selo")}</p>
           <form className="login-form" onSubmit={entrar} noValidate>
             <label className="campo" htmlFor="login-email">
@@ -93,7 +93,7 @@ export default function Login() {
                 value={senha} onChange={(e) => { setSenha(e.target.value); setErro(""); }} />
             </label>
             {erro && <p className="login-erro" role="alert">{erro}</p>}
-            <button type="submit" className="login-botao" disabled={enviando}>{enviando ? "Entrando…" : "Entrar"}</button>
+            <button type="submit" className="login-botao" disabled={enviando}>{enviando ? "Entrando…" : t("inicial.botao")}</button>
           </form>
           <p className="login-dica">
             {instalar ? <Link to="/instalar">Primeiro acesso: criar a conta do moderador</Link>

@@ -1,28 +1,16 @@
 /* Diagnóstico e ação (tela Desempenho). Funções puras sobre os registros:
-   o pulso (domínio, meta semanal de questões, tempo focado), o equilíbrio
-   por grande área, o mapa tempo × acerto por matéria e os focos de atenção.
-   Nada é guardado: tudo sai das questões, das sessões de estudo e do plano.
+   o pulso (domínio, meta semanal de questões, tempo focado), acertos e erros
+   de um recorte (tudo, uma matéria ou um tópico), o mapa tempo × acerto por
+   matéria e os focos de atenção. Nada é guardado: tudo sai das questões e
+   das sessões de estudo.
 
    Tempo por questão: o registro de questões pode trazer `minutos` (opcional,
    o tempo gasto resolvendo). Só os registros com tempo entram no mapa. */
 
-import { desempenhoQuestoes, filtrarRegistros, pct } from "./desempenho.js";
+import {
+  desempenhoPorMateria, desempenhoPorSubtopico, desempenhoPorTopico, desempenhoQuestoes, filtrarRegistros, pct,
+} from "./desempenho.js";
 import { diasEntre, inicioDaSemana, somarDias } from "./datas.js";
-import { materiaDoCurso } from "./estrutura.js";
-import { participacao } from "./jornada.js";
-
-/* As quatro grandes áreas do vestibular (a divisão do ENEM, que a FUVEST
-   também cobre). Matéria criada fora das 9 cai em "Outras". */
-export const GRANDES_AREAS = [
-  { id: "linguagens", nome: "Linguagens", materias: ["linguagens"] },
-  { id: "matematica", nome: "Matemática", materias: ["matematica"] },
-  { id: "natureza", nome: "Natureza", materias: ["biologia", "fisica", "quimica"] },
-  { id: "humanas", nome: "Humanas", materias: ["historia", "geografia", "filosofia", "sociologia"] },
-];
-const OUTRAS = { id: "outras", nome: "Outras" };
-
-export const areaDaMateria = (materiaId) =>
-  GRANDES_AREAS.find((a) => a.materias.includes(materiaDoCurso(materiaId)))?.id || OUTRAS.id;
 
 export const META_QUESTOES_PADRAO = 70;
 export const LIMITES_META_QUESTOES = { min: 5, max: 2000 };
@@ -109,40 +97,37 @@ export function tempoFocado({ sessoes = [], questoes = [] }, { inicio = null, fi
   };
 }
 
-/* ---------- equilíbrio por grande área (radar) ---------- */
+/* ---------- acertos e erros de um recorte (pizza) ---------- */
 
-/* Para cada área: a fatia do tempo focado do período, a fatia que o plano
-   pede (peso das matérias) e o acerto nas questões. As quatro áreas sempre
-   aparecem; "Outras" só se tiver algo. `maiorFalta`: a área mais abaixo do
-   que o plano pede (null se todas estão a menos de 5 pontos). */
-export function equilibrioPorArea({ sessoes = [], questoes = [], plano = null }, { inicio = null, fim = null } = {}) {
-  const base = () => ({ minutos: 0, plano: 0, total: 0, acertos: 0 });
-  const g = Object.fromEntries([...GRANDES_AREAS, OUTRAS].map((a) => [a.id, base()]));
-  sessoes.filter((s) => noPeriodo(s.data, inicio, fim)).forEach((s) => { g[areaDaMateria(s.materiaId)].minutos += s.minutos || 0; });
-  filtrarRegistros(questoes, { inicio, fim }).forEach((q) => {
-    const a = g[areaDaMateria(q.materiaId)];
-    a.minutos += minutosDoRegistro(q);
-    a.total += q.total || 0;
-    a.acertos += q.acertos || 0;
-  });
-  Object.entries(plano ? participacao(plano) : {}).forEach(([materiaId, fatia]) => { g[areaDaMateria(materiaId)].plano += fatia; });
-
-  const totalMin = Object.values(g).reduce((s, a) => s + a.minutos, 0);
-  const temOutras = g.outras.minutos || g.outras.plano || g.outras.total;
-  const eixos = [...GRANDES_AREAS, ...(temOutras ? [OUTRAS] : [])].map(({ id, nome }) => {
-    const a = g[id];
-    return {
-      id, nome, minutos: a.minutos, questoes: a.total, acertos: a.acertos,
-      tempo: totalMin ? pct(a.minutos, totalMin) : 0,
-      plano: plano ? um(a.plano * 100) : null,
-      acerto: a.total ? pct(a.acertos, a.total) : null,
-    };
-  });
-  const faltas = plano && totalMin ? eixos.map((e) => ({ ...e, diferenca: um(e.tempo - e.plano) })).filter((e) => e.diferenca <= -5) : [];
+/* Recorte: tudo, uma matéria ou um tópico (dos registros já no período).
+   Devolve as três fatias e onde estão mais erros um nível abaixo (matéria
+   → tópico → subtópico), para a próxima pergunta do aluno. */
+export function acertosDoRecorte(registros, { materiaId = null, topicoId = null } = {}, ind) {
+  const noRecorte = filtrarRegistros(registros, { materiaId: materiaId || undefined, topicoId: topicoId || undefined });
+  const d = desempenhoQuestoes(noRecorte);
+  const abaixo = topicoId ? desempenhoPorSubtopico(noRecorte, topicoId, ind)
+    : materiaId ? desempenhoPorTopico(noRecorte, materiaId, ind)
+      : desempenhoPorMateria(noRecorte, ind);
+  const maisErros = abaixo.filter((x) => x.erros > 0).sort((a, b) => b.erros - a.erros || a.pct - b.pct)[0] || null;
   return {
-    eixos,
-    minutos: totalMin,
-    maiorFalta: faltas.sort((a, b) => a.diferenca - b.diferenca)[0] || null,
+    total: d.total, acertos: d.acertos, erros: d.erros, emBranco: d.emBranco, pct: d.pct,
+    fatias: [
+      { id: "acertos", nome: "Acertos", valor: d.acertos, pct: pct(d.acertos, d.total) },
+      { id: "erros", nome: "Erros", valor: d.erros, pct: pct(d.erros, d.total) },
+      { id: "emBranco", nome: "Em branco", valor: d.emBranco, pct: pct(d.emBranco, d.total) },
+    ],
+    maisErros: maisErros && { id: maisErros.id, nome: maisErros.nome, erros: maisErros.erros, total: maisErros.total },
+    nivelAbaixo: topicoId ? "subtópico" : materiaId ? "tópico" : "matéria",
+  };
+}
+
+/* Matérias e tópicos que têm questões nos registros (para o seletor), do
+   que tem mais questões para o que tem menos. */
+export function opcoesDoRecorte(registros, ind, materiaId = null) {
+  const porTotal = (a, b) => b.total - a.total || a.nome.localeCompare(b.nome, "pt-BR");
+  return {
+    materias: desempenhoPorMateria(registros, ind).sort(porTotal).map(({ id, nome, total }) => ({ id, nome, total })),
+    topicos: materiaId ? desempenhoPorTopico(registros, materiaId, ind).sort(porTotal).map(({ id, nome, total }) => ({ id, nome, total })) : [],
   };
 }
 

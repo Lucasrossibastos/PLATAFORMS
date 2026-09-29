@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { estruturaInicial, indiceEstrutura } from "./estrutura.js";
 import {
-  acertoPorSemana, areaDaMateria, equilibrioPorArea, focosDeAtencao, mapaTempoAcerto, metaSemanal,
+  acertoPorSemana, acertosDoRecorte, focosDeAtencao, mapaTempoAcerto, metaSemanal, opcoesDoRecorte,
   sugerirMetaQuestoes, taxaDeDominio, tempoFocado,
 } from "./diagnostico.js";
 
@@ -20,15 +20,6 @@ const S = [
   { data: "2026-09-26", minutos: 45, materiaId: "historia" },
   { data: "2026-09-19", minutos: 30, materiaId: "linguagens" },
 ];
-
-describe("áreas", () => {
-  it("as 9 matérias nas 4 grandes áreas; as antigas seguem a matéria nova; o resto é Outras", () => {
-    expect(["linguagens", "matematica", "fisica", "quimica", "biologia", "historia", "geografia", "filosofia", "sociologia"].map(areaDaMateria))
-      .toEqual(["linguagens", "matematica", "natureza", "natureza", "natureza", "humanas", "humanas", "humanas", "humanas"]);
-    expect(areaDaMateria("portugues")).toBe("linguagens");
-    expect(areaDaMateria("atualidades")).toBe("outras");
-  });
-});
 
 describe("pulso", () => {
   it("domínio: acerto do período e a variação dos últimos 7 dias contra os 7 anteriores", () => {
@@ -63,30 +54,31 @@ describe("pulso", () => {
   });
 });
 
-describe("equilíbrio por área", () => {
-  const plano = { materias: [{ materiaId: "matematica", peso: 10 }, { materiaId: "fisica", peso: 5 }, { materiaId: "historia", peso: 5 }] };
+describe("acertos e erros de um recorte", () => {
+  const R = [
+    { data: HOJE, materiaId: "biologia", topicoId: "bi1", subtopicoId: "bi1-membrana", total: 10, acertos: 5, erros: 3 },
+    { data: HOJE, materiaId: "biologia", topicoId: "bi1", subtopicoId: "bi1-organelas", total: 10, acertos: 8, erros: 2 },
+    { data: HOJE, materiaId: "fisica", topicoId: "fi1", total: 10, acertos: 4, erros: 6 },
+  ];
 
-  it("fatia do tempo, fatia do plano e acerto de cada área; a maior falta", () => {
-    const r = equilibrioPorArea({ sessoes: S, questoes: Q, plano });
-    expect(r.minutos).toBe(210);
-    expect(r.eixos.map((e) => [e.id, e.tempo, e.plano, e.acerto])).toEqual([
-      ["linguagens", 14.3, 0, null], ["matematica", 47.6, 50, 80], ["natureza", 7.1, 25, 41.7], ["humanas", 31, 25, 90],
-    ]);
-    expect(r.maiorFalta).toMatchObject({ id: "natureza", diferenca: -17.9 });
+  it("tudo: três fatias (em branco à parte) e a matéria com mais erros", () => {
+    const r = acertosDoRecorte(R, {}, ind);
+    expect(r).toMatchObject({ total: 30, acertos: 17, erros: 11, emBranco: 2, pct: 56.7, nivelAbaixo: "matéria" });
+    expect(r.fatias.map((f) => [f.id, f.valor, f.pct])).toEqual([["acertos", 17, 56.7], ["erros", 11, 36.7], ["emBranco", 2, 6.7]]);
+    expect(r.maisErros).toEqual({ id: "fisica", nome: "Física", erros: 6, total: 10 });
   });
 
-  it("sem plano: sem fatia do plano nem falta; Outras só aparece com dado", () => {
-    const r = equilibrioPorArea({ sessoes: [...S, { data: HOJE, minutos: 20, materiaId: "atualidades" }], questoes: Q });
-    expect(r.eixos.map((e) => e.id)).toEqual(["linguagens", "matematica", "natureza", "humanas", "outras"]);
-    expect(r.eixos.every((e) => e.plano === null)).toBe(true);
-    expect(r.maiorFalta).toBeNull();
+  it("uma matéria aponta o tópico; um tópico aponta o subtópico", () => {
+    expect(acertosDoRecorte(R, { materiaId: "biologia" }, ind)).toMatchObject({ total: 20, acertos: 13, erros: 5, emBranco: 2, maisErros: { id: "bi1" }, nivelAbaixo: "tópico" });
+    expect(acertosDoRecorte(R, { materiaId: "biologia", topicoId: "bi1" }, ind).maisErros).toMatchObject({ nome: "Membrana", erros: 3 });
+    expect(acertosDoRecorte(R, { materiaId: "quimica" }, ind)).toMatchObject({ total: 0, maisErros: null });
   });
 
-  it("período vazio: tudo zero, sem divisão por zero", () => {
-    const r = equilibrioPorArea({ sessoes: S, questoes: Q, plano }, { inicio: "2027-01-01", fim: "2027-01-31" });
-    expect(r.minutos).toBe(0);
-    expect(r.eixos.every((e) => e.tempo === 0 && e.acerto === null)).toBe(true);
-    expect(r.maiorFalta).toBeNull();
+  it("opções do seletor: só o que tem questões, do maior para o menor", () => {
+    const o = opcoesDoRecorte(R, ind, "biologia");
+    expect(o.materias.map((m) => [m.id, m.total])).toEqual([["biologia", 20], ["fisica", 10]]);
+    expect(o.topicos.map((t) => t.id)).toEqual(["bi1"]);
+    expect(opcoesDoRecorte(R, ind).topicos).toEqual([]);
   });
 });
 

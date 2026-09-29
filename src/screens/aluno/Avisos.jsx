@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Bell, ChevronRight } from "lucide-react";
 import { useApp } from "../../state/AppContext.jsx";
-import { useEu, useNotificacoes } from "../../state/hooks.js";
+import { useEu, useFrases, useNotificacoes } from "../../state/hooks.js";
 import { fmtDataHora } from "../../core/datas.js";
 import { PRIORIDADES_NOTIFICACAO } from "../../services/notificacoes.js";
 import { Abas, Botao, Carregando, Dialogo, TituloPagina, Vazio } from "../../ui/ui.jsx";
@@ -53,6 +53,7 @@ export function LerAviso({ aviso, aoFechar }) {
 export default function Avisos() {
   const eu = useEu();
   const avisos = useNotificacoes(eu.id);
+  const t = useFrases(eu);
   const [aba, setAba] = useState("todos");
   const [aberto, setAberto] = useState(null);
   if (!avisos) return <Carregando />;
@@ -60,7 +61,7 @@ export default function Avisos() {
   const lista = aba === "novos" ? novos : aba === "lidos" ? avisos.filter((n) => n.lidaEm) : avisos;
   return (
     <>
-      <TituloPagina eyebrow="Do seu professor" frase="Seus *avisos*" />
+      <TituloPagina eyebrow={t("painel.avisos.eyebrow")} frase={t("painel.avisos.titulo")} />
       <Abas rotulo="Filtrar avisos" ativa={aba} aoMudar={setAba} itens={[
         { k: "todos", label: "Todos", contador: avisos.length },
         { k: "novos", label: "Novos", contador: novos.length },

@@ -94,20 +94,23 @@ export function useGarantirMetas(alunoId) {
   return { erro, hoje };
 }
 
-/* Frases do painel já resolvidas para o aluno, com as variáveis preenchidas. */
+/* Frases do painel já resolvidas para o aluno (aluno → jornada dele →
+   grupos → geral → padrão), com as variáveis preenchidas. */
 export function useFrases(aluno) {
   const { ind } = useApp();
   const config = useConfigTextos();
   const doAluno = useTextosDoAluno(aluno?.id);
+  const plano = usePlano(aluno?.id);
+  const jornadaId = plano?.modeloId || null;
   return useCallback((chave, extras = {}) => {
-    const texto = textoDe(config, chave, { doAluno, vestibularId: aluno?.vestibularId, cursoId: aluno?.cursoId });
+    const texto = textoDe(config, chave, { doAluno, jornadaId, vestibularId: aluno?.vestibularId, cursoId: aluno?.cursoId });
     return preencher(texto, {
       nome: primeiroNome(aluno?.nome || ""),
       saudacao: saudacao(),
       vestibular: ind?.nomeVestibular(aluno?.vestibularId) || "",
       ...extras,
     });
-  }, [config, doAluno, aluno, ind]);
+  }, [config, doAluno, jornadaId, aluno, ind]);
 }
 
 /* Perfil do aluno logado (o próprio usuário, com id). */

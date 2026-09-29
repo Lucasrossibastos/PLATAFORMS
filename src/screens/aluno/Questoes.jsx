@@ -124,8 +124,7 @@ export default function QuestoesAluno() {
   if (!registros) return <Carregando />;
   return (
     <>
-      <TituloPagina eyebrow="Banco de questões" frase={t("painel.questoes.titulo")}
-        texto="Cada registro é um bloco de questões: quantas fez, quantas acertou e quantas errou. O desempenho sai daqui." />
+      <TituloPagina eyebrow={t("painel.questoes.eyebrow")} frase={t("painel.questoes.titulo")} texto={t("painel.questoes.texto")} />
       <QuestoesDoAluno alunoId={eu.id} registros={registros} />
     </>
   );

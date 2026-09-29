@@ -57,7 +57,7 @@ export default function MateriaisAluno() {
   const blocos = [...areas.filter((a) => grupos[a.id]?.length), ...(grupos.outros?.length ? [AREA_OUTROS] : [])];
   return (
     <>
-      <TituloPagina eyebrow="Listas e PDFs do professor" frase={t("painel.materiais.titulo")} texto="Escolha a área para ver as listas e os materiais de cada tópico." />
+      <TituloPagina eyebrow={t("painel.materiais.eyebrow")} frase={t("painel.materiais.titulo")} texto={t("painel.materiais.texto")} />
       {blocos.length === 0
         ? <div className="cartao"><Vazio icone={Library} titulo="Nenhum material publicado ainda" texto="Quando o professor publicar uma lista ou um PDF, ele aparece aqui." /></div>
         : (

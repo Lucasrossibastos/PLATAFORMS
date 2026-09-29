@@ -1,14 +1,14 @@
-/* Seção 2, o diagnóstico: equilíbrio de estudos (radar por grande área) e
-   mapeamento de desempenho (tempo × acerto por matéria). Cada cartão tem a
-   leitura em uma frase e a troca para tabela; os gráficos ficam em graficos/. */
+/* Seção 2, o diagnóstico: acertos e erros (pizza, com recorte por matéria
+   ou tópico) e mapeamento de desempenho (tempo × acerto por matéria). Cada
+   cartão tem a leitura em uma frase e a troca para tabela; os gráficos ficam
+   em graficos/. */
 
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Info, Timer } from "lucide-react";
 import { useApp } from "../../state/AppContext.jsx";
-import { fmtMin } from "../../core/nucleo.js";
-import { QUADRANTES } from "../../core/diagnostico.js";
-import RadarEquilibrio from "./graficos/RadarEquilibrio.jsx";
+import { QUADRANTES, acertosDoRecorte, opcoesDoRecorte } from "../../core/diagnostico.js";
+import PizzaAcertos, { COR_FATIA } from "./graficos/PizzaAcertos.jsx";
 import MapaDispersao from "./graficos/MapaDispersao.jsx";
 import { BotaoTabela, Cabecalho, Cartao, Segmentado, Tabela, VazioGrafico, fmtNum, fmtPctCurto } from "./ui.jsx";
 
@@ -22,69 +22,81 @@ function Leitura({ children, tom = "neutro" }) {
   );
 }
 
-function Legenda({ itens }) {
+const RECORTES = [{ id: "tudo", nome: "Tudo" }, { id: "materia", nome: "Matéria" }, { id: "topico", nome: "Tópico" }];
+
+function Seletor({ rotulo, valor, opcoes, aoMudar }) {
   return (
-    <ul className="mt-2 flex list-none flex-wrap justify-center gap-x-5 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-      {itens.map(([nome, tipo]) => (
-        <li key={nome} className="flex items-center gap-1.5">
-          {tipo === "tracejado"
-            ? <svg width="18" height="6" aria-hidden="true"><line x1="0" y1="3" x2="18" y2="3" stroke="var(--dg-plano)" strokeWidth="1.5" strokeDasharray="5 3" /></svg>
-            : <i className="inline-block h-2.5 w-3.5 rounded-sm border-2 border-blue-600 bg-blue-600/20 dark:border-blue-500 dark:bg-blue-500/20" aria-hidden="true" />}
-          {nome}
-        </li>
-      ))}
-    </ul>
+    <label className="flex min-w-0 flex-1 basis-40 flex-col gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+      {rotulo}
+      <select
+        value={valor || ""} onChange={(e) => aoMudar(e.target.value)}
+        className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-normal text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 dark:border-white/15 dark:bg-white/5 dark:text-white"
+      >
+        {opcoes.map((o) => <option key={o.id} value={o.id}>{o.nome} · {o.total}</option>)}
+      </select>
+    </label>
   );
 }
 
-function Equilibrio({ equilibrio }) {
-  const [modo, setModo] = useState("tempo");
+/* Acertos e erros num recorte: tudo, uma matéria ou um tópico do período. */
+function AcertosErros({ registros }) {
+  const { ind } = useApp();
+  const [recorte, setRecorte] = useState("tudo");
+  const [escolha, setEscolha] = useState({ materiaId: "", topicoId: "" });
   const [tabela, setTabela] = useState(false);
-  const { eixos, maiorFalta, minutos } = equilibrio;
-  const comPlano = eixos.some((e) => e.plano != null);
-  const questoes = eixos.reduce((s, e) => s + e.questoes, 0);
-  const vazio = modo === "tempo" ? !minutos : !questoes;
-  const comAcerto = eixos.filter((e) => e.acerto != null).sort((a, b) => b.acerto - a.acerto);
-
-  let leitura = null;
-  if (!vazio && modo === "tempo") {
-    leitura = !comPlano ? <Leitura>Sem plano de estudo: o radar mostra só como o seu tempo se divide.</Leitura>
-      : maiorFalta ? <Leitura><b className="font-medium">{maiorFalta.nome}</b> recebeu {fmtPctCurto(maiorFalta.tempo)} do seu tempo; o plano pede {fmtPctCurto(maiorFalta.plano)}.</Leitura>
-        : <Leitura tom="bom">Seu tempo está alinhado com o que o plano pede. Bom equilíbrio.</Leitura>;
-  } else if (!vazio && comAcerto.length > 1) {
-    const [melhor, pior] = [comAcerto[0], comAcerto.at(-1)];
-    leitura = <Leitura>Mais forte em <b className="font-medium">{melhor.nome}</b> ({fmtPctCurto(melhor.acerto)}); mais espaço para crescer em <b className="font-medium">{pior.nome}</b> ({fmtPctCurto(pior.acerto)}).</Leitura>;
-  }
+  const opcoesM = opcoesDoRecorte(registros, ind).materias;
+  const materiaId = recorte === "tudo" ? null : opcoesM.some((m) => m.id === escolha.materiaId) ? escolha.materiaId : opcoesM[0]?.id || null;
+  const opcoesT = materiaId ? opcoesDoRecorte(registros, ind, materiaId).topicos : [];
+  const topicoId = recorte !== "topico" ? null : opcoesT.some((t) => t.id === escolha.topicoId) ? escolha.topicoId : opcoesT[0]?.id || null;
+  const r = acertosDoRecorte(registros, { materiaId, topicoId }, ind);
+  const nomeRecorte = topicoId ? ind.nomeTopico(topicoId) : materiaId ? ind.nomeMateria(materiaId) : "todas as matérias";
 
   return (
-    <Cartao aria-labelledby="t-equilibrio" className="flex flex-col">
+    <Cartao aria-labelledby="t-acertos" className="flex flex-col">
       <Cabecalho
-        id="t-equilibrio" titulo="Equilíbrio de estudos"
-        subtitulo={modo === "tempo" ? "Como o seu tempo focado se divide entre as grandes áreas, perto do que o plano pede." : "A taxa de acerto nas questões de cada grande área."}
-        direita={<>
-          <Segmentado rotulo="Medida do radar" valor={modo} aoMudar={setModo} opcoes={[{ id: "tempo", nome: "Tempo" }, { id: "acerto", nome: "Acerto" }]} />
-          <BotaoTabela tabela={tabela} aoTrocar={() => setTabela(!tabela)} rotulo="equilíbrio de estudos" />
-        </>}
+        id="t-acertos" titulo="Acertos e erros"
+        subtitulo="As questões do período, no geral, numa matéria ou num tópico."
+        direita={r.total > 0 && <BotaoTabela tabela={tabela} aoTrocar={() => setTabela(!tabela)} rotulo="acertos e erros" />}
       />
-      <div className="mt-4 flex-1">
-        {vazio ? (
-          <VazioGrafico titulo={modo === "tempo" ? "Sem estudo no período" : "Sem questões no período"} texto="Conclua metas ou registre estudos e questões para ver o equilíbrio entre as áreas." />
-        ) : tabela ? (
-          <Tabela
-            legenda="Equilíbrio por grande área"
-            colunas={modo === "tempo" ? ["Área", "Seu tempo", "Minutos", ...(comPlano ? ["O plano pede"] : [])] : ["Área", "Acerto", "Questões"]}
-            linhas={eixos.map((e) => (modo === "tempo"
-              ? [e.nome, fmtPctCurto(e.tempo), fmtMin(e.minutos), ...(comPlano ? [fmtPctCurto(e.plano)] : [])]
-              : [e.nome, fmtPctCurto(e.acerto), e.questoes]))}
-          />
-        ) : (
-          <>
-            <RadarEquilibrio eixos={eixos} modo={modo} />
-            {modo === "tempo" && comPlano && <Legenda itens={[["Seu tempo", "area"], ["O plano pede", "tracejado"]]} />}
-          </>
+      <div className="mt-4 flex flex-wrap items-end gap-3">
+        <Segmentado rotulo="Recorte" valor={recorte} aoMudar={setRecorte} opcoes={RECORTES} />
+        {recorte !== "tudo" && opcoesM.length > 0 && (
+          <div className="flex w-full flex-wrap gap-3">
+            <Seletor rotulo="Matéria" valor={materiaId} opcoes={opcoesM} aoMudar={(v) => setEscolha({ materiaId: v, topicoId: "" })} />
+            {recorte === "topico" && opcoesT.length > 0 && (
+              <Seletor rotulo="Tópico" valor={topicoId} opcoes={opcoesT} aoMudar={(v) => setEscolha({ materiaId, topicoId: v })} />
+            )}
+          </div>
         )}
       </div>
-      {leitura}
+      <div className="mt-4 flex-1">
+        {!r.total ? (
+          <VazioGrafico titulo="Sem questões no período" texto="Registre questões para ver quantas você acertou, errou ou deixou em branco." />
+        ) : tabela ? (
+          <Tabela
+            legenda={`Acertos e erros em ${nomeRecorte}`}
+            colunas={["", "Questões", "Do total"]}
+            linhas={r.fatias.map((f) => [f.nome, f.valor, fmtPctCurto(f.pct)])}
+          />
+        ) : (
+          <div className="grid items-center gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
+            <PizzaAcertos fatias={r.fatias} pct={r.pct} total={r.total} />
+            <ul className="flex list-none flex-row flex-wrap justify-center gap-x-5 gap-y-2 text-sm sm:flex-col">
+              {r.fatias.map((f) => (
+                <li key={f.id} className="flex items-center gap-2">
+                  <i className="inline-block size-2.5 shrink-0 rounded-sm" style={{ background: COR_FATIA[f.id] }} aria-hidden="true" />
+                  <span className="text-slate-500 dark:text-slate-400">{f.nome}</span>
+                  <b className="font-semibold tabular-nums text-slate-900 dark:text-white">{f.valor}</b>
+                  <span className="tabular-nums text-slate-400 dark:text-slate-500">{fmtPctCurto(f.pct)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+      {r.maisErros && (
+        <Leitura>Mais erros em <b className="font-medium">{r.maisErros.nome}</b>: {r.maisErros.erros} de {r.maisErros.total} questões{recorte === "tudo" ? "" : ` (${r.nivelAbaixo} de ${nomeRecorte})`}.</Leitura>
+      )}
     </Cartao>
   );
 }
@@ -148,7 +160,7 @@ function Mapa({ mapa }) {
 export default function Diagnostico({ d }) {
   return (
     <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-2">
-      <Equilibrio equilibrio={d.equilibrio} />
+      <AcertosErros registros={d.registros} />
       <Mapa mapa={d.mapa} />
     </div>
   );

@@ -14,8 +14,7 @@ export default function EditalAluno() {
   if (v.carregando) return <Carregando />;
   return (
     <>
-      <TituloPagina eyebrow="Seu conteúdo programático" frase={t("painel.plano.titulo")}
-        texto="Toque numa matéria para ver a fila de estudo. Arraste para mudar a ordem, ajuste os tempos, marque o que já domina e toque num tópico riscado para ver de novo." />
+      <TituloPagina eyebrow={t("painel.plano.eyebrow")} frase={t("painel.plano.titulo")} texto={t("painel.plano.texto")} />
       {v.plano ? <EditalDoAluno v={v} modo="aluno" /> : (
         <div className="cartao"><Vazio icone={ListChecks} titulo="Seu edital ainda não foi montado" texto="O professor escolhe a jornada do seu vestibular; depois ela vira o seu edital, ajustável." /></div>
       )}

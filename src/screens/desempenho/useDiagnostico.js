@@ -6,7 +6,7 @@ import { useApp } from "../../state/AppContext.jsx";
 import { filtrarRegistros } from "../../core/desempenho.js";
 import { fmtDataCurta, somarDias } from "../../core/datas.js";
 import {
-  acertoPorSemana, equilibrioPorArea, focosDeAtencao, mapaTempoAcerto, metaSemanal, taxaDeDominio, tempoFocado,
+  acertoPorSemana, focosDeAtencao, mapaTempoAcerto, metaSemanal, taxaDeDominio, tempoFocado,
 } from "../../core/diagnostico.js";
 
 export const PERIODOS = [
@@ -37,7 +37,6 @@ export function useDiagnostico(v, periodo) {
       semanas: acertoPorSemana(q, hoje, 8),
       meta: metaSemanal(q, hoje, plano?.metaQuestoesSemana),
       tempo: tempoFocado({ sessoes: s, questoes: q }, filtro, hoje),
-      equilibrio: equilibrioPorArea({ sessoes: s, questoes: q, plano }, filtro),
       mapa: mapaTempoAcerto(q, filtro, ind),
       focos: focosDeAtencao(q, filtro, ind),
       registros: filtrarRegistros(q, filtro),

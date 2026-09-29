@@ -53,7 +53,7 @@ export function CursosAluno() {
 
   return (
     <>
-      <TituloPagina eyebrow="Aulas do seu professor" frase={t("painel.cursos.titulo")} />
+      <TituloPagina eyebrow={t("painel.cursos.eyebrow")} frase={t("painel.cursos.titulo")} />
       {usadas.length > 1 && (
         <div className="filtros" role="tablist" aria-label="Categorias">
           {[{ id: "todas", nome: "Todas" }, ...usadas].map((c) => (

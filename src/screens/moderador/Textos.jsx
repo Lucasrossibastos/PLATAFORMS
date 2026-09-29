@@ -1,142 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { ArrowDown, ArrowUp, ImagePlus, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowDown, ArrowUp, ImagePlus, Plus, Trash2 } from "lucide-react";
 import { useApp } from "../../state/AppContext.jsx";
-import { useAcao, useAlunos, useArquivoUrl, useBoasVindas, useConfigRedacao, useConfigTextos, useTextosDeTodos } from "../../state/hooks.js";
+import { useAcao, useArquivoUrl, useBoasVindas, useConfigRedacao } from "../../state/hooks.js";
 import { comprimirImagem } from "../../state/arquivos.js";
 import { BOAS_VINDAS_PADRAO } from "../../data/semente.js";
-import {
-  COR_DESTAQUE_PADRAO, CORES_SUGERIDAS, GRUPOS, TEXTOS, VARIAVEIS, grupoDoCurso, grupoDoVestibular, preencher, primeiroNome, saudacao, textoDe,
-} from "../../textos.js";
-import { Abas, Botao, Campo, Carregando, Frase, MensagemErro, TituloPagina } from "../../ui/ui.jsx";
+import { Abas, Botao, Campo, Carregando, MensagemErro, TituloPagina } from "../../ui/ui.jsx";
 import { Bloco } from "../Paginas.jsx";
-
-// cor: só a frase da tela de login usa a cor escolhida; os títulos do painel usam o acento
-function Previa({ tipo, texto, cor }) {
-  if (tipo !== "titulo") return null;
-  return <div className={`previa-app${cor ? " previa-login" : ""}`} aria-label="Prévia" style={cor ? { "--destaque": cor } : undefined}><h2><Frase texto={texto} /></h2></div>;
-}
-
-function CampoTexto({ chave, valor, fallback, aoMudar, aoLimpar, rotuloLimpar, vars, cor }) {
-  const def = TEXTOS[chave];
-  const efetivo = valor?.trim() ? valor : fallback;
-  const longo = def.tipo !== "linha";
-  return (
-    <div className="campo-texto">
-      <div className="campo-texto-topo">
-        <label htmlFor={`t-${chave}`}>{def.rotulo}</label>
-        {valor != null && <Botao variante="texto" tamanho="sm" icone={RotateCcw} onClick={aoLimpar}>{rotuloLimpar}</Botao>}
-      </div>
-      {longo ? (
-        <textarea id={`t-${chave}`} className="entrada" rows={def.tipo === "paragrafo" ? 3 : 2} value={valor ?? fallback} onChange={(e) => aoMudar(e.target.value)} />
-      ) : (
-        <input id={`t-${chave}`} className="entrada" value={valor ?? fallback} onChange={(e) => aoMudar(e.target.value)} />
-      )}
-      {valor == null && <small className="previa-linha">Herdado. Edite para personalizar nesta camada.</small>}
-      <Previa tipo={def.tipo} texto={preencher(efetivo, vars)} cor={chave.startsWith("inicial.") ? cor : undefined} />
-      {(def.tipo === "linha" || def.tipo === "paragrafo") && /\{\w+\}/.test(efetivo) && <p className="previa-linha">Fica assim: {preencher(efetivo, vars)}</p>}
-    </div>
-  );
-}
-
-/* Frases: geral → grupo (vestibular/curso) → aluno. */
-function Frases() {
-  const { s, ind } = useApp();
-  const [params] = useSearchParams();
-  const config = useConfigTextos();
-  const doAluno = useTextosDeTodos();
-  const alunos = useAlunos();
-  const [alvo, setAlvo] = useState(() => (params.get("aluno") ? `aluno:${params.get("aluno")}` : "geral"));
-  const [rascunho, setRascunho] = useState(null);
-  const [cor, setCor] = useState(null);
-  const [aviso, setAviso] = useState("");
-  const { executar, ocupado, erro } = useAcao();
-
-  const escopo = alvo === "geral" ? { tipo: "geral" } : alvo.startsWith("aluno:") ? { tipo: "aluno", alunoId: alvo.slice(6) } : { tipo: "grupo", grupo: alvo };
-  const alunoAlvo = escopo.tipo === "aluno" ? alunos?.find((a) => a.id === escopo.alunoId) : null;
-  const camadaSalva = useMemo(() => {
-    if (!config || !doAluno) return null;
-    if (escopo.tipo === "geral") return config.geral || {};
-    if (escopo.tipo === "aluno") return doAluno[escopo.alunoId] || {};
-    return config.porGrupo?.[escopo.grupo] || {};
-  }, [config, doAluno, alvo]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => { setRascunho(camadaSalva ? { ...camadaSalva } : null); setAviso(""); }, [camadaSalva]);
-  useEffect(() => { if (config) setCor(config.corDestaque || COR_DESTAQUE_PADRAO); }, [config]);
-  if (!config || !doAluno || !alunos || !rascunho || !ind) return <Carregando />;
-
-  // o que vale abaixo da camada atual (o que o campo "herda")
-  const contextoAbaixo = (chave) => {
-    if (escopo.tipo === "geral") return TEXTOS[chave].padrao;
-    if (escopo.tipo === "grupo") return textoDe({ geral: config.geral }, chave); // um grupo herda do geral
-    return textoDe(config, chave, { vestibularId: alunoAlvo?.vestibularId, cursoId: alunoAlvo?.cursoId });
-  };
-  const exemplo = alunoAlvo || alunos.find((a) => (escopo.grupo === grupoDoVestibular(a.vestibularId) || escopo.grupo === grupoDoCurso(a.cursoId))) || alunos[0];
-  const vars = { nome: primeiroNome(exemplo?.nome || "Aluno"), saudacao: saudacao(), vestibular: ind.nomeVestibular(exemplo?.vestibularId) || "ENEM" };
-  const alterado = JSON.stringify(Object.fromEntries(Object.entries(rascunho).filter(([, v]) => v?.trim()))) !== JSON.stringify(Object.fromEntries(Object.entries(camadaSalva).filter(([, v]) => v?.trim())))
-    || (escopo.tipo === "geral" && cor !== (config.corDestaque || COR_DESTAQUE_PADRAO));
-  const salvar = () => executar(async () => {
-    await s.textos.salvar(escopo, rascunho, escopo.tipo === "geral" ? { corDestaque: cor } : {});
-    setAviso("Textos salvos. Quem abrir a plataforma já vê a versão nova.");
-  });
-  const personalizados = (id) => Object.values(doAluno[id] || {}).filter((v) => v?.trim()).length;
-
-  return (
-    <>
-      <div className="cartao textos-barra">
-        <Campo rotulo="Aplicar a" ajuda="O mais específico vale: aluno → curso → vestibular → geral → padrão.">
-          <select className="entrada" value={alvo} onChange={(e) => setAlvo(e.target.value)}>
-            <option value="geral">Todos (texto geral)</option>
-            <optgroup label="Por vestibular">{ind.vestibulares.map((v) => <option key={v.id} value={grupoDoVestibular(v.id)}>Alunos de {v.nome}</option>)}</optgroup>
-            <optgroup label="Por curso">{ind.cursos.map((c) => <option key={c.id} value={grupoDoCurso(c.id)}>Alunos de {c.nome}</option>)}</optgroup>
-            <optgroup label="Um aluno">{alunos.map((a) => { const n = personalizados(a.id); return <option key={a.id} value={`aluno:${a.id}`}>{a.nome}{n ? ` · ${n} personalizado${n > 1 ? "s" : ""}` : ""}</option>; })}</optgroup>
-          </select>
-        </Campo>
-        <p className="vars">Variáveis: {VARIAVEIS.map((v) => <code key={v}>{`{${v}}`}</code>)}<span>Prévias com {exemplo?.nome || "um aluno de exemplo"}.</span></p>
-      </div>
-
-      {GRUPOS.map((g) => {
-        if (escopo.tipo !== "geral" && !g.porAluno) return null;
-        return (
-          <section key={g.id} className="cartao grupo-textos" aria-labelledby={`g-${g.id}`}>
-            <header><h2 id={`g-${g.id}`}>{g.titulo}</h2><p>{g.descricao}</p></header>
-            {g.id === "inicial" && (
-              <div className="campo-texto">
-                <span className="campo-texto-topo"><label htmlFor="cor-destaque">Cor do destaque</label></span>
-                <div className="cores">
-                  {CORES_SUGERIDAS.map((c) => (
-                    <button key={c.cor} type="button" className="cor-amostra" style={{ background: c.cor }} aria-label={c.nome} title={c.nome}
-                      aria-pressed={cor.toLowerCase() === c.cor.toLowerCase()} onClick={() => setCor(c.cor)} />
-                  ))}
-                  <input id="cor-destaque" type="color" className="entrada cor-livre" value={cor} onChange={(e) => setCor(e.target.value)} aria-label="Outra cor" />
-                  <small>A cor da palavra em destaque na frase da tela de login.</small>
-                </div>
-              </div>
-            )}
-            {Object.entries(TEXTOS).filter(([, def]) => def.grupo === g.id).map(([chave]) => (
-              <CampoTexto key={chave} chave={chave} valor={rascunho[chave]} fallback={contextoAbaixo(chave)} vars={vars} cor={cor}
-                rotuloLimpar={escopo.tipo === "geral" ? "Voltar ao padrão" : "Herdar de novo"}
-                aoMudar={(v) => { setAviso(""); setRascunho((r) => ({ ...r, [chave]: v })); }}
-                aoLimpar={() => setRascunho((r) => { const n = { ...r }; delete n[chave]; return n; })} />
-            ))}
-          </section>
-        );
-      })}
-
-      {(alterado || aviso || erro) && (
-        <div className="barra-mover barra-salvar" role="status">
-          <span>{erro ? erro.message : alterado ? "Alterações não salvas." : aviso}</span>
-          {alterado && (
-            <>
-              <Botao variante="vidro" tamanho="sm" onClick={() => { setRascunho({ ...camadaSalva }); setCor(config.corDestaque || COR_DESTAQUE_PADRAO); }}>Descartar</Botao>
-              <Botao variante="solido" tamanho="sm" disabled={ocupado} onClick={salvar}>Salvar</Botao>
-            </>
-          )}
-        </div>
-      )}
-    </>
-  );
-}
+import EditorTextos from "./EditorTextos.jsx";
 
 function FotoHero({ refFoto }) {
   const { url } = useArquivoUrl(refFoto);
@@ -276,9 +146,9 @@ export default function Textos() {
   return (
     <>
       <TituloPagina eyebrow="Conteúdo" frase="Textos e *boas-vindas*"
-        texto="Frases da página inicial, das boas-vindas e do painel, para todos, um grupo ou um aluno. Coloque uma palavra entre *asteriscos* para destacá-la; Enter quebra a linha nos títulos." />
-      <Abas rotulo="Seções" ativa={aba} aoMudar={setAba} itens={[{ k: "frases", label: "Frases" }, { k: "pagina", label: "Página de boas-vindas" }, { k: "redacao", label: "Instruções de redação" }]} />
-      {aba === "frases" && <Frases />}
+        texto="Veja a tela de login e o painel do aluno como ele vê e clique num texto para reescrever. Personalize para todos, para uma jornada ou para um aluno. Coloque uma palavra entre *asteriscos* para destacá-la." />
+      <Abas rotulo="Seções" ativa={aba} aoMudar={setAba} itens={[{ k: "frases", label: "Textos e aparência" }, { k: "pagina", label: "Página de boas-vindas" }, { k: "redacao", label: "Instruções de redação" }]} />
+      {aba === "frases" && <EditorTextos />}
       {aba === "pagina" && <BoasVindasEditor />}
       {aba === "redacao" && <InstrucoesRedacao />}
     </>

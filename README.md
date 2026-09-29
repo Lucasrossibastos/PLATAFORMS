@@ -128,10 +128,14 @@ firestore.rules, storage.rules   controle de acesso real
   calculados dos registros (questões, simulados, sessões de estudo); nada
   disso é guardado pronto.
 - **Desempenho = diagnóstico e ação** (`core/diagnostico.js`): o pulso (acerto
-  com a variação da semana, meta semanal de questões, tempo focado), o
-  equilíbrio por grande área contra o peso do plano, o mapa tempo × acerto
+  com a variação da semana, meta semanal de questões, tempo focado), acertos
+  e erros em pizza (tudo, uma matéria ou um tópico), o mapa tempo × acerto
   (usa o tempo gasto, opcional, de cada registro de questões) e os focos de
-  atenção com "Revisar", que põe o tópico no topo da fila da matéria.
+  atenção, com o recado do professor (editável em Textos).
+- **Textos e aparência**: o moderador edita numa réplica da tela de login e
+  do painel do aluno, clicando no texto. Camadas: aluno → jornada → todos →
+  padrão (`src/textos.js`); a tela de login, pública, só usa "todos". A cor
+  de destaque do painel também segue as camadas.
   Tailwind vale só em `screens/desempenho/` (sem o reset global), e a tela é
   baixada sob demanda.
 - **Edital**: a unidade de estudo (a que vira meta) é o tópico; os

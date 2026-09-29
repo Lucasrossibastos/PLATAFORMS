@@ -398,8 +398,8 @@ button.selo--tempo:disabled { cursor: default; }
 
 /* ---------- Moderador: textos ---------- */
 
-.textos-barra { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px 24px; margin-bottom: 16px; }
-.textos-barra .campo { flex: 0 1 380px; min-width: min(100%, 260px); }
+.editor-barra { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px 24px; margin-bottom: 14px; }
+.editor-barra .campo { flex: 0 1 420px; min-width: min(100%, 260px); }
 .vars { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-bottom: 22px; font-size: 13px; color: var(--muted); }
 .vars code, .previa-linha code {
   padding: 2px 6px;
@@ -409,14 +409,6 @@ button.selo--tempo:disabled { cursor: default; }
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
 }
-.grupo-textos { display: grid; gap: 20px; margin-bottom: 16px; }
-.grupo-textos > header h2 { font-size: 20px; letter-spacing: -0.025em; }
-.grupo-textos > header p { margin-top: 4px; color: var(--muted); font-size: 14px; }
-.campo-texto { display: grid; gap: 8px; }
-.campo-texto-topo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; min-height: 30px; }
-.campo-texto-topo label, .campo-texto-topo .rotulo { font-size: 13px; font-weight: 500; color: var(--text-soft); }
-.previa-app { padding: 16px 18px; border-radius: 10px; background: var(--surface-2); }
-.previa-app h2 { font-size: 30px; font-weight: 500; letter-spacing: -0.04em; line-height: 1.1; }
 .previa-linha { font-size: 13px; color: var(--muted); }
 .cores { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .cores small { color: var(--faint); font-size: 12.5px; }
@@ -429,8 +421,84 @@ button.selo--tempo:disabled { cursor: default; }
   .linha-numero { grid-template-columns: 84px minmax(0, 1fr) auto; }
   .barra-salvar { flex-wrap: wrap; }
 }
-.previa-login { background: #ffffff; color: #14122b; }
-.previa-login em.destaque { color: var(--destaque); }
+
+/* Réplica do login e do painel do aluno (Textos e aparência): as mesmas
+   classes das telas reais, contidas numa moldura; o texto editável ganha
+   contorno pontilhado e, se personalizado na camada, fundo amarelo. */
+.editor-telas { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 12px; }
+.editor-telas-sep { width: 1px; height: 22px; margin: 0 4px; background: var(--border); }
+.editor-ajustes { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px 28px; margin-bottom: 6px; }
+.editor-ajuste { display: grid; gap: 8px; }
+.editor-ajuste .rotulo { font-size: 13px; font-weight: 500; color: var(--text-soft); }
+.editor-ajuste .rotulo small { font-weight: 400; color: var(--faint); }
+.previa-legenda { margin: 12px 0 8px; font-size: 12.5px; color: var(--faint); }
+.previa-moldura {
+  position: relative;
+  overflow: hidden;
+  contain: paint;
+  isolation: isolate;
+  margin-bottom: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+}
+.previa-moldura .login { min-height: 0; padding: 36px 16px; }
+.previa-moldura .login-cartao { animation: none; }
+.previa-moldura .previa-entrada { display: flex; align-items: center; padding: 0 14px; color: #9a98ad; }
+.previa-moldura .previa-botao { display: grid; place-items: center; margin-top: 14px; }
+.previa-moldura .login-botao .editavel { outline-color: rgba(255, 255, 255, 0.55); }
+.previa-moldura .app { min-height: 0; }
+.previa-moldura .app-topo { position: relative; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 14px; }
+.previa-moldura .app-nav { display: flex; flex: 1 1 480px; flex-wrap: wrap; justify-content: center; }
+.previa-moldura .app-acoes .icone-btn { pointer-events: none; }
+.previa-moldura .app-main { animation: none; padding-bottom: 36px; }
+.previa-moldura .painel { display: grid; gap: 2px; }
+.previa-item-extra { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; font-size: 14px; color: var(--text-soft); }
+.previa-item-extra[data-ativo="true"] { background: var(--surface-2); color: var(--text); }
+.previa-item-extra svg { width: 17px; height: 17px; flex: none; }
+.previa-esqueleto { display: grid; gap: 10px; }
+.previa-esqueleto span { height: 12px; border-radius: 6px; background: var(--surface-2); }
+.previa-esqueleto span:nth-child(2) { width: 84%; }
+.previa-esqueleto span:nth-child(3) { width: 62%; }
+.previa-esqueleto small { margin-top: 6px; font-size: 12.5px; color: var(--faint); }
+.previa-focos { display: grid; gap: 12px; }
+.previa-recado { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.55;
+  background: color-mix(in srgb, #2563eb 7%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, #2563eb 12%, transparent); }
+.previa-recado svg { width: 16px; height: 16px; flex: none; margin-top: 3px; color: #2563eb; }
+
+.editavel { display: inline-block; max-width: 100%; border-radius: 6px; cursor: text; outline: 1.5px dashed color-mix(in srgb, var(--acento) 50%, transparent); outline-offset: 3px; transition: outline-color 0.15s ease, background 0.15s ease; }
+.editavel:hover, .editavel:focus-visible { outline-color: var(--acento); background: color-mix(in srgb, var(--acento) 9%, transparent); }
+.editavel--proprio { background: color-mix(in srgb, #f5b400 24%, transparent); }
+.editavel--bloqueado { cursor: default; outline-color: transparent; }
+.editavel--bloqueado:hover { outline-color: transparent; background: none; }
+.editavel--amostra { display: inline-block; margin: 0 4px; padding: 0 6px; cursor: default; }
+.editavel-vazio { font-style: italic; opacity: 0.6; }
+.editavel-caixa { display: inline-grid; gap: 6px; width: min(100%, 44rem); vertical-align: top; }
+.editavel-campo {
+  width: 100%;
+  padding: 2px 8px;
+  border-radius: 8px;
+  border: 1.5px solid var(--acento);
+  background: var(--surface-solid);
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  text-transform: none;
+  resize: vertical;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--acento) 18%, transparent);
+}
+.login .editavel-campo { background: #ffffff; color: #14122b; }
+.login-botao .editavel-campo { background: #ffffff; color: #14122b; text-align: center; }
+.editavel-dica { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; font-size: 12px; font-weight: 400; letter-spacing: 0; line-height: 1.45; text-transform: none; text-align: left; color: var(--muted); }
+.login .editavel-dica { color: #5d5a73; }
+.login-botao .editavel-dica { color: rgba(255, 255, 255, 0.9); }
+.editavel-dica b { font-weight: 600; color: var(--text-soft); }
+.editavel-dica button { color: var(--acento); text-decoration: underline; text-underline-offset: 2px; }
+.editor-lista .subtitulo small { margin-left: 6px; font-weight: 400; color: var(--faint); }
+.editor-cor { display: inline-block; width: 18px; height: 18px; border-radius: 5px; vertical-align: middle; border: 1px solid var(--border-strong); }
 
 /* Dashboard: cartão de saudação (quem, data e três números) */
 .saudacao { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px 28px; margin-bottom: 18px; padding: 20px 24px; }
@@ -482,3 +550,4 @@ button.selo--tempo:disabled { cursor: default; }
 .agenda-dica { margin: -4px 0 4px; }
 .dia-carga .txt-erro { color: var(--danger); font-weight: 600; }
 .dia--passado { min-height: 0; }
+.editor-lista .linha-simples small { display: block; font-size: 12px; color: var(--faint); }

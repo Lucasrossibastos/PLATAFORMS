@@ -179,8 +179,7 @@ export default function SimuladosAluno() {
   if (!registros) return <Carregando />;
   return (
     <>
-      <TituloPagina eyebrow="Provas completas" frase={t("painel.simulados.titulo")}
-        texto="Escolha uma prova, resolva no tempo dela e registre o resultado. O histórico fica separado por vestibular: cada prova tem a sua escala." />
+      <TituloPagina eyebrow={t("painel.simulados.eyebrow")} frase={t("painel.simulados.titulo")} texto={t("painel.simulados.texto")} />
       <ProvasParaFazer alunoId={eu.id} registros={registros} cursoPadrao={aluno?.cursoId} />
       <h2 className="subtitulo secao-titulo">Seus resultados</h2>
       <SimuladosDoAluno alunoId={eu.id} registros={registros} cursoPadrao={aluno?.cursoId} />

@@ -38,7 +38,7 @@ export function RedacoesAluno() {
 
   return (
     <>
-      <TituloPagina eyebrow="Devolutivas do professor" frase={t("painel.redacao.titulo")} />
+      <TituloPagina eyebrow={t("painel.redacao.eyebrow")} frase={t("painel.redacao.titulo")} />
 
       <div className="cartao como-enviar">
         <Send aria-hidden="true" />

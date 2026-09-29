@@ -680,3 +680,20 @@ describe("áreas de materiais e provas para simulado", () => {
   });
 });
 
+
+describe("textos e aparência por camada", () => {
+  it("moderador salva por jornada e por aluno; cor inválida é descartada; aluno não salva", async () => {
+    const ana = await t.uidDe("aluno@curso.com");
+    await t.entrar("moderador@curso.com");
+    const plano = await t.repo.obter("planos", ana);
+    const grupo = `jornada:${plano.modeloId}`;
+    await t.s.textos.salvar({ tipo: "grupo", grupo }, { "menu.inicio": "Hoje", "painel.cor": "#1E8F63", "painel.plano.titulo": "  " });
+    await t.s.textos.salvar({ tipo: "aluno", alunoId: ana }, { "painel.desempenho.recadoFocos": "Ana, refaça as erradas.", "painel.cor": "vermelho" });
+    const config = await t.repo.obter("config", "textos");
+    expect(config.porGrupo[grupo]).toEqual({ "menu.inicio": "Hoje", "painel.cor": "#1E8F63" });
+    expect((await t.repo.obter("textosAluno", ana)).textos).toEqual({ "painel.desempenho.recadoFocos": "Ana, refaça as erradas." });
+    await expect(t.s.textos.salvar({ tipo: "grupo", grupo: "qualquer:1" }, {})).rejects.toThrow();
+    await t.entrar("aluno@curso.com");
+    await expect(t.s.textos.salvar({ tipo: "aluno", alunoId: ana }, { "menu.inicio": "X" })).rejects.toThrow(ErroPermissao);
+  });
+});

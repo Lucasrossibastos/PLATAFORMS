@@ -10,8 +10,7 @@ export default function DesempenhoAluno() {
   if (v.carregando) return <Carregando />;
   return (
     <>
-      <TituloPagina eyebrow="Seus números" frase={t("painel.desempenho.titulo")}
-        texto="O que está indo bem, onde está o gargalo e o que revisar agora. Tudo calculado dos seus registros; a comparação é só com você mesmo." />
+      <TituloPagina eyebrow={t("painel.desempenho.eyebrow")} frase={t("painel.desempenho.titulo")} texto={t("painel.desempenho.texto")} />
       <PainelDesempenho v={v} />
     </>
   );

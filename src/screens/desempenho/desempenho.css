@@ -17,6 +17,9 @@
   --dg-eixo: #64748b;        /* slate-500 */
   --dg-texto: #0f172a;       /* slate-900 */
   --dg-superficie: #ffffff;
+  --dg-acerto: #2563eb;      /* pizza: acertos (azul, o dado positivo) */
+  --dg-erro: #f43f5e;        /* erros (rosa: separa do azul também para daltonismo) */
+  --dg-branco: #cbd5e1;      /* em branco (neutro) */
 }
 [data-theme="dark"] .dg {
   --dg-azul: #3b82f6;        /* blue-500 */
@@ -26,6 +29,9 @@
   --dg-eixo: #94a3b8;
   --dg-texto: #f8fafc;
   --dg-superficie: #0e0e0f;
+  --dg-acerto: #3b82f6;
+  --dg-erro: #f43f5e;
+  --dg-branco: #475569;
 }
 
 /* Recharts desenha um contorno de foco no SVG ao clicar; o foco visível fica

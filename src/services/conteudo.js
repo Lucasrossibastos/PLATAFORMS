@@ -8,6 +8,7 @@ import { ErroValidacao, opsDeLog, recentesPrimeiro } from "./base.js";
 import { mediaDoTema, normalizarTema } from "../redacao.js";
 import { playlistVisivelPara } from "../midia.js";
 import { validarPdf } from "../core/validacao.js";
+import { TEXTOS, ehCor } from "../textos.js";
 
 export { playlistVisivelPara };
 
@@ -161,13 +162,15 @@ export function servicoRedacao(ctx) {
 }
 
 /* ---------- Textos e boas-vindas ----------
-   config/textos:        { geral: {chave: texto}, porGrupo: { "vestibular:ID" | "curso:ID": {…} }, corDestaque }
+   config/textos:        { geral: {chave: texto}, porGrupo: { "jornada:ID" | "vestibular:ID" | "curso:ID": {…} }, corDestaque }
    textosAluno/{uid}:    { textos: {chave: texto} }   (privado: só o aluno e o moderador leem)
    config/boasVindas:    { hero, blocos }             (público: aparece no login) */
 
 export function servicoTextos(ctx) {
   const { repo } = ctx;
-  const limpar = (obj = {}) => Object.fromEntries(Object.entries(obj).filter(([, v]) => String(v ?? "").trim() !== ""));
+  // campo vazio = herdar; cor só em #rrggbb
+  const limpar = (obj = {}) => Object.fromEntries(Object.entries(obj)
+    .filter(([k, v]) => String(v ?? "").trim() !== "" && (TEXTOS[k]?.tipo !== "cor" || ehCor(v))));
   return {
     observar: (cb) => repo.observarDoc("config", "textos", (d) => cb({ geral: {}, porGrupo: {}, ...(d || {}) })),
     observarDoAluno(alunoId, cb) {
@@ -190,7 +193,7 @@ export function servicoTextos(ctx) {
       const novo = { geral: atual.geral || {}, porGrupo: atual.porGrupo || {}, corDestaque: atual.corDestaque || null, ...extras };
       if (escopo.tipo === "geral") novo.geral = limpar(textos);
       else if (escopo.tipo === "grupo") {
-        if (!/^(vestibular|curso):/.test(escopo.grupo || "")) throw new ErroDados("Grupo inválido.");
+        if (!/^(jornada|vestibular|curso):/.test(escopo.grupo || "")) throw new ErroDados("Grupo inválido.");
         novo.porGrupo = { ...novo.porGrupo, [escopo.grupo]: limpar(textos) };
         if (!Object.keys(novo.porGrupo[escopo.grupo]).length) delete novo.porGrupo[escopo.grupo];
       }

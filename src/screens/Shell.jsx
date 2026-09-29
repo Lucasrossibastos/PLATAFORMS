@@ -2,7 +2,8 @@ import { Suspense, useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Bell, ChevronDown, GraduationCap, LogOut, Moon, RotateCcw, Sun } from "lucide-react";
 import { useApp } from "../state/AppContext.jsx";
-import { useNotificacoes } from "../state/hooks.js";
+import { useFrases, useNotificacoes } from "../state/hooks.js";
+import { ehCor } from "../textos.js";
 import { useTema } from "../state/tema.js";
 import { baseDoPapel, todosDoMenu } from "../navegacao.js";
 import { MenuCheio } from "../ui/MenuCheio.jsx";
@@ -32,6 +33,11 @@ export default function Shell({ menu }) {
   const [rolou, setRolou] = useState(false);
   const [aberto, setAberto] = useState(null); // "mais" | "conta" | null
   const [menuCel, setMenuCel] = useState(false);
+  // aluno: nomes das abas e cor de destaque vêm dos textos (jornada/aluno)
+  const aluno = usuario.role === "aluno";
+  const t = useFrases(aluno ? { ...usuario, id: usuario.uid } : null);
+  const nome = (item) => (aluno ? t(`menu.${item.k}`) || item.label : item.label);
+  const cor = aluno ? t("painel.cor") : "";
 
   useEffect(() => {
     const f = () => setRolou(window.scrollY > 8);
@@ -63,23 +69,23 @@ export default function Shell({ menu }) {
   };
 
   return (
-    <div className="app">
+    <div className="app" {...(ehCor(cor) ? { "data-acento": "", style: { "--acento-escolhido": cor } } : {})}>
       <header className={`app-topo${rolou ? " rolou" : ""}`}>
         <NavLink to={base} aria-label="Início"><Marca /></NavLink>
 
         <nav className="app-nav" aria-label="Principal">
           {principais.map((item) => (
-            <NavLink key={item.k} to={rota(item)} className="app-nav-item"><item.icone aria-hidden="true" />{item.label}</NavLink>
+            <NavLink key={item.k} to={rota(item)} className="app-nav-item"><item.icone aria-hidden="true" />{nome(item)}</NavLink>
           ))}
           {extras.length > 0 && (
             <div style={{ position: "relative" }}>
               <button type="button" className="app-nav-item" aria-expanded={aberto === "mais"} data-ativo={extraAtivo} onClick={() => alternar("mais")}>
-                {menu.extra.label}<ChevronDown aria-hidden="true" className="app-nav-seta" />
+                {aluno ? t("menu.extra") || menu.extra.label : menu.extra.label}<ChevronDown aria-hidden="true" className="app-nav-seta" />
               </button>
               {aberto === "mais" && (
                 <div className="painel" style={{ right: "auto", left: 0 }}>
                   {extras.map((item) => (
-                    <NavLink key={item.k} to={rota(item)}><item.icone aria-hidden="true" />{item.label}</NavLink>
+                    <NavLink key={item.k} to={rota(item)}><item.icone aria-hidden="true" />{nome(item)}</NavLink>
                   ))}
                 </div>
               )}
@@ -131,7 +137,7 @@ export default function Shell({ menu }) {
         <div className="menu-cheio-lista">
           {todosDoMenu(menu).map((item) => (
             <NavLink key={item.k} to={rota(item)} className="metal" onClick={() => setMenuCel(false)}>
-              <item.icone aria-hidden="true" />{item.label}
+              <item.icone aria-hidden="true" />{nome(item)}
             </NavLink>
           ))}
         </div>
