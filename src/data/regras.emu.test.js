@@ -283,3 +283,83 @@ describe("arquivos (Storage)", () => {
     await assertSucceeds(uploadBytes(ref(st("mod"), "materiais/m1/a.pdf"), pdf, { contentType: "application/pdf" }));
   });
 });
+
+describe("metas: horário versionado, registro de metas e revisões recorrentes", () => {
+  const diaUTC = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+  const meta = (extra = {}) => ({ alunoId: "ana", categoria: "progressao", materiaId: "biologia", dataPlanejada: diaUTC(3), duracaoPlanejada: 50, status: "pendente", datasAnteriores: [], geradaEm: "2026-09-28", ...extra });
+  const semRegras = (fn) => env.withSecurityRulesDisabled((ctx) => fn(ctx.firestore()));
+
+  it("horário: o aluno só acrescenta versão (com log); reescrever ou apagar a antiga falha", async () => {
+    const a = db("ana");
+    const v1 = { desde: "2026-08-03", dias: { seg: 60 } };
+    const v2 = { desde: diaUTC(1), dias: { seg: 30 } };
+    const ok = writeBatch(a);
+    ok.set(doc(a, "logs/h1"), log("ana", "ana"));
+    ok.update(doc(a, "planos/ana"), { horarios: [v1, v2], disponibilidade: { seg: 60 }, ultimoLogId: "h1" });
+    await assertSucceeds(ok.commit());
+    const reescreve = writeBatch(a);
+    reescreve.set(doc(a, "logs/h2"), log("ana", "ana"));
+    reescreve.update(doc(a, "planos/ana"), { horarios: [{ ...v1, dias: { seg: 999 } }, v2, { desde: diaUTC(2), dias: { seg: 10 } }], ultimoLogId: "h2" });
+    await assertFails(reescreve.commit());
+    const apaga = writeBatch(a);
+    apaga.set(doc(a, "logs/h3"), log("ana", "ana"));
+    apaga.update(doc(a, "planos/ana"), { horarios: [v2, { desde: diaUTC(2), dias: { seg: 10 } }], ultimoLogId: "h3" });
+    await assertFails(apaga.commit());
+  });
+
+  it("meta: o aluno cria a própria, pendente e válida", async () => {
+    await assertSucceeds(setDoc(doc(db("ana"), "metas/m1"), meta()));
+    await assertFails(setDoc(doc(db("ana"), "metas/m2"), meta({ alunoId: "carlos" })));
+    await assertFails(setDoc(doc(db("ana"), "metas/m3"), meta({ status: "concluida" })));
+    await assertFails(setDoc(doc(db("ana"), "metas/m4"), meta({ categoria: "qualquer" })));
+    await assertFails(setDoc(doc(db("ana"), "metas/m5"), meta({ datasAnteriores: [diaUTC(-5)] })));
+    await assertFails(getDoc(doc(db("carlos"), "metas/m1")));
+  });
+
+  it("meta pendente muda de dia; a que passou do dia registra o dia perdido e não é apagada", async () => {
+    await semRegras(async (d) => {
+      await setDoc(doc(d, "metas/futura"), meta());
+      await setDoc(doc(d, "metas/perdida"), meta({ dataPlanejada: diaUTC(-3) }));
+    });
+    const a = db("ana");
+    await assertSucceeds(updateDoc(doc(a, "metas/futura"), { dataPlanejada: diaUTC(5) }));
+    await assertFails(updateDoc(doc(a, "metas/perdida"), { dataPlanejada: diaUTC(1) })); // sem guardar o dia perdido
+    await assertSucceeds(updateDoc(doc(a, "metas/perdida"), { dataPlanejada: diaUTC(1), datasAnteriores: [diaUTC(-3)] }));
+    await assertFails(updateDoc(doc(a, "metas/perdida"), { datasAnteriores: [] })); // não some
+    await assertFails(deleteDoc(doc(a, "metas/perdida")));
+    await assertSucceeds(deleteDoc(doc(a, "metas/futura"))); // replanejar o futuro pode
+  });
+
+  it("meta concluída é histórico: só muda ou sai com log", async () => {
+    await semRegras((d) => setDoc(doc(d, "metas/m1"), meta()));
+    const a = db("ana");
+    await assertFails(updateDoc(doc(a, "metas/m1"), { status: "concluida", concluidaEm: hojeIso, duracaoReal: 50 })); // sem o carimbo do servidor
+    await assertSucceeds(updateDoc(doc(a, "metas/m1"), { status: "concluida", concluidaEm: hojeIso, duracaoReal: 50, concluidaEmTs: serverTimestamp() }));
+    await assertFails(updateDoc(doc(a, "metas/m1"), { duracaoReal: 90 }));
+    await assertFails(updateDoc(doc(a, "metas/m1"), { status: "pendente" }));
+    await assertFails(deleteDoc(doc(a, "metas/m1")));
+    const corrige = writeBatch(a);
+    corrige.set(doc(a, "logs/c1"), log("ana", "ana"));
+    corrige.update(doc(a, "metas/m1"), { duracaoReal: 45, ultimoLogId: "c1" });
+    await assertSucceeds(corrige.commit());
+    const apaga = writeBatch(a);
+    apaga.set(doc(a, "logs/rm_m1"), log("ana", "ana"));
+    apaga.delete(doc(a, "metas/m1"));
+    await assertSucceeds(apaga.commit());
+  });
+
+  it("revisão recorrente: só o moderador ativa e edita (parâmetros só acrescentam); ninguém apaga", async () => {
+    const p1 = { desde: "2026-09-01", intervaloDias: 7, duracaoMin: 20, dataBase: "2026-09-01", modoAtraso: "fixo" };
+    const rev = { alunoId: "ana", materiaId: "biologia", topicoId: "bi1", itemId: "t:bi1", ativo: true, ativadoPor: "mod", parametros: [p1] };
+    await assertFails(setDoc(doc(db("ana"), "revisoesRecorrentes/r1"), rev));
+    await assertSucceeds(setDoc(doc(db("mod"), "revisoesRecorrentes/r1"), rev));
+    await assertSucceeds(getDoc(doc(db("ana"), "revisoesRecorrentes/r1")));
+    await assertFails(getDoc(doc(db("carlos"), "revisoesRecorrentes/r1")));
+    await assertFails(updateDoc(doc(db("ana"), "revisoesRecorrentes/r1"), { ativo: false }));
+    await assertSucceeds(updateDoc(doc(db("mod"), "revisoesRecorrentes/r1"), { parametros: [p1, { ...p1, desde: "2026-09-15", intervaloDias: 14 }] }));
+    await assertFails(updateDoc(doc(db("mod"), "revisoesRecorrentes/r1"), { parametros: [{ ...p1, intervaloDias: 3 }] }));
+    await assertFails(updateDoc(doc(db("mod"), "revisoesRecorrentes/r1"), { itemId: "t:outro" }));
+    await assertSucceeds(updateDoc(doc(db("mod"), "revisoesRecorrentes/r1"), { ativo: false, desativadoPor: "mod" }));
+    await assertFails(deleteDoc(doc(db("mod"), "revisoesRecorrentes/r1")));
+  });
+});

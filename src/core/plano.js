@@ -407,11 +407,12 @@ export function alterarPlano(plano, ind, op) {
     case "definirMateria": {
       const m = mat(op.materiaId);
       if (!m) break;
-      const rotulos = { minutosSemanais: "horas por semana", maxSessao: "duração de cada meta", prioridade: "prioridade", ritmo: "velocidade", ativa: "aparecimento" };
+      const rotulos = { minutosSemanais: "horas por semana", maxSessao: "duração de cada meta", prioridade: "prioridade", ritmo: "velocidade", ativa: "aparecimento", peso: "peso" };
       const fmt = (k, v) => (k === "ativa" ? (v === false ? "oculta" : "visível") : k === "prioridade" ? PRIORIDADES.find((p) => p.id === v)?.nome ?? v : k === "ritmo" ? nomeRitmo(v) : v);
       Object.entries(op.campos || {}).forEach(([k, v]) => {
         const atual = k === "ativa" ? m.ativa !== false : m[k];
         if (!(k in rotulos) || atual === v) return;
+        if (k === "peso" && !(Number.isInteger(v) && v >= 1 && v <= 10)) throw new Error("Peso: número inteiro de 1 a 10.");
         registrar(op.tipo, `Mudou ${rotulos[k]} de ${nomeM}`, fmt(k, atual ?? null), fmt(k, v));
         m[k] = v;
       });

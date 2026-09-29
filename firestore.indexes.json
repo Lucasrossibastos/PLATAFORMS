@@ -31,6 +31,14 @@
         { "fieldPath": "cartaoId", "order": "ASCENDING" },
         { "fieldPath": "feitaEm", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "metas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "alunoId", "order": "ASCENDING" },
+        { "fieldPath": "dataPlanejada", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

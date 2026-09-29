@@ -105,6 +105,16 @@ service cloud.firestore {
 
     /* ---------- plano individual ---------- */
 
+    // horário semanal versionado: só se acrescenta versão (as antigas explicam as metas passadas);
+    // o plano antigo, sem lista, pode gravar a versão deduzida junto com a nova.
+    // (hasAll + tamanho: nenhuma versão antiga some nem muda.)
+    function horariosSoAcrescentam() {
+      let velhos = antigo().get('horarios', []);
+      let novos = novo().horarios;
+      return novos is list && novos.size() > velhos.size() && novos.size() <= velhos.size() + 2
+        && novos.hasAll(velhos);
+    }
+
     // O aluno só muda o que o moderador liberou em permissoesAluno, e sempre
     // com log no mesmo lote. `materias` (incidência, matérias visíveis,
     // tópicos) é só do moderador: a ordem que o aluno escolhe fica em
@@ -113,9 +123,10 @@ service cloud.firestore {
     function planoDoAlunoOk(alunoId) {
       let perm = antigo().get('permissoesAluno', {});
       let m = mudou();
-      return m.hasOnly(['ordemTopicos', 'disponibilidade', 'ritmo', 'alocacaoSemanal', 'cronograma', 'fimPrevisto', 'recalculadoEm', 'atualizadoEm', 'ultimoLogId'])
+      return m.hasOnly(['ordemTopicos', 'disponibilidade', 'horarios', 'ritmo', 'alocacaoSemanal', 'cronograma', 'fimPrevisto', 'recalculadoEm', 'atualizadoEm', 'ultimoLogId'])
         && (!m.hasAny(['ordemTopicos']) || (perm.get('reordenar', false) == true && novo().ordemTopicos is map))
         && (!m.hasAny(['disponibilidade']) || perm.get('disponibilidade', false) == true)
+        && (!m.hasAny(['horarios']) || (perm.get('disponibilidade', false) == true && horariosSoAcrescentam()))
         && (!m.hasAny(['ritmo']) || perm.get('ritmo', false) == true)
         && (!m.hasAny(['alocacaoSemanal', 'cronograma', 'fimPrevisto']) || m.hasAny(['ordemTopicos', 'disponibilidade', 'ritmo']) || perm.get('recalcular', false) == true)
         && logNoLote(novo().ultimoLogId, alunoId);
@@ -164,6 +175,65 @@ service cloud.firestore {
       allow create: if moderador() || proprio(novo().alunoId);
       allow update: if (moderador() || proprio(antigo().alunoId)) && soMuda(['sessoes']);
       allow delete: if moderador() || proprio(antigo().alunoId);
+    }
+
+    /* ---------- metas (registro de cada meta) e revisões recorrentes ----------
+       A meta concluída é histórico: só muda ou sai com log no mesmo lote (o
+       aluno, nas primeiras 24 h). A pendente muda de dia livremente; a que
+       passou do dia sem ser feita guarda esse dia em datasAnteriores e não é
+       apagada. "Passou do dia" aqui é conservador (vale em qualquer fuso). */
+
+    function dataIso(d) { return d is string && d.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'); }
+    function diaPassado(d) { return d < dataUTC(request.time - duration.value(14, 'h')); }
+    function metaValida(d) {
+      return d.alunoId is string
+        && d.categoria in ['progressao', 'rever_do_zero', 'revisao_recorrente', 'revisao_automatica']
+        && d.materiaId is string && dataIso(d.dataPlanejada)
+        && d.duracaoPlanejada is int && d.duracaoPlanejada >= 5 && d.duracaoPlanejada <= 720
+        && d.status in ['pendente', 'concluida']
+        && d.get('datasAnteriores', []) is list;
+    }
+    // os dias perdidos só crescem; mudar de dia uma meta que já passou registra o dia perdido
+    function diasPerdidosOk() {
+      let velhos = antigo().get('datasAnteriores', []);
+      let novos = novo().get('datasAnteriores', []);
+      return novos.size() >= velhos.size() && novos.hasAll(velhos)
+        && (novo().dataPlanejada == antigo().dataPlanejada || !diaPassado(antigo().dataPlanejada)
+            || (novos.size() == velhos.size() + 1 && antigo().dataPlanejada in novos));
+    }
+    function correcaoDeMetaOk(alunoId) {
+      return alteracaoRegistrada(alunoId)
+        && (moderador() || request.time < antigo().concluidaEmTs + duration.value(24, 'h'));
+    }
+
+    match /metas/{id} {
+      allow read: if podeLerRegistro();
+      allow create: if (moderador() || proprio(novo().alunoId)) && metaValida(novo()) && novo().status == 'pendente'
+        && novo().get('datasAnteriores', []).size() == 0;
+      allow update: if (moderador() || proprio(antigo().alunoId)) && metaValida(novo())
+        && imutaveis(['alunoId', 'categoria', 'geradaEm'])
+        && (antigo().status == 'pendente'
+              ? diasPerdidosOk() && (novo().status == 'pendente' || novo().concluidaEmTs == request.time)
+              : correcaoDeMetaOk(antigo().alunoId));
+      allow delete: if (moderador() || proprio(antigo().alunoId))
+        && (antigo().status == 'pendente'
+              ? antigo().get('datasAnteriores', []).size() == 0 && !diaPassado(antigo().dataPlanejada)
+              : exclusaoRegistrada(id, antigo().alunoId) && (moderador() || request.time < antigo().concluidaEmTs + duration.value(24, 'h')));
+    }
+
+    // Revisão recorrente: só o moderador ativa, edita e desativa. Nunca é
+    // apagada (desativar mantém o histórico); os parâmetros só acrescentam versão.
+    function parametrosSoAcrescentam() {
+      let velhos = antigo().get('parametros', []);
+      return novo().parametros is list && novo().parametros.size() >= velhos.size()
+        && novo().parametros.hasAll(velhos);
+    }
+    match /revisoesRecorrentes/{id} {
+      allow read: if podeLerRegistro();
+      allow create: if moderador() && novo().alunoId is string && novo().itemId is string
+        && novo().ativo is bool && novo().parametros is list && novo().parametros.size() == 1;
+      allow update: if moderador() && imutaveis(['alunoId', 'itemId', 'topicoId', 'materiaId']) && parametrosSoAcrescentam();
+      allow delete: if false;
     }
 
     /* ---------- semana e sessões de estudo ---------- */

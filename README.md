@@ -137,6 +137,14 @@ firestore.rules, storage.rules   controle de acesso real
   tira das listas, mas o histórico continua mostrando o nome.
 - **Datas locais**: nada de `toISOString()` para datas do dia; ver
   `core/datas.js`.
+- **Metas diárias (em implantação, por etapas)**: modelo em `core/jornada.js`
+  (peso de 1 a 10 por matéria e o que é herdado da jornada × sobrescrito no
+  aluno, em `plano.sobrescritos`), `core/horario.js` (horário semanal
+  versionado em `plano.horarios`, só acrescenta), `core/ciclos.js` (cada vez
+  que um tópico é estudado é um ciclo em `progresso.itens[i].ciclos`; "rever
+  do zero" abre outro sem apagar a conclusão; fila da matéria com um tópico
+  atual; % vista), `core/metas.js` e `core/revisaoRecorrente.js`. Dados
+  antigos são lidos no formato novo sem regravação: nada do histórico muda.
 
 ### Coleções
 
@@ -159,6 +167,8 @@ firestore.rules, storage.rules   controle de acesso real
 | `playlists`, `progressoVideos` | aulas em vídeo (com os programas que veem) e aulas assistidas |
 | `devolutivas` | correções de redação (foto marcada, textos anexados, notas, observações) |
 | `notificacoes` | um documento por aluno e aviso (`lidaEm` por aluno) |
+| `metas` | cada meta, com categoria (`progressao`, `rever_do_zero`, `revisao_recorrente`), dia planejado, duração planejada e real, dias em que não foi feita e, ao concluir, a % vista de cada tópico (modelo pronto; o motor passa a gravar na etapa 2) |
+| `revisoesRecorrentes` | revisão recorrente de um tópico concluído, ativada pelo moderador (intervalo, duração, data-base, modo de atraso; parâmetros só acrescentam versão) |
 | `logs` | histórico de alterações |
 | `config/{instalacao, textos, boasVindas, redacao}`, `textosAluno/{uid}` | configuração e textos |
 
