@@ -238,7 +238,7 @@ export function Jornada() {
       )}
 
       <details className="recolhivel">
-        <summary>Regras da jornada <small>velocidade, data-alvo, revisões e o que o aluno pode mudar</small></summary>
+        <summary>Regras da jornada <small>velocidade, data-alvo e o que o aluno pode mudar</small></summary>
         <Organizacao modelo plano={modelo} pode={{ ritmo: true, prazo: true, permissoes: true }} aoOperar={(op) => operar(op)} ocupado={ocupado} />
       </details>
       {editar && <DadosDaJornada modelo={modelo} fechar={() => setEditar(false)} />}

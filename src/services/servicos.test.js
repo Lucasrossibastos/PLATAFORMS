@@ -335,6 +335,27 @@ describe("metas diárias, sessões e progresso", () => {
     expect(tipos).toEqual(expect.arrayContaining(["ativarRevisao", "editarRevisao", "desativarRevisao"]));
   });
 
+  it("dados antigos: a semana do sistema velho vira resumo parcial (sem apagar nada) e o 'Ver de novo' antigo vira ciclo 2", async () => {
+    const ana = await t.uidDe("aluno@curso.com");
+    const ind = await t.s.ctx.indice();
+    const [item] = itensDoPlano(await t.repo.obter("planos", ana), ind);
+    const semanaAntiga = {
+      alunoId: ana, chave: "2026-09-28", pendentes: [], editada: false, geracao: 0,
+      metas: { seg: [{ id: "x1", tipo: "ciclo", materiaId: item.materiaId, minutos: 50, done: true, feitoEm: "2026-09-28" }, { id: "x2", tipo: "ciclo", materiaId: item.materiaId, minutos: 30, done: false }], ter: [], qua: [], qui: [], sex: [], sab: [], dom: [] },
+    };
+    await t.repo.lote([
+      { tipo: "definir", colecao: "semanas", id: ana, dados: semanaAntiga },
+      { tipo: "mesclar", colecao: "progresso", id: ana, dados: { itens: { [item.itemId]: { minutos: item.duracao, concluido: false } } } },
+    ]);
+    await t.entrar("aluno@curso.com");
+    await t.s.metas.garantir(ana);
+    expect(await t.repo.obter("resumosSemana", `${ana}_2026-09-28`)).toMatchObject({ metas: 2, cumpridas: 1, naoCumpridas: 1, fonte: "semanas", parcial: true });
+    expect((await t.repo.obter("semanas", ana)).metas.seg).toHaveLength(2); // o registro antigo continua lá
+    const prog = (await t.repo.obter("progresso", ana)).itens;
+    const fila = filaDaMateria(itensDoPlano(await t.repo.obter("planos", ana), ind).filter((it) => it.materiaId === item.materiaId), prog);
+    expect(fila.estados.get(item.itemId)).toMatchObject({ ciclo: 2, pctVisto: 1, restante: item.duracao, vezesConcluido: 1 });
+  });
+
   it("menos horas na semana: revisões não são cortadas; o dia fica em conflito, visível ao moderador", async () => {
     const ana = await t.uidDe("aluno@curso.com");
     const ind = await t.s.ctx.indice();

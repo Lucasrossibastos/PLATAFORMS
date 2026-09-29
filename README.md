@@ -2,16 +2,19 @@
 
 React 19 + Vite. Dois papéis, **aluno** e **moderador**, sobre dados reais.
 
-- **Aluno**: Dashboard (metas de hoje ou da semana), Edital (matérias em
-  blocos → tópicos → subtópicos; corta o que já viu, volta a ver, muda a
-  ordem), Meus cursos (aulas em vídeo), Redação, Desempenho e, em Extra,
+- **Aluno**: Dashboard (metas de hoje, com a % de cada tópico, ou as
+  próximas duas semanas, com arrastar para outro dia e o resumo da semana),
+  Edital (matérias em blocos → fila de estudo de cada matéria; marca o que
+  já viu, revê do zero, arrasta para mudar a ordem), Meus cursos (aulas em vídeo), Redação, Desempenho e, em Extra,
   Questões, Simulados e Materiais. Materiais abre em blocos coloridos por
   área (Listas de Física…); dentro, cada lista mostra matéria, tópico e
   número de questões, e "Registrar acertos" já vem preenchido. Simulados
   mostra a galeria de provas (capa do caderno em cima, nome embaixo): abrir
   o PDF, resolver e registrar o resultado ligado à prova.
-- **Moderador**: quase tudo fica dentro de cada aluno (edital com incidência,
-  metas e matérias visíveis só para ele, redações, registros, histórico).
+- **Moderador**: quase tudo fica dentro de cada aluno (edital com peso de
+  cada matéria, o que foi mudado só para ele × herdado da jornada, matérias
+  visíveis, revisões recorrentes por tópico, conflitos, redações, registros,
+  histórico).
   No geral: Jornadas (o conteúdo programático de cada vestibular/curso),
   Materiais (cria as áreas, com um clique cria uma por matéria, e anexa as
   listas dentro delas), Simulados (anexa o PDF de cada prova; a capa sai
@@ -106,8 +109,8 @@ cadastros públicos no Google Cloud (Identity Platform).
 ## Arquitetura
 
 ```
-src/core/       regras puras (sem React, sem banco): plano, semana, desempenho,
-                validação, permissões, datas; nucleo.js é o motor original
+src/core/       regras puras (sem React, sem banco): plano, ciclos, motor de metas,
+                desempenho, validação, permissões, datas; nucleo.js tem os catálogos
 src/data/       repositório: contrato.js, local.js (demo), firebase.js, semente.js
 src/services/   serviços de domínio: única porta da interface para os dados
 src/state/      provedor React e hooks de leitura em tempo real
@@ -137,14 +140,22 @@ firestore.rules, storage.rules   controle de acesso real
   tira das listas, mas o histórico continua mostrando o nome.
 - **Datas locais**: nada de `toISOString()` para datas do dia; ver
   `core/datas.js`.
-- **Metas diárias (em implantação, por etapas)**: modelo em `core/jornada.js`
-  (peso de 1 a 10 por matéria e o que é herdado da jornada × sobrescrito no
-  aluno, em `plano.sobrescritos`), `core/horario.js` (horário semanal
-  versionado em `plano.horarios`, só acrescenta), `core/ciclos.js` (cada vez
-  que um tópico é estudado é um ciclo em `progresso.itens[i].ciclos`; "rever
-  do zero" abre outro sem apagar a conclusão; fila da matéria com um tópico
-  atual; % vista), `core/metas.js` e `core/revisaoRecorrente.js`. Dados
-  antigos são lidos no formato novo sem regravação: nada do histórico muda.
+- **Metas diárias**: `core/motorMetas.js` planeja as próximas duas semanas
+  (roda na virada do dia e depois de toda mudança que afeta o plano, sempre
+  com registro de antes/depois). Em cada dia, as revisões entram primeiro
+  (se passarem do horário, o dia fica em conflito, à vista do moderador;
+  nada é cortado); o resto vai para a progressão, dividido pelo peso das
+  matérias semana a semana. A meta de progressão é tempo de uma matéria e
+  segue a fila dela (termina um tópico e continua no próximo); ao concluir,
+  grava a % vista de cada tópico, que forma a % da matéria e do plano. Meta
+  concluída nunca muda; a que passou do dia leva o dia perdido; a que sobra
+  com histórico é dispensada, não apagada. Peças: `core/jornada.js` (peso e
+  herdado × sobrescrito em `plano.sobrescritos`), `core/horario.js`
+  (horário em versões, `plano.horarios`), `core/ciclos.js` (cada estudo de
+  um tópico é um ciclo; "rever do zero" abre outro sem apagar a conclusão;
+  fila com um tópico atual por matéria), `core/metas.js`,
+  `core/revisaoRecorrente.js`. Dados antigos são lidos no formato novo sem
+  regravação; a semana do sistema antigo vira um resumo parcial.
 
 ### Coleções
 
@@ -152,14 +163,14 @@ firestore.rules, storage.rules   controle de acesso real
 |---|---|
 | `usuarios/{uid}` | papel (`aluno`/`moderador`), nome, e-mail, vestibular, curso, turma, acesso |
 | `areas`, `materias`, `topicos`, `subtopicos`, `vestibulares`, `cursos` | estrutura acadêmica (id, nome, ordem, pai, carga, arquivado) |
-| `modelosPlano` | jornadas (vestibular, curso, modalidade, matérias em ordem com incidência, prioridade, velocidade e visibilidade, tópicos, revisões, permissões do aluno) |
+| `modelosPlano` | jornadas (vestibular, curso, modalidade, matérias em ordem com peso, duração de cada meta, prioridade, velocidade e visibilidade, tópicos, permissões do aluno) |
 | `planos/{alunoId}` | edital do aluno (cópia editável da jornada) + cronograma recalculado |
 | `planosAnteriores` | edital substituído, guardado inteiro |
 | `vistos/{alunoId}` | subtópicos que o aluno marcou como vistos |
-| `progresso/{alunoId}` | minutos e conclusão por conteúdo (somados junto com cada sessão) |
-| `semanas/{alunoId}`, `resumosSemana` | metas da semana atual e fechamento das semanas |
-| `sessoesEstudo` | cada estudo feito (data, conteúdo, minutos, origem) |
-| `revisoes` | revisões espaçadas (agendada, realizada, atrasada, ignorada) |
+| `progresso/{alunoId}` | minutos e ciclos por tópico (somados junto com cada sessão) |
+| `semanas/{alunoId}`, `resumosSemana` | sistema antigo de metas semanais (só leitura; o fechamento das semanas antigas continua contando) |
+| `sessoesEstudo` | cada estudo feito (data, conteúdo, minutos, origem, meta) |
+| `revisoes` | revisões automáticas antigas (7/15/30 dias): não são mais criadas; as agendadas terminam como metas |
 | `questoes`, `simulados` | registros do aluno (simulado com PDF opcional no Storage e `provaId` quando veio da galeria) |
 | `areasMateriais` | as áreas de Materiais (nome, linha de cima, cor, ícone, matéria sugerida, ordem) |
 | `materiais` | metadados do PDF (título, área, matéria/tópico/subtópico, tipo, número de questões, programas, data, tags, referência do arquivo) |
@@ -167,8 +178,9 @@ firestore.rules, storage.rules   controle de acesso real
 | `playlists`, `progressoVideos` | aulas em vídeo (com os programas que veem) e aulas assistidas |
 | `devolutivas` | correções de redação (foto marcada, textos anexados, notas, observações) |
 | `notificacoes` | um documento por aluno e aviso (`lidaEm` por aluno) |
-| `metas` | cada meta, com categoria (`progressao`, `rever_do_zero`, `revisao_recorrente`), dia planejado, duração planejada e real, dias em que não foi feita e, ao concluir, a % vista de cada tópico (modelo pronto; o motor passa a gravar na etapa 2) |
-| `revisoesRecorrentes` | revisão recorrente de um tópico concluído, ativada pelo moderador (intervalo, duração, data-base, modo de atraso; parâmetros só acrescentam versão) |
+| `metas` | cada meta, com categoria (`progressao`, `rever_do_zero`, `revisao_recorrente`, `revisao_automatica`), dia planejado, duração planejada e real, dias em que não foi feita, fixada pelo aluno e, ao concluir, a % vista de cada tópico |
+| `agendas/{alunoId}` | quando o motor de metas rodou e os dias em conflito do horizonte |
+| `revisoesRecorrentes/{alunoId__itemId}` | revisão recorrente de um tópico visto, ativada pelo moderador (intervalo, duração, data-base, modo de atraso; parâmetros só acrescentam versão; nunca apagada) |
 | `logs` | histórico de alterações |
 | `config/{instalacao, textos, boasVindas, redacao}`, `textosAluno/{uid}` | configuração e textos |
 
