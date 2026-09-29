@@ -3,16 +3,35 @@
 
 import { Link } from "react-router-dom";
 import {
-  Atom, BookOpen, Brain, Calculator, Dna, ExternalLink, FileQuestion, FlaskConical, FolderOpen, Globe2, Landmark, Languages, ListChecks, PenLine, Users,
+  Atom, Award, Beaker, Binary, Bird, Bone, BookOpen, BookOpenText, Brain, Bug, Building2, Calculator, CalendarDays, Castle, ChartLine,
+  Church, ClipboardList, CloudSun, Code, Coins, Compass, Crown, Dna, Drama, Earth, ExternalLink, Factory, Feather, FileQuestion, Fish,
+  Flag, FlaskConical, FolderOpen, Gavel, Globe2, GraduationCap, Handshake, HeartPulse, Headphones, Highlighter, Hourglass,
+  Infinity as Infinito, Landmark, Languages, Laptop, Leaf, Library, Lightbulb, ListChecks, Magnet, Map as Mapa, MessagesSquare, Mic,
+  Microscope, Mountain, Music, Newspaper, NotebookPen, Orbit, Palette, PenLine, Percent, Pi, Puzzle, Pyramid, Quote, Radiation, Rocket,
+  Ruler, Scale, Scroll, Shapes, Sigma, SpellCheck, Sprout, Star, Stethoscope, Swords, Target, Telescope, TestTube, TestTubes,
+  Thermometer, Tractor, TreePine, Triangle, Trophy, Users, Variable, Video, Vote, Waves, Zap,
 } from "lucide-react";
 import { useApp } from "../state/AppContext.jsx";
 import { useAreasMateriais, useArquivoUrl } from "../state/hooks.js";
 import { AREA_DA_MATERIA, nomeTipoMaterial } from "../services/materiais.js";
 import { NomeConteudo } from "./Conteudo.jsx";
 
+// o desenho de cada ícone (os ids e os grupos ficam em services/materiais.js)
 export const ICONES_AREA = {
-  calculadora: Calculator, atomo: Atom, dna: Dna, frasco: FlaskConical, idiomas: Languages, cerebro: Brain,
-  pessoas: Users, globo: Globe2, coluna: Landmark, livro: BookOpen, caneta: PenLine, lista: ListChecks,
+  calculadora: Calculator, sigma: Sigma, pi: Pi, variavel: Variable, porcentagem: Percent, infinito: Infinito, regua: Ruler,
+  triangulo: Triangle, formas: Shapes, piramide: Pyramid, grafico: ChartLine, binario: Binary,
+  atomo: Atom, ima: Magnet, raio: Zap, ondas: Waves, termometro: Thermometer, telescopio: Telescope, orbita: Orbit, radiacao: Radiation,
+  frasco: FlaskConical, becker: Beaker, tubo: TestTube, tubos: TestTubes, dna: Dna, microscopio: Microscope, folha: Leaf, broto: Sprout,
+  arvore: TreePine, coracao: HeartPulse, osso: Bone, inseto: Bug, peixe: Fish, passaro: Bird, estetoscopio: Stethoscope,
+  globo: Globe2, terra: Earth, mapa: Mapa, bussola: Compass, montanha: Mountain, clima: CloudSun, coluna: Landmark, pergaminho: Scroll,
+  coroa: Crown, espadas: Swords, castelo: Castle, bandeira: Flag, balanca: Scale, martelo: Gavel, voto: Vote, pessoas: Users,
+  acordo: Handshake, cidade: Building2, fabrica: Factory, trator: Tractor, moedas: Coins, igreja: Church, cerebro: Brain,
+  idiomas: Languages, caneta: PenLine, pena: Feather, aspas: Quote, ortografia: SpellCheck, conversa: MessagesSquare, jornal: Newspaper,
+  microfone: Mic, teatro: Drama, musica: Music, paleta: Palette,
+  livro: BookOpen, livroTexto: BookOpenText, biblioteca: Library, caderno: NotebookPen, lista: ListChecks, prancheta: ClipboardList,
+  marcaTexto: Highlighter, lampada: Lightbulb, alvo: Target, ampulheta: Hourglass, calendario: CalendarDays, formatura: GraduationCap,
+  trofeu: Trophy, medalha: Award, estrela: Star, foguete: Rocket, quebraCabeca: Puzzle, computador: Laptop, codigo: Code,
+  video: Video, fones: Headphones,
 };
 
 // materiais sem área (ou de uma área apagada) ficam juntos aqui

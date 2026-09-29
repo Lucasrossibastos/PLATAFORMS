@@ -435,6 +435,9 @@ button.carga:hover { color: var(--text); border-color: var(--border-strong); }
 .form-area { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 18px; align-items: start; }
 .form-area-previa .tile-area { min-height: 250px; }
 .icones-area { display: flex; flex-wrap: wrap; gap: 6px; }
+.icones-grupos { display: grid; gap: 12px; max-height: 300px; overflow-y: auto; padding: 2px 4px 2px 0; overscroll-behavior: contain; }
+.icones-grupo > small { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 500; color: var(--faint); }
+.icone-atual { font-weight: 400; color: var(--muted); }
 .icones-area .icone-btn[aria-checked="true"] { border-color: var(--acento); color: var(--acento); background: color-mix(in srgb, var(--acento) 10%, transparent); }
 @media (max-width: 640px) {
   .grade-areas { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }

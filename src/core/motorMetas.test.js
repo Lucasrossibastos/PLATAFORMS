@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { reabrirTopico, tirarDoFimDaFila } from "./ciclos.js";
 import { somarDias } from "./datas.js";
 import {
-  conteudoPlanejado, metasDasRevisoesAntigas, partesDaConclusao, planejarHorizonte, planejarRevisoes, reconciliar,
+  conteudoPlanejado, faixaDaMeta, metasDasRevisoesAntigas, partesDaConclusao, planejarHorizonte, planejarRevisoes, reconciliar,
 } from "./motorMetas.js";
 import { ativarRevisao, desativarRevisao, editarRevisao } from "./revisaoRecorrente.js";
 
@@ -63,27 +63,53 @@ describe("peso define a frequência", () => {
     expect(slots.some((s) => s.materiaId === "filo")).toBe(false);
   });
 
-  it("matéria acabando: o último pedaço vira um bloco de 30 (o tempo a mais fica no último tópico)", () => {
+  it("tópico que cabe na faixa fecha numa meta só; o fim da matéria não passa do conteúdo (em blocos de 30)", () => {
     const itens = [...topicos("mat", 1, 70), ...topicos("fis", 20)];
     const { slots } = planejarHorizonte({ hojeIso: HOJE, plano: eng, itens });
-    expect(slots.filter((s) => s.materiaId === "mat").map((s) => s.minutos)).toEqual([60, 30]);
+    expect(slots.filter((s) => s.materiaId === "mat").map((s) => s.minutos)).toEqual([90]); // média 60, faixa 30–90
   });
 });
 
-describe("metas de 30 em 30 minutos", () => {
+describe("metas de 30 em 30 minutos, perto da média da matéria", () => {
   const blocos = (slots) => slots.every((x) => x.minutos >= 30 && x.minutos % 30 === 0);
   const tres = planoCom([
     { materiaId: "mat", peso: 10, maxSessao: 60 }, { materiaId: "fis", peso: 5, maxSessao: 60 }, { materiaId: "qui", peso: 5, maxSessao: 60 },
   ]);
   const itensTres = [...topicos("mat", 5), ...topicos("fis", 5), ...topicos("qui", 5)];
 
-  it("toda meta é múltiplo de 30 (nunca menos de 30); o teto vale em blocos: 47 → 30, 80 → 60", () => {
+  it("a faixa é a média ± 30 (nunca menos de 30); média antiga fora de 30 vale a mais próxima: 47 → 60, 80 → 90", () => {
+    expect(faixaDaMeta(60)).toEqual({ media: 60, min: 30, max: 90 });
+    expect(faixaDaMeta(120)).toEqual({ media: 120, min: 90, max: 150 });
+    expect(faixaDaMeta(30)).toEqual({ media: 30, min: 30, max: 60 });
+    expect([faixaDaMeta(47).media, faixaDaMeta(80).media, faixaDaMeta(10).media]).toEqual([60, 90, 30]);
     const plano = { ...eng, duracaoMeta: { mat: 47 }, materias: eng.materias.map((m) => (m.materiaId === "fis" ? { ...m, maxSessao: 80 } : m)) };
     const { slots } = planejarHorizonte({ hojeIso: HOJE, plano, itens: itensEng });
     expect(blocos(slots)).toBe(true);
     const durs = (id) => slots.filter((x) => x.materiaId === id).map((x) => x.minutos);
-    expect(Math.max(...durs("mat"))).toBe(30);
-    expect(Math.max(...durs("fis"))).toBe(60);
+    expect(durs("mat").every((x) => x >= 30 && x <= 90)).toBe(true);
+    expect(durs("fis").every((x) => x >= 60 && x <= 120)).toBe(true);
+  });
+
+  it("média curta dá mais matérias no dia; média longa, blocos maiores", () => {
+    const com = (media) => planoCom(tres.materias.map((m) => ({ ...m, maxSessao: media })), { ...TODO_DIA, seg: 180 });
+    const curto = planejarHorizonte({ hojeIso: HOJE, plano: com(30), itens: itensTres }).slots.filter((x) => x.data === HOJE);
+    const longo = planejarHorizonte({ hojeIso: HOJE, plano: com(120), itens: itensTres }).slots.filter((x) => x.data === HOJE);
+    expect(curto.length).toBeGreaterThan(longo.length);
+    expect(curto.every((x) => x.minutos <= 60)).toBe(true);
+    expect(longo.every((x) => x.minutos >= 90 && x.minutos <= 150)).toBe(true);
+    expect(soma(curto, (x) => x.minutos)).toBe(180);
+    expect(soma(longo, (x) => x.minutos)).toBe(180);
+  });
+
+  it("média longa num dia que não divide certo: encolhe dentro da faixa para caber mais uma (200 = 90 + 110)", () => {
+    const plano = planoCom([{ materiaId: "mat", peso: 5, maxSessao: 120 }], { ...TODO_DIA, seg: 200 });
+    const hoje = planejarHorizonte({ hojeIso: HOJE, plano, itens: topicos("mat", 5, 300) }).slots.filter((x) => x.data === HOJE);
+    expect(hoje.map((x) => x.minutos)).toEqual([90, 110]);
+  });
+
+  it("dia curto demais para a faixa: uma meta do tamanho do dia (melhor estudar menos que nada)", () => {
+    const plano = planoCom([{ materiaId: "mat", peso: 5, maxSessao: 120 }], { ...TODO_DIA, seg: 60 });
+    expect(planejarHorizonte({ hojeIso: HOJE, plano, itens: topicos("mat", 5) }).slots.filter((x) => x.data === HOJE).map((x) => x.minutos)).toEqual([60]);
   });
 
   it("dia com tempo quebrado: só a última meta completa o dia (170 = 60 + 60 + 50)", () => {
@@ -92,13 +118,18 @@ describe("metas de 30 em 30 minutos", () => {
     expect(hoje.map((x) => x.minutos)).toEqual([60, 60, 50]);
   });
 
-  it("a sobra que não cabe esticando uma meta: 30 saem de uma e a última vira 30 + sobra (140 = 60 + 30 + 50)", () => {
+  it("a sobra do dia estica a última meta dentro da faixa (140 = 60 + 80, com média 60)", () => {
     const plano = { ...tres, disponibilidade: { ...TODO_DIA, seg: 140 } };
     const hoje = planejarHorizonte({ hojeIso: HOJE, plano, itens: itensTres }).slots.filter((x) => x.data === HOJE);
-    expect(hoje.reduce((a, x) => a + x.minutos, 0)).toBe(140);
+    expect(hoje.map((x) => x.minutos)).toEqual([60, 80]);
+  });
+
+  it("sem meta que estique dentro da faixa: 30 saem de uma e a última vira 30 + sobra", () => {
+    const plano = planoCom(tres.materias.map((m) => ({ ...m, maxSessao: 30 })), { ...TODO_DIA, seg: 200 }); // faixas 30–60
+    const hoje = planejarHorizonte({ hojeIso: HOJE, plano, itens: itensTres }).slots.filter((x) => x.data === HOJE);
+    expect(soma(hoje, (x) => x.minutos)).toBe(200);
     expect(hoje.filter((x) => x.minutos % 30)).toHaveLength(1);
-    expect(hoje.at(-1).minutos).toBe(50);
-    expect(new Set(hoje.map((x) => x.materiaId)).size).toBe(3); // a de 50 vai para outra matéria
+    expect(hoje.at(-1).minutos % 30).not.toBe(0);
     expect(hoje.every((x) => x.minutos >= 30 && x.minutos <= 60)).toBe(true);
   });
 
@@ -115,11 +146,11 @@ describe("metas de 30 em 30 minutos", () => {
     expect(slots.filter((x) => x.data === "2026-09-29").map((x) => x.minutos)).toEqual([30]);
   });
 
-  it("dia em múltiplo de 30 não tem meta quebrada; teto de 30 sem como completar deixa a folga", () => {
+  it("dia em múltiplo de 30 não tem meta quebrada; média 30 completa o dia dentro da faixa", () => {
     const { slots } = planejarHorizonte({ hojeIso: HOJE, plano: eng, itens: itensEng });
     expect(blocos(slots)).toBe(true);
     const so30 = planoCom([{ materiaId: "filo", peso: 5, maxSessao: 30 }], { ...TODO_DIA, seg: 50 });
-    expect(planejarHorizonte({ hojeIso: HOJE, plano: so30, itens: topicos("filo", 5) }).slots.filter((x) => x.data === HOJE).map((x) => x.minutos)).toEqual([30]);
+    expect(planejarHorizonte({ hojeIso: HOJE, plano: so30, itens: topicos("filo", 5) }).slots.filter((x) => x.data === HOJE).map((x) => x.minutos)).toEqual([50]); // faixa 30–60
   });
 
   it("qualquer horário: toda meta ≥ 30, no máximo uma quebrada por dia (a última) e o dia nunca estoura", () => {
@@ -135,6 +166,11 @@ describe("metas de 30 em 30 minutos", () => {
         const dia = slots.filter((x) => x.data === d);
         const quebradas = dia.filter((x) => x.minutos % 30);
         expect(dia.every((x) => x.minutos >= 30)).toBe(true);
+        dia.forEach((x) => {
+          const f = faixaDaMeta(plano.materias.find((m) => m.materiaId === x.materiaId).maxSessao);
+          expect(x.minutos).toBeLessThanOrEqual(f.max);
+          if (dia.length > 1 || capacidade[d] >= f.min) expect(x.minutos).toBeGreaterThanOrEqual(f.min); // só o dia curto fica abaixo
+        });
         expect(quebradas.length).toBeLessThanOrEqual(1);
         if (quebradas.length) expect(dia.at(-1).minutos % 30).not.toBe(0);
         expect(soma(dia, (x) => x.minutos)).toBeLessThanOrEqual(capacidade[d]);

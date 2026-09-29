@@ -23,7 +23,42 @@ export const TIPOS_MATERIAL = [
 export const nomeTipoMaterial = (id) => TIPOS_MATERIAL.find((t) => t.id === id)?.nome || "Outro";
 
 // ícones (os componentes ficam na interface) e cores das áreas
-export const ICONES_AREA = ["calculadora", "atomo", "dna", "frasco", "idiomas", "cerebro", "pessoas", "globo", "coluna", "livro", "caneta", "lista"];
+/* Ícones das áreas, em grupos para o seletor ([id, nome]); o desenho de
+   cada id fica em ui/Areas.jsx. */
+export const GRUPOS_ICONES = [
+  { nome: "Exatas", icones: [
+    ["calculadora", "Calculadora"], ["sigma", "Somatório"], ["pi", "Pi"], ["variavel", "Variável"], ["porcentagem", "Porcentagem"],
+    ["infinito", "Infinito"], ["regua", "Régua"], ["triangulo", "Triângulo"], ["formas", "Formas"], ["piramide", "Pirâmide"],
+    ["grafico", "Gráfico"], ["binario", "Binário"],
+  ] },
+  { nome: "Natureza", icones: [
+    ["atomo", "Átomo"], ["ima", "Ímã"], ["raio", "Eletricidade"], ["ondas", "Ondas"], ["termometro", "Termômetro"],
+    ["telescopio", "Telescópio"], ["orbita", "Órbita"], ["radiacao", "Radiação"], ["frasco", "Frasco"], ["becker", "Béquer"],
+    ["tubo", "Tubo de ensaio"], ["tubos", "Tubos de ensaio"], ["dna", "DNA"], ["microscopio", "Microscópio"], ["folha", "Folha"],
+    ["broto", "Broto"], ["arvore", "Árvore"], ["coracao", "Coração"], ["osso", "Osso"], ["inseto", "Inseto"], ["peixe", "Peixe"],
+    ["passaro", "Pássaro"], ["estetoscopio", "Saúde"],
+  ] },
+  { nome: "Humanas", icones: [
+    ["globo", "Globo"], ["terra", "Terra"], ["mapa", "Mapa"], ["bussola", "Bússola"], ["montanha", "Montanha"], ["clima", "Clima"],
+    ["coluna", "Coluna"], ["pergaminho", "Pergaminho"], ["coroa", "Coroa"], ["espadas", "Espadas"], ["castelo", "Castelo"],
+    ["bandeira", "Bandeira"], ["balanca", "Balança"], ["martelo", "Justiça"], ["voto", "Voto"], ["pessoas", "Pessoas"],
+    ["acordo", "Acordo"], ["cidade", "Cidade"], ["fabrica", "Fábrica"], ["trator", "Campo"], ["moedas", "Economia"],
+    ["igreja", "Religião"], ["cerebro", "Cérebro"],
+  ] },
+  { nome: "Linguagens e artes", icones: [
+    ["idiomas", "Idiomas"], ["caneta", "Caneta"], ["pena", "Pena"], ["aspas", "Citação"], ["ortografia", "Ortografia"],
+    ["conversa", "Conversa"], ["jornal", "Jornal"], ["microfone", "Microfone"], ["teatro", "Teatro"], ["musica", "Música"],
+    ["paleta", "Artes"],
+  ] },
+  { nome: "Estudo", icones: [
+    ["livro", "Livro"], ["livroTexto", "Livro aberto"], ["biblioteca", "Biblioteca"], ["caderno", "Caderno"], ["lista", "Lista"],
+    ["prancheta", "Prancheta"], ["marcaTexto", "Marca-texto"], ["lampada", "Ideia"], ["alvo", "Alvo"], ["ampulheta", "Ampulheta"],
+    ["calendario", "Calendário"], ["formatura", "Formatura"], ["trofeu", "Troféu"], ["medalha", "Medalha"], ["estrela", "Estrela"],
+    ["foguete", "Foguete"], ["quebraCabeca", "Quebra-cabeça"], ["computador", "Computador"], ["codigo", "Código"],
+    ["video", "Vídeo"], ["fones", "Áudio"],
+  ] },
+];
+export const ICONES_AREA = GRUPOS_ICONES.flatMap((g) => g.icones.map(([id]) => id));
 export const CORES_AREA = [
   { nome: "Azul", cor: "#4867F0" }, { nome: "Vermelho", cor: "#EF4444" }, { nome: "Verde", cor: "#22A447" },
   { nome: "Turquesa", cor: "#0EA5A0" }, { nome: "Roxo", cor: "#7C4DEB" }, { nome: "Rosa", cor: "#E0457B" },

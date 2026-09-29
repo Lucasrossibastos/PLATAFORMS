@@ -11,8 +11,9 @@
      3. o resto vai para a PROGRESSÃO, dividido pelo peso das matérias.
 
    Tamanho das metas: de 30 em 30 minutos, nunca menos de 30 (revisões
-   também). O teto da matéria vale em blocos de 30. Só uma meta por dia pode
-   sair "quebrada" (ex.: 50 min): a que completa o tempo livre do dia.
+   também). Cada matéria tem uma META MÉDIA (referência, não regra): a meta
+   fica na faixa de 30 min abaixo a 30 min acima dela. Só uma meta por dia
+   pode sair "quebrada" (ex.: 50 min): a que completa o tempo livre do dia.
 
    Progressão: cada meta é tempo de uma matéria, contínua — ela estuda o
    tópico atual da fila e, se ele acabar, segue no próximo. O conteúdo de
@@ -36,8 +37,16 @@ import { ocorrenciasNoHorizonte, parametrosAtuais } from "./revisaoRecorrente.js
 export const HORIZONTE_DIAS = 14;
 // duração em blocos de 30 (a mais próxima, nunca menos de 30): revisões e dados antigos
 export const emBlocos = (min) => Math.max(BLOCO_META, Math.round((Number(min) || 0) / BLOCO_META) * BLOCO_META);
-// teto da matéria em blocos de 30 (um teto de 80 dá metas de até 60)
-export const tetoEmBlocos = (teto) => Math.max(BLOCO_META, Math.floor((Number(teto) || 0) / BLOCO_META) * BLOCO_META);
+const abaixo30 = (min) => Math.floor(min / BLOCO_META) * BLOCO_META;
+const acima30 = (min) => Math.ceil(min / BLOCO_META) * BLOCO_META;
+/* A faixa de uma meta em torno da média da matéria (média antiga fora de 30
+   vale a mais próxima: 80 → 90): de 30 min abaixo (nunca menos de 30) a
+   30 min acima. */
+export const VARIACAO_META = 30;
+export function faixaDaMeta(mediaMin) {
+  const media = emBlocos(mediaMin);
+  return { media, min: Math.max(BLOCO_META, media - VARIACAO_META), max: media + VARIACAO_META };
+}
 export const ESTRATEGIAS_ATRASO = {
   redistribuir: "Levar para os próximos dias",
   manter: "Deixar no dia, como atrasada",
@@ -81,10 +90,12 @@ export function conteudoPlanejado(metas, itens, progresso = {}) {
   return out;
 }
 
-/* Tamanho de uma meta: blocos de 30 até o teto da matéria, o que cabe no
-   dia e o que ainda falta de conteúdo (o último pedaço da matéria vira um
-   bloco inteiro; o tempo a mais fica no último tópico). A meta segue a fila
-   da matéria: termina um tópico e continua no próximo. 0 = não cabe. */
+/* Tamanho de uma meta, dentro da faixa da matéria: a média, ou mais (até o
+   máximo) para fechar o tópico atual numa meta só; menos (até o mínimo)
+   para caber no que resta do dia; o fim do conteúdo da matéria pode dar uma
+   meta menor. 0 = não cabe na faixa hoje. A meta segue a fila da matéria:
+   termina um tópico e continua no próximo. */
+const somaLista = (lista) => lista.reduce((a, b) => a + b, 0);
 function consumirDaFila(lista, minutos) {
   let m = minutos;
   while (m > 0 && lista.length) {
@@ -94,40 +105,79 @@ function consumirDaFila(lista, minutos) {
     if (lista[0] <= 0) lista.shift();
   }
 }
-export function tamanhoDaMeta(lista, { maxSessao: teto }, cap) {
-  const falta = lista.reduce((a, b) => a + b, 0);
+export function tamanhoDaMeta(lista, { media, min, max }, cap) {
+  const falta = somaLista(lista);
   if (!falta) return 0;
-  const dur = Math.min(tetoEmBlocos(teto), Math.ceil(falta / BLOCO_META) * BLOCO_META, Math.floor(cap / BLOCO_META) * BLOCO_META);
-  return dur >= BLOCO_META ? dur : 0;
+  const fimDaMateria = acima30(falta);
+  const fechaTopico = acima30(lista[0]);
+  const alvo = Math.min(fechaTopico > media && fechaTopico <= max ? fechaTopico : media, fimDaMateria);
+  const dur = Math.min(alvo, abaixo30(cap));
+  if (dur < BLOCO_META || (dur < min && dur < fimDaMateria)) return 0;
+  return dur;
 }
 
-/* Completa o dia com o que sobrou (menos de 30 min): uma única meta sai
-   "quebrada", no fim do dia. Primeiro tenta esticar uma meta do dia sem
-   passar do teto da matéria dela; se nenhuma pode, tira 30 de uma meta de
-   60 ou mais e faz, com a sobra, uma meta de 30 + sobra (de preferência de
-   outra matéria). Sem jeito de fechar sem passar dos tetos, o dia fica com
-   a folga. */
-function completarDia(doDia, sobra, info, pendente) {
-  if (sobra <= 0 || sobra >= BLOCO_META || !doDia.length) return { extra: [], delta: {} };
-  const esticar = [...doDia].reverse().find((s) => s.minutos + sobra <= info[s.materiaId].teto);
-  if (esticar) {
-    esticar.minutos += sobra;
-    esticar.completa = true;
-    consumirDaFila(pendente[esticar.materiaId], sobra);
-    return { extra: [], delta: { [esticar.materiaId]: sobra } };
+/* Encolhe metas do dia (de 30 em 30, da última para a primeira, sem sair da
+   faixa) até sobrar `precisa` minutos; devolve quanto liberou. Os minutos
+   liberados voltam para a fila da matéria. */
+function encolher(doDia, livre, precisa, info, pendente, somar) {
+  const liberavel = doDia.reduce((a, s) => a + abaixo30(s.minutos - info[s.materiaId].min), 0);
+  if (livre + liberavel < precisa) return 0;
+  let liberou = 0;
+  for (const s of [...doDia].reverse()) {
+    while (livre + liberou < precisa && s.minutos - BLOCO_META >= info[s.materiaId].min) {
+      s.minutos -= BLOCO_META;
+      pendente[s.materiaId].unshift(BLOCO_META);
+      somar(s.materiaId, -BLOCO_META);
+      liberou += BLOCO_META;
+    }
   }
-  const cortar = [...doDia].reverse().find((s) => s.minutos >= 2 * BLOCO_META);
-  if (!cortar) return { extra: [], delta: {} };
-  const tam = BLOCO_META + sobra;
+  return liberou;
+}
+
+/* Enche o que sobrou do dia: blocos de 30 esticam as metas (da última para
+   a primeira, sem sair da faixa nem passar do conteúdo); o resto (< 30)
+   completa o dia numa única meta "quebrada", no fim — esticando uma meta
+   dentro da faixa ou, se nenhuma pode, tirando 30 de uma meta (que continua
+   na faixa) e fazendo uma de 30 + resto (de preferência de outra matéria).
+   Sem como fechar dentro das faixas, o dia fica com a folga. */
+function completarDia(doDia, sobra, info, pendente, somar) {
+  let resto = sobra;
+  let mexeu = true;
+  while (resto >= BLOCO_META && mexeu) {
+    mexeu = false;
+    for (const s of [...doDia].reverse()) {
+      if (resto < BLOCO_META) break;
+      if (s.minutos + BLOCO_META > info[s.materiaId].max || !pendente[s.materiaId].length) continue;
+      s.minutos += BLOCO_META;
+      consumirDaFila(pendente[s.materiaId], BLOCO_META);
+      somar(s.materiaId, BLOCO_META);
+      resto -= BLOCO_META;
+      mexeu = true;
+    }
+  }
+  if (resto <= 0 || resto >= BLOCO_META || !doDia.length) return [];
+  const esticar = [...doDia].reverse().find((s) => s.minutos + resto <= info[s.materiaId].max);
+  if (esticar) {
+    esticar.minutos += resto;
+    esticar.completa = true;
+    consumirDaFila(pendente[esticar.materiaId], resto);
+    somar(esticar.materiaId, resto);
+    return [];
+  }
+  const tam = BLOCO_META + resto;
+  const naFaixa = (id) => info[id].min <= tam && tam <= info[id].max;
+  const cortar = [...doDia].reverse().find((s) => s.minutos - BLOCO_META >= info[s.materiaId].min);
+  if (!cortar) return [];
   const usadas = new Set(doDia.map((s) => s.materiaId));
-  const outra = Object.keys(pendente).find((id) => !usadas.has(id) && pendente[id].length && info[id].teto >= tam);
-  const materiaId = outra || cortar.materiaId;
+  const outra = Object.keys(pendente).find((id) => !usadas.has(id) && pendente[id].length && naFaixa(id));
+  const materiaId = outra || (naFaixa(cortar.materiaId) ? cortar.materiaId : null);
+  if (!materiaId) return [];
   cortar.minutos -= BLOCO_META;
+  somar(cortar.materiaId, -BLOCO_META);
   if (outra) { pendente[cortar.materiaId].unshift(BLOCO_META); consumirDaFila(pendente[outra], tam); } // os 30 voltam para a fila
-  else consumirDaFila(pendente[materiaId], sobra);
-  const delta = { [cortar.materiaId]: -BLOCO_META };
-  delta[materiaId] = (delta[materiaId] || 0) + tam;
-  return { extra: [{ data: cortar.data, materiaId, minutos: tam, completa: true }], delta };
+  else consumirDaFila(pendente[materiaId], resto);
+  somar(materiaId, tam);
+  return [{ data: cortar.data, materiaId, minutos: tam, completa: true }];
 }
 
 /* Orçamento e plano de sessões de progressão para o horizonte.
@@ -190,14 +240,14 @@ export function planejarHorizonte({ hojeIso, plano, itens, progresso = {}, metas
     pendente[materiaId] = lista;
   });
   const info = Object.fromEntries(materias.map((m) => {
-    const teto = duracaoDaMeta(plano, m);
-    return [m.materiaId, { maxSessao: tetoEmBlocos(teto), teto: Math.max(teto, tetoEmBlocos(teto)), prioridade: m.prioridade ?? 2, peso: pesos[m.materiaId] || 1 }];
+    return [m.materiaId, { ...faixaDaMeta(duracaoDaMeta(plano, m)), prioridade: m.prioridade ?? 2, peso: pesos[m.materiaId] || 1 }];
   }));
 
   const slots = [];
   let semana = null;
   let alocado = {};
   const razao = (id) => (alocado[id] || 0) / info[id].peso;
+  const somar = (id, min) => { alocado[id] = (alocado[id] || 0) + min; };
   datas.forEach((d) => {
     if (inicioDaSemana(d) !== semana) {
       semana = inicioDaSemana(d);
@@ -214,17 +264,33 @@ export function planejarHorizonte({ hojeIso, plano, itens, progresso = {}, metas
       // não repetir matéria no dia: a que ainda não apareceu passa na frente se estiver a menos de uma sessão da primeira
       const melhor = candidatas[0];
       const nova = candidatas.find((id) => !usadasHoje.has(id));
-      const id = usadasHoje.has(melhor) && nova && razao(nova) - razao(melhor) <= info[melhor].maxSessao / info[melhor].peso ? nova : melhor;
-      const dur = tamanhoDaMeta(pendente[id], info[id], cap);
+      const id = usadasHoje.has(melhor) && nova && razao(nova) - razao(melhor) <= info[melhor].media / info[melhor].peso ? nova : melhor;
+      let dur = tamanhoDaMeta(pendente[id], info[id], cap);
+      // não coube na faixa: abre espaço encolhendo as metas do dia (sem tirá-las da faixa)
+      if (!dur) {
+        cap += encolher(doDia, cap, info[id].min, info, pendente, somar);
+        dur = tamanhoDaMeta(pendente[id], info[id], cap);
+      }
       if (!dur) { semEspaco.add(id); continue; }
       doDia.push({ data: d, materiaId: id, minutos: dur });
-      alocado[id] = (alocado[id] || 0) + dur;
+      somar(id, dur);
       consumirDaFila(pendente[id], dur);
       cap -= dur;
       usadasHoje.add(id);
     }
-    const { extra, delta } = completarDia(doDia, cap, info, pendente);
-    Object.entries(delta).forEach(([id, min]) => { alocado[id] = (alocado[id] || 0) + min; });
+    // dia curto demais para a faixa de qualquer matéria: uma meta do tamanho do dia (melhor que nada)
+    if (!doDia.length && cap >= BLOCO_META) {
+      const id = Object.keys(pendente).filter((x) => pendente[x].length)
+        .sort((a, b) => razao(a) - razao(b) || info[a].prioridade - info[b].prioridade || ordemPlano.get(a) - ordemPlano.get(b))[0];
+      if (id) {
+        const dur = Math.min(abaixo30(cap), acima30(somaLista(pendente[id])));
+        doDia.push({ data: d, materiaId: id, minutos: dur });
+        somar(id, dur);
+        consumirDaFila(pendente[id], dur);
+        cap -= dur;
+      }
+    }
+    const extra = completarDia(doDia, cap, info, pendente, somar);
     // a meta que completa o dia vai por último
     const dia = [...doDia, ...extra].sort((a, b) => (a.completa ? 1 : 0) - (b.completa ? 1 : 0));
     slots.push(...dia.map(({ completa: _c, ...s }) => s));

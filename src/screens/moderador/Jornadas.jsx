@@ -1,6 +1,6 @@
 /* Jornadas: o conteúdo programático de cada curso (vestibular + curso).
    Criar é um passo só (todas as matérias, com todos os tópicos e o mesmo
-   peso); depois se ajusta tudo na mesma tela: peso e duração das metas de
+   peso); depois se ajusta tudo na mesma tela: peso e meta média de
    cada matéria, tópicos (com as horas-base) e subtópicos, e regras. Não há
    horas por semana na jornada: o tempo se encaixa no horário de cada aluno. Com "levar aos
    alunos", cada mudança vai também para o edital de quem está na jornada,

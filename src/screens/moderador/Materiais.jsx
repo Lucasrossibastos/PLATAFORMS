@@ -8,7 +8,7 @@ import { ArrowLeft, Eye, EyeOff, FileUp, Layers, Library, Pencil, Plus, Trash2 }
 import { useApp } from "../../state/AppContext.jsx";
 import { errosDeCampo, useAcao, useAreasMateriais, useMateriais, useModelos } from "../../state/hooks.js";
 import { PDF_MAX_MB, fmtTamanho } from "../../core/validacao.js";
-import { AREA_DA_MATERIA, CORES_AREA, ICONES_AREA as IDS_ICONES, TIPOS_MATERIAL } from "../../services/materiais.js";
+import { AREA_DA_MATERIA, CORES_AREA, GRUPOS_ICONES, TIPOS_MATERIAL } from "../../services/materiais.js";
 import { AREA_OUTROS, BotaoAbrirPdf, CartaoLista, IconeArea, TileArea } from "../../ui/Areas.jsx";
 import { BarraFiltros, useFiltros } from "../../ui/Filtros.jsx";
 import { SeletorConteudo, SeletorProgramas, nomesDosProgramas } from "../../ui/Conteudo.jsx";
@@ -18,6 +18,38 @@ import { agruparPorArea, filtrarMateriais } from "../aluno/Materiais.jsx";
 const ESTADOS = { validando: "Conferindo o arquivo…", enviando: "Enviando", salvando: "Salvando…", pronto: "Pronto." };
 
 /* ---------- Área ---------- */
+
+/* Ícone da área: em grupos (exatas, natureza, humanas, linguagens, estudo),
+   com o nome de cada um e uma busca rápida. */
+const semAcento = (t) => String(t).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+function SeletorIcone({ valor, aoEscolher }) {
+  const [busca, setBusca] = useState("");
+  const b = semAcento(busca.trim());
+  const grupos = GRUPOS_ICONES.map((g) => ({ ...g, icones: g.icones.filter(([id, nome]) => !b || semAcento(nome).includes(b) || id.toLowerCase().includes(b) || semAcento(g.nome).includes(b)) }))
+    .filter((g) => g.icones.length);
+  const atual = GRUPOS_ICONES.flatMap((g) => g.icones).find(([id]) => id === valor);
+  return (
+    <div className="campo">
+      <span>Ícone{atual && <small className="icone-atual"> · {atual[1]}</small>}</span>
+      <input className="entrada entrada--sm" type="search" placeholder="Buscar ícone (ex.: átomo, mapa, livro)" aria-label="Buscar ícone" value={busca} onChange={(e) => setBusca(e.target.value)} />
+      <div className="icones-grupos" role="radiogroup" aria-label="Ícone">
+        {grupos.map((g) => (
+          <div key={g.nome} className="icones-grupo">
+            <small>{g.nome}</small>
+            <div className="icones-area">
+              {g.icones.map(([id, nome]) => (
+                <button key={id} type="button" role="radio" aria-checked={valor === id} aria-label={nome} title={nome} className="icone-btn" onClick={() => aoEscolher(id)}>
+                  <IconeArea icone={id} />
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+        {!grupos.length && <p className="previa-linha">Nenhum ícone com esse nome.</p>}
+      </div>
+    </div>
+  );
+}
 
 function FormArea({ area, aoFechar, aoCriar }) {
   const { s, ind } = useApp();
@@ -61,16 +93,7 @@ function FormArea({ area, aoFechar, aoCriar }) {
               <input type="color" className="entrada cor-livre" value={f.cor} aria-label="Outra cor" onChange={(e) => setF({ ...f, cor: e.target.value })} />
             </div>
           </div>
-          <div className="campo">
-            <span>Ícone</span>
-            <div className="icones-area" role="radiogroup" aria-label="Ícone">
-              {IDS_ICONES.map((i) => (
-                <button key={i} type="button" role="radio" aria-checked={f.icone === i} aria-label={i} className="icone-btn" onClick={() => setF({ ...f, icone: i })}>
-                  <IconeArea icone={i} />
-                </button>
-              ))}
-            </div>
-          </div>
+          <SeletorIcone valor={f.icone} aoEscolher={(icone) => setF({ ...f, icone })} />
           {!Object.keys(erros).length && <MensagemErro erro={erro} />}
         </div>
         <div className="form-area-previa" aria-label="Prévia"><TileArea area={{ ...f, nome: f.nome || "Nome da área" }} /></div>

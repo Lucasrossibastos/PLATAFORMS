@@ -15,7 +15,7 @@ import {
 } from "../../core/plano.js";
 import { PESO_MAX, PESO_MIN, jornadaEfetiva, pesosDoPlano } from "../../core/jornada.js";
 import { horariosDoPlano } from "../../core/horario.js";
-import { ESTRATEGIAS_ATRASO } from "../../core/motorMetas.js";
+import { ESTRATEGIAS_ATRASO, faixaDaMeta } from "../../core/motorMetas.js";
 import { LIBERADAS_SE_AUSENTES } from "../../core/permissoes.js";
 import { useApp } from "../../state/AppContext.jsx";
 import { useAcao, useLogs, useModelos, useVistos } from "../../state/hooks.js";
@@ -177,7 +177,7 @@ export function BlocosMaterias({ plano, progresso, selecionada, aoSelecionar, mo
 /* ---------- Tópicos de uma matéria ---------- */
 
 /* Tempo em minutos, livre (tocar para mudar; vazio volta ao padrão). */
-// meta = true: duração máxima das metas (de 30 em 30); senão, tempo de estudo do tópico (qualquer minuto)
+// meta = true: meta média da matéria (de 30 em 30); senão, tempo de estudo do tópico (qualquer minuto)
 function CargaEditor({ valor, padrao, aoSalvar, rotulo, titulo = "Mudar o tempo de estudo", meta = false }) {
   const ok = meta ? duracaoValida : minutosOk;
   const [editando, setEditando] = useState(false);
@@ -298,11 +298,12 @@ export function TopicosDaMateria({
           </p>
           {comoFila && (
             <p className="previa-linha duracao-meta">
-              Metas de até{" "}
+              Meta média de{" "}
               {pode.tempos ? (
-                <CargaEditor valor={plano.duracaoMeta?.[materiaId] ?? null} padrao={m.maxSessao ?? 60} rotulo={`Minutos de cada meta de ${nomeM}`} titulo="Mudar a duração máxima das metas desta matéria (de 30 em 30 minutos)" meta
-                  aoSalvar={(c) => op({ tipo: "definirDuracaoMeta", materiaId, minutos: c }, "Mudar a duração das metas")} />
+                <CargaEditor valor={plano.duracaoMeta?.[materiaId] ?? null} padrao={m.maxSessao ?? 60} rotulo={`Minutos da meta média de ${nomeM}`} titulo="Mudar a meta média desta matéria (de 30 em 30 minutos)" meta
+                  aoSalvar={(c) => op({ tipo: "definirDuracaoMeta", materiaId, minutos: c }, "Mudar a meta média")} />
               ) : <b className="num">{fmtMin(duracaoDaMeta(plano, m))}</b>}
+              {" "}<span className="faixa-meta">· as metas ficam entre {fmtMin(faixaDaMeta(duracaoDaMeta(plano, m)).min)} e {fmtMin(faixaDaMeta(duracaoDaMeta(plano, m)).max)}</span>
             </p>
           )}
         </div>
@@ -402,12 +403,12 @@ export function TabelaIncidencia({ plano, aoAplicar, ocupado, capacidade, efetiv
         <h2 id="t-incidencia" className="subtitulo">Peso de cada matéria nas metas</h2>
         <p className="previa-linha">
           Quanto maior o peso, mais a matéria aparece nas metas (engenharia: Matemática 10, Filosofia 2); a prioridade só desempata.
-          Cada meta dura até o tempo que você definir, em minutos: o planejamento encurta quando precisa, para fechar tópicos e caber no dia sem sobras picadas. {doAluno ? "O horário do aluno é o limite de cada dia, dividido pelos pesos." : "O limite de cada dia é o horário de cada aluno."}
+          A meta média é uma referência, de 30 em 30 minutos: as metas ficam até 30 min abaixo ou acima dela, para fechar tópicos, caber e completar o dia. Média curta = mais matérias por dia; média longa = blocos maiores por tópico. {doAluno ? "O horário do aluno é o limite de cada dia, dividido pelos pesos." : "O limite de cada dia é o horário de cada aluno."}
         </p>
       </div>
       <div className="tabela-rolagem">
         <table className="tabela tabela-incidencia tabela--cartoes">
-          <thead><tr><th>Matéria</th><th>Aparece</th><th>Peso</th><th>Meta de até</th><th className="num">Fatia</th><th>Prioridade</th><th>Velocidade</th></tr></thead>
+          <thead><tr><th>Matéria</th><th>Aparece</th><th>Peso</th><th>Meta média</th><th className="num">Fatia</th><th>Prioridade</th><th>Velocidade</th></tr></thead>
           <tbody>
             {materias.map((m) => {
               const x = valor(m);
@@ -430,10 +431,10 @@ export function TabelaIncidencia({ plano, aoAplicar, ocupado, capacidade, efetiv
                     </span>
                     {marca(m, "peso")}
                   </td>
-                  <td data-rotulo="Meta de até">
+                  <td data-rotulo="Meta média">
                     <span className="minutos">
                       <input className={`entrada entrada--sm num${duracaoValida(x.maxSessao) ? "" : " entrada--erro"}`} type="number" min={BLOCO_META} max={MINUTOS_MAX} step={BLOCO_META}
-                        value={x.maxSessao} aria-label={`Minutos de cada meta de ${nome}`} onChange={(e) => mudar(m, { maxSessao: e.target.value === "" ? "" : Number(e.target.value) })} />
+                        value={x.maxSessao} aria-label={`Minutos da meta média de ${nome}`} onChange={(e) => mudar(m, { maxSessao: e.target.value === "" ? "" : Number(e.target.value) })} />
                       <small>min</small>
                     </span>
                     {marca(m, "maxSessao")}

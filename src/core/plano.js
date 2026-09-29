@@ -5,9 +5,10 @@
                   topicos: [{ topicoId, cargaMin?, subtopicos: [{ subtopicoId, cargaMin? }] }] }]
    Não há "horas por semana" na jornada: o tempo vem das horas-base de cada
    tópico e se encaixa no horário de cada aluno (plano.disponibilidade).
-   maxSessao é a duração MÁXIMA de cada meta da matéria, de 30 em 30 minutos:
-   as metas andam em blocos de 30 (nunca menos de 30) e só a que completa o
-   dia sai "quebrada" (ver core/motorMetas.js).
+   maxSessao (nome antigo) é a META MÉDIA da matéria, de 30 em 30 minutos:
+   uma referência, não uma regra. As metas ficam entre 30 min abaixo e
+   30 min acima dela, andam em blocos de 30 (nunca menos de 30) e só a que
+   completa o dia sai "quebrada" (ver core/motorMetas.js).
    Planos antigos têm minutosSemanais: só servem para deduzir o peso.
 
    Ajustes do próprio aluno (ou do moderador para aquele aluno), por cima da
@@ -46,7 +47,7 @@ export const PERMISSOES_ALUNO = [
   { id: "disponibilidade", nome: "Ajustar as horas livres de cada dia" },
   { id: "ritmo", nome: "Mudar o ritmo do plano" },
   { id: "recalcular", nome: "Recalcular o plano" },
-  { id: "tempos", nome: "Ajustar a duração das metas e o tempo de cada tópico" },
+  { id: "tempos", nome: "Ajustar a meta média de cada matéria e o tempo de cada tópico" },
   { id: "metaQuestoes", nome: "Definir a própria meta semanal de questões" },
 ];
 // autonomia por padrão; o moderador restringe o que quiser
@@ -71,15 +72,15 @@ export const STATUS_ITEM = {
 
 export const idItem = (topicoId, subtopicoId) => subtopicoId || `t:${topicoId}`;
 
-// duração de cada meta da matéria (a do aluno, se ele ou o moderador ajustou)
+// meta média da matéria (a do aluno, se ele ou o moderador ajustou)
 export const duracaoDaMeta = (plano, m) => plano?.duracaoMeta?.[m.materiaId] ?? m.maxSessao ?? 60;
 export const MINUTOS_MIN = 5;
 export const MINUTOS_MAX = 720;
 const minutosValidos = (v) => Number.isInteger(v) && v >= MINUTOS_MIN && v <= MINUTOS_MAX;
-// metas andam de 30 em 30 minutos (nunca menos de 30): a duração máxima também
+// metas andam de 30 em 30 minutos (nunca menos de 30): a meta média também
 export const BLOCO_META = 30;
 export const duracaoValida = (v) => Number.isInteger(v) && v >= BLOCO_META && v <= MINUTOS_MAX && v % BLOCO_META === 0;
-export const ERRO_DURACAO = `Duração da meta: de 30 em 30 minutos, até ${MINUTOS_MAX}.`;
+export const ERRO_DURACAO = `Meta média: de 30 em 30 minutos, até ${MINUTOS_MAX}.`;
 const arred5 = (n) => Math.ceil(n / 5) * 5;
 
 /* ---------- Leitura ---------- */
@@ -414,7 +415,7 @@ export function alterarPlano(plano, ind, op) {
     case "definirMateria": {
       const m = mat(op.materiaId);
       if (!m) break;
-      const rotulos = { minutosSemanais: "horas por semana", maxSessao: "duração de cada meta", prioridade: "prioridade", ritmo: "velocidade", ativa: "aparecimento", peso: "peso" };
+      const rotulos = { minutosSemanais: "horas por semana", maxSessao: "meta média", prioridade: "prioridade", ritmo: "velocidade", ativa: "aparecimento", peso: "peso" };
       const fmt = (k, v) => (k === "ativa" ? (v === false ? "oculta" : "visível") : k === "prioridade" ? PRIORIDADES.find((p) => p.id === v)?.nome ?? v : k === "ritmo" ? nomeRitmo(v) : v);
       Object.entries(op.campos || {}).forEach(([k, v]) => {
         const atual = k === "ativa" ? m.ativa !== false : m[k];
@@ -494,7 +495,7 @@ export function alterarPlano(plano, ind, op) {
       else mapa[op.materiaId] = op.minutos;
       const mudou = JSON.stringify(p.duracaoMeta || {}) !== JSON.stringify(mapa);
       p.duracaoMeta = mapa;
-      if (mudou) registrar(op.tipo, `Mudou a duração das metas de ${nomeM}`, antes, duracaoDaMeta(p, m));
+      if (mudou) registrar(op.tipo, `Mudou a meta média de ${nomeM}`, antes, duracaoDaMeta(p, m));
       break;
     }
     case "definirTempoTopico": { // só do aluno: por cima da jornada

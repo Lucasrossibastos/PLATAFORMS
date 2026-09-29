@@ -155,14 +155,15 @@ firestore.rules, storage.rules   controle de acesso real
   `core/datas.js`.
 - **Tempo**: a jornada não tem horas por semana. O tempo vem das horas-base
   de cada tópico e se encaixa no horário de cada aluno, dividido pelo peso
-  das matérias. O tempo de cada tópico é livre (5 a 720 min); a duração
-  máxima de cada meta anda de 30 em 30 minutos (30 a 720), definida na
-  jornada e ajustável por aluno. **Metas em blocos de 30**: toda meta é
-  múltiplo de 30 e nunca menor que 30 (revisões também); a meta segue a
-  fila da matéria, terminando um tópico e continuando no próximo. Só uma
-  meta por dia pode sair "quebrada" (ex.: 50 min): a última, para completar
-  o tempo livre do dia, sem passar do teto da matéria. Tetos antigos fora
-  de 30 valem arredondados para baixo (80 → metas de até 60).
+  das matérias. O tempo de cada tópico é livre (5 a 720 min). Cada matéria
+  tem uma **meta média** (de 30 em 30, na jornada e ajustável por aluno):
+  uma referência, não uma regra. As metas ficam na faixa de 30 min abaixo a
+  30 min acima da média (nunca menos de 30), para fechar um tópico numa
+  meta só, caber no dia ou completá-lo. Média curta = mais matérias por
+  dia; média longa = blocos maiores. Dia curto demais para a faixa ganha
+  uma meta do tamanho do dia. **Blocos de 30**: toda meta é múltiplo de 30
+  (revisões também), e só uma por dia pode sair "quebrada" (ex.: 50 min):
+  a última, para completar o tempo livre do dia, dentro da faixa.
 - **Metas diárias**: `core/motorMetas.js` planeja as próximas duas semanas
   (roda na virada do dia e depois de toda mudança que afeta o plano, sempre
   com registro de antes/depois). Em cada dia, as revisões entram primeiro

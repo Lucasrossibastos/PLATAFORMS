@@ -217,7 +217,7 @@ describe("tempos do aluno: duração das metas (de 30 em 30) e tempo de cada tó
     const r = alterarPlano(plano, ind, { tipo: "definirDuracaoMeta", materiaId: "biologia", minutos: 90 });
     expect(r.plano.duracaoMeta).toEqual({ biologia: 90 });
     expect(duracaoDaMeta(r.plano, r.plano.materias[0])).toBe(90);
-    expect(r.log[0]).toMatchObject({ descricao: expect.stringMatching(/duração das metas de Biologia/), depois: 90 });
+    expect(r.log[0]).toMatchObject({ descricao: expect.stringMatching(/meta média de Biologia/), depois: 90 });
     expect(r.plano.materias[0].maxSessao).toBe(plano.materias[0].maxSessao); // a cópia da jornada não muda
     const volta = alterarPlano(r.plano, ind, { tipo: "definirDuracaoMeta", materiaId: "biologia", minutos: plano.materias[0].maxSessao });
     expect(volta.plano.duracaoMeta).toEqual({});
